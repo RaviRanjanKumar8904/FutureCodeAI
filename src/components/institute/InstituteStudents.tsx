@@ -7,11 +7,47 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface EnrolledStudent {
   id: string;
-  name: string;
-  course: string;
-  batch: string;
-  date: string;
-  status: 'Active' | 'Completed' | 'Dropped';
+  studentName?: string;
+  name?: string;
+  courseName?: string;
+  course?: string;
+  batch?: string;
+  enrolledAt?: any;
+  date?: string;
+  status?: 'Active' | 'Ongoing' | 'Completed' | 'Dropped' | string;
+}
+
+function formatEnrolledDate(enrolledAt: any, fallbackDate?: string): string {
+  if (!enrolledAt) return fallbackDate || 'N/A';
+  try {
+    if (typeof enrolledAt.toDate === 'function') {
+      return enrolledAt.toDate().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    if (enrolledAt.seconds) {
+      return new Date(enrolledAt.seconds * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    if (typeof enrolledAt === 'string') {
+      const parsed = new Date(enrolledAt);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Error formatting date:", err);
+  }
+  return fallbackDate || 'N/A';
 }
 
 export default function InstituteStudents() {
@@ -30,10 +66,19 @@ export default function InstituteStudents() {
           where('instituteId', '==', user.uid)
         );
         const snapshot = await getDocs(q);
-        const fetchedData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as EnrolledStudent[];
+        const fetchedData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            studentName: data.studentName || data.name || 'Unknown Student',
+            courseName: data.courseName || data.course || 'N/A',
+            batch: data.batch || data.batchTiming || 'N/A',
+            enrolledAt: data.enrolledAt,
+            date: formatEnrolledDate(data.enrolledAt, data.date),
+            status: data.status || 'Active',
+            ...data
+          };
+        }) as EnrolledStudent[];
         
         setStudents(fetchedData);
       } catch (error) {
@@ -46,10 +91,12 @@ export default function InstituteStudents() {
     fetchStudents();
   }, [user]);
 
-  const filteredStudents = students.filter(s => 
-    (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.course || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students.filter(s => {
+    const name = (s.studentName || s.name || '').toLowerCase();
+    const course = (s.courseName || s.course || '').toLowerCase();
+    const search = searchTerm.toLowerCase();
+    return name.includes(search) || course.includes(search);
+  });
 
   return (
     <div className="space-y-6">
@@ -114,18 +161,18 @@ export default function InstituteStudents() {
                     key={student.id} 
                     className="border-b border-gray-50 hover:bg-slate-50/50 transition-colors"
                   >
-                    <td className="p-4 pl-6 font-bold text-text-heading">{student.name || 'Unknown'}</td>
-                    <td className="p-4 text-sm font-medium text-slate-600">{student.course || 'N/A'}</td>
+                    <td className="p-4 pl-6 font-bold text-text-heading">{student.studentName || student.name || 'Unknown'}</td>
+                    <td className="p-4 text-sm font-medium text-slate-600">{student.courseName || student.course || 'N/A'}</td>
                     <td className="p-4 text-sm font-medium text-slate-500">{student.batch || 'N/A'}</td>
                     <td className="p-4 text-sm font-medium text-slate-500">{student.date || 'N/A'}</td>
                     <td className="p-4 pr-6 text-right">
                       <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${
-                        student.status === 'Active' ? 'bg-blue-100 text-blue-700' :
+                        student.status === 'Active' || student.status === 'Ongoing' ? 'bg-blue-100 text-blue-700' :
                         student.status === 'Completed' ? 'bg-green-100 text-green-700' :
                         student.status === 'Dropped' ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
-                        {student.status || 'Pending'}
+                        {student.status || 'Active'}
                       </span>
                     </td>
                   </motion.tr>

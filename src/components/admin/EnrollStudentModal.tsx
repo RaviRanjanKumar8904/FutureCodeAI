@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp } from 'firebase/firestore';
 import { X, UserPlus, Mail, Phone, BookOpen, Building2, User } from 'lucide-react';
@@ -10,8 +10,8 @@ interface EnrollStudentModalProps {
   onSuccess: () => void;
 }
 
-// Generate next 6 monthly batch labels from current month
-function generateBatchOptions(): string[] {
+// Generate the next 6 months as batch options
+function generateBatchOptions() {
   const batches: string[] = [];
   const now = new Date();
   for (let i = 0; i < 6; i++) {
@@ -26,7 +26,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess }: Enrol
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<any[]>([]);
   const [centers, setCenters] = useState<any[]>([]);
-  const batchOptions = generateBatchOptions();
+  const batchOptions = useMemo(() => generateBatchOptions(), []);
 
   const [formData, setFormData] = useState({
     studentName: '',
@@ -72,7 +72,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess }: Enrol
       centerName: '',
       batch: batchOptions[0] || '',
     });
-  }, [isOpen]);
+  }, [isOpen, batchOptions]);
 
   const handleCourseChange = (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
@@ -124,6 +124,10 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess }: Enrol
         studentId = existingUsers.docs[0].id;
       }
 
+      // Determine linked institute ID from selected center
+      const selectedCenter = centers.find(c => c.id === formData.centerId);
+      const instituteId = selectedCenter ? (selectedCenter.userId || selectedCenter.uid || selectedCenter.id || '') : '';
+
       // Create enrollment record
       await addDoc(collection(db, 'enrollments'), {
         studentId,
@@ -133,7 +137,8 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess }: Enrol
         courseId: formData.courseId,
         institute: formData.centerName || 'FutureCodeAI (Online)',
         centerId: formData.centerId || '',
-        city: centers.find(c => c.id === formData.centerId)?.city || 'Online',
+        instituteId,
+        city: selectedCenter?.city || 'Online',
         batch: formData.batch,
         batchTiming: formData.batch,
         status: 'Ongoing',

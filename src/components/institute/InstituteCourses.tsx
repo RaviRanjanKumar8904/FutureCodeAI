@@ -31,10 +31,20 @@ export default function InstituteCourses() {
           where('instituteId', '==', user.uid)
         );
         const snapshot = await getDocs(q);
-        const fetchedData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Batch[];
+        const fetchedData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            courseName: data.courseName || data.title || 'Unnamed Course',
+            batchId: data.batchId || (data.title ? `${data.title.substring(0, 3).toUpperCase()}-101` : 'BATCH-101'),
+            timing: data.timing || data.batchTimings || 'Flexible',
+            startDate: data.startDate || 'Immediate',
+            capacity: data.capacity || data.totalSeats || 50,
+            filled: data.filled || data.filledSeats || data.studentsCount || 0,
+            status: data.status || (data.isActive !== false ? 'Active' : 'Upcoming'),
+            ...data
+          };
+        }) as Batch[];
         
         setBatches(fetchedData);
       } catch (error) {

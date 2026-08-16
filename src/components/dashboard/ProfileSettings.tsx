@@ -9,7 +9,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 const profileSchema = z.object({
   displayName: z.string().min(2, "Name must be at least 2 characters").optional(),
   photoURL: z.string().optional(),
-  phone: z.string().regex(/^[0-9+\-\s()]*$/, "Invalid characters").min(10, "Minimum 10 digits").optional().or(z.literal('')),
+  phone: z.string()
+    .regex(/^[0-9+\-\s()]*$/, "Invalid characters in phone number")
+    .refine(val => !val || (val.match(/\d/g) || []).length >= 10, {
+      message: "Enter a valid phone number (at least 10 digits)"
+    })
+    .optional()
+    .or(z.literal('')),
   school: z.string().min(2, "School name is too short").optional().or(z.literal('')),
   city: z.string().min(2, "City name is too short").optional().or(z.literal('')),
   degree: z.string().optional().or(z.literal('')),

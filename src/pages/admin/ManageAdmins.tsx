@@ -26,24 +26,6 @@ export default function ManageAdmins() {
   useEffect(() => {
     const checkSuperAdmin = async () => {
       if (!user) return;
-      if (user.email === 'raviranjan8904@gmail.com') {
-        setIsSuperAdmin(true);
-        // Add self to admins collection if not already there, just to be clean
-        try {
-          const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-          if (!adminDoc.exists()) {
-            await setDoc(doc(db, 'admins', user.uid), {
-              email: user.email,
-              role: 'super_admin',
-              addedBy: 'system',
-              createdAt: new Date().toISOString()
-            });
-          }
-        } catch (e) {
-          console.error(e);
-        }
-        return;
-      }
       try {
         const adminDoc = await getDoc(doc(db, 'admins', user.uid));
         if (adminDoc.exists() && adminDoc.data().role === 'super_admin') {

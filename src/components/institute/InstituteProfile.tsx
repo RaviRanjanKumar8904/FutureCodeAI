@@ -1,48 +1,123 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../../hooks/useAuth';
-import { Clock, CheckCircle2, Lock } from 'lucide-react';
+import { storage } from '../../firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Clock, CheckCircle2, Lock, Upload, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const instituteProfileSchema = z.object({
   displayName: z.string().min(3, "Institute name must be at least 3 characters"),
   contactPerson: z.string().min(2, "Contact person name is required"),
-  phone: z.string().min(10, "Valid phone number required"),
+  phone: z.string()
+    .regex(/^[0-9+\-\s()]*$/, "Invalid characters in phone number")
+    .refine(val => (val.match(/\d/g) || []).length >= 10, {
+      message: "Enter a valid phone number (at least 10 digits)"
+    }),
   description: z.string().min(20, "Please provide a brief description (min 20 chars)"),
 });
 
 type ProfileFormValues = z.infer<typeof instituteProfileSchema>;
 
 export default function InstituteProfile() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const [isPending, setIsPending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting, isDirty } } = useForm<ProfileFormValues>({
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting, isDirty } } = useForm<ProfileFormValues>({
     resolver: zodResolver(instituteProfileSchema),
     defaultValues: {
       displayName: user?.displayName || '',
-      contactPerson: '',
+      contactPerson: user?.contactPerson || '',
       phone: user?.phone || '',
-      description: '',
+      description: user?.description || '',
     }
   });
 
-  const onSubmit = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsPending(true);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 4000);
+  useEffect(() => {
+    if (user) {
+      reset({
+        displayName: user.displayName || '',
+        contactPerson: user.contactPerson || '',
+        phone: user.phone || '',
+        description: user.description || '',
+      });
+    }
+  }, [user, reset]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, SVG, WebP)');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Logo file size must be less than 5MB');
+      return;
+    }
+
+    setUploadingLogo(true);
+    const toastId = toast.loading('Uploading institute logo...');
+
+    try {
+      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const storageRef = ref(storage, `profile-photos/${user.uid}/${Date.now()}_${cleanFileName}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+
+      await updateProfile({ photoURL: downloadUrl });
+      toast.success('Logo updated successfully!', { id: toastId });
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error('Failed to upload logo', { id: toastId });
+    } finally {
+      setUploadingLogo(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const onSubmit = async (data: ProfileFormValues) => {
+    if (!user) return;
+    const toastId = toast.loading('Saving profile changes...');
+
+    try {
+      await updateProfile({
+        displayName: data.displayName,
+        contactPerson: data.contactPerson,
+        phone: data.phone,
+        description: data.description,
+      });
+
+      setIsPending(true);
+      setShowSuccess(true);
+      toast.success('Profile changes submitted for admin approval!', { id: toastId });
+      setTimeout(() => setShowSuccess(false), 5000);
+    } catch (error) {
+      console.error('Error updating institute profile:', error);
+      toast.error('Failed to save profile changes', { id: toastId });
+    }
   };
 
   if (!user) return null;
 
   return (
     <div className="max-w-3xl">
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleLogoUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
       <div className="mb-6">
         <h2 className="text-2xl font-extrabold text-text-heading">Institute Profile</h2>
         <p className="text-slate-500 font-medium text-sm mt-1">Manage your public presence on the Collaborators page.</p>
@@ -74,7 +149,7 @@ export default function InstituteProfile() {
             <div>
               <p className="text-sm font-bold mb-1">Updates Pending Approval</p>
               <p className="text-sm font-medium opacity-90">
-                Your profile updates have been submitted to FutureCodeAI administrators for review. They will appear on the public website once approved (usually within 24 hours).
+                Your profile updates have been saved and submitted to FutureCodeAI administrators for review. They will appear on the public website once approved (usually within 24 hours).
               </p>
             </div>
           </motion.div>
@@ -82,19 +157,34 @@ export default function InstituteProfile() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 relative z-10">
           
-          {/* Logo Field (Simulated) */}
+          {/* Logo Field */}
           <div className="pb-6 border-b border-gray-100">
             <label className="block text-sm font-bold text-slate-700 mb-3">Institute Logo</label>
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-slate-50 overflow-hidden">
-                <img src={user.photoURL} alt="Logo" className="w-full h-full object-contain p-2" />
+              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-slate-50 overflow-hidden shrink-0">
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="Logo" className="w-full h-full object-contain p-2" />
+                ) : (
+                  <Building2 size={28} className="text-slate-400" />
+                )}
               </div>
               <button 
                 type="button"
-                disabled={isPending}
-                className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-sm hover:bg-slate-200 transition-colors disabled:opacity-50"
+                disabled={uploadingLogo || isPending}
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg text-sm hover:bg-slate-200 transition-colors disabled:opacity-50 flex items-center gap-2"
               >
-                Upload New Logo
+                {uploadingLogo ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-slate-600/30 border-t-slate-600 rounded-full animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    Upload New Logo
+                  </>
+                )}
               </button>
             </div>
           </div>

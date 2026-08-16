@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebase/config';
 import { collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, addDoc } from 'firebase/firestore';
 import { X, Save, Mail, Phone, BookOpen, Building2, User } from 'lucide-react';
@@ -27,11 +27,14 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
   const [centers, setCenters] = useState<any[]>([]);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   
-  const batchOptions = generateBatchOptions();
-  // Ensure the student's current batch is in the options if it's an older batch
-  if (student?.batch && !batchOptions.includes(student.batch)) {
-    batchOptions.unshift(student.batch);
-  }
+  const batchOptions = useMemo(() => {
+    const list = generateBatchOptions();
+    // Ensure the student's current batch is in the options if it's an older batch
+    if (student?.batch && !list.includes(student.batch)) {
+      list.unshift(student.batch);
+    }
+    return list;
+  }, [student?.batch]);
 
   const [formData, setFormData] = useState({
     studentName: '',
@@ -88,7 +91,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
     };
 
     fetchData();
-  }, [isOpen, student]);
+  }, [isOpen, student, batchOptions]);
 
   const handleCourseChange = (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
@@ -117,6 +120,10 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
         phone: formData.phone,
       });
 
+      // Determine linked institute ID from selected center
+      const selectedCenter = centers.find(c => c.id === formData.centerId);
+      const instituteId = selectedCenter ? (selectedCenter.userId || selectedCenter.uid || selectedCenter.id || '') : '';
+
       // Update or create enrollment doc
       const enrollmentData = {
         studentName: formData.studentName,
@@ -124,7 +131,8 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
         courseId: formData.courseId,
         institute: formData.centerName || 'FutureCodeAI (Online)',
         centerId: formData.centerId,
-        city: centers.find(c => c.id === formData.centerId)?.city || 'Online',
+        instituteId,
+        city: selectedCenter?.city || 'Online',
         batch: formData.batch,
         batchTiming: formData.batch,
         image: courses.find(c => c.id === formData.courseId)?.thumbnailUrl || '',

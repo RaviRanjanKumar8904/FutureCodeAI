@@ -20,7 +20,11 @@ import toast, { Toaster } from 'react-hot-toast';
 const contactSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z.string().min(10, "Please enter a valid phone number"),
+  phone: z.string()
+    .regex(/^[0-9+\-\s()]*$/, "Invalid characters in phone number")
+    .refine(val => (val.match(/\d/g) || []).length >= 10, {
+      message: "Please enter a valid phone number (at least 10 digits)"
+    }),
   subject: z.string().min(5, "Subject is required"),
   message: z.string().min(10, "Message must be at least 10 characters"),
 });

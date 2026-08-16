@@ -15,6 +15,39 @@ interface Enquiry {
   status: 'New' | 'Contacted' | 'Enrolled' | 'Closed';
 }
 
+function formatEnquiryDate(createdAt: any, fallbackDate?: string): string {
+  if (!createdAt) return fallbackDate || 'N/A';
+  try {
+    if (typeof createdAt.toDate === 'function') {
+      return createdAt.toDate().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    if (createdAt.seconds) {
+      return new Date(createdAt.seconds * 1000).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    if (typeof createdAt === 'string') {
+      const parsed = new Date(createdAt);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Error formatting enquiry date:", err);
+  }
+  return fallbackDate || 'N/A';
+}
+
 export default function InstituteEnquiries() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,10 +64,21 @@ export default function InstituteEnquiries() {
           where('instituteId', '==', user.uid)
         );
         const snapshot = await getDocs(q);
-        const fetchedData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Enquiry[];
+        const fetchedData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const rawStatus = (data.status || 'New').toString();
+          const normalizedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+          return {
+            id: doc.id,
+            name: data.name || 'Unknown Lead',
+            contact: data.contact || data.phone || 'N/A',
+            email: data.email || 'N/A',
+            interest: data.interest || data.targetTitle || 'General Enquiry',
+            date: formatEnquiryDate(data.createdAt, data.date),
+            status: (['New', 'Contacted', 'Enrolled', 'Closed'].includes(normalizedStatus) ? normalizedStatus : 'New') as any,
+            ...data
+          };
+        }) as Enquiry[];
         
         setEnquiries(fetchedData);
       } catch (error) {

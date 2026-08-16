@@ -47,7 +47,11 @@ const partnershipSchema = z.object({
   instituteName: z.string().min(2, "Institute Name is required"),
   city: z.string().min(2, "City is required"),
   type: z.enum(['Coaching Institute', 'College']),
-  phone: z.string().min(10, "Valid phone required"),
+  phone: z.string()
+    .regex(/^[0-9+\-\s()]*$/, "Invalid characters in phone number")
+    .refine(val => (val.match(/\d/g) || []).length >= 10, {
+      message: "Valid phone number required (at least 10 digits)"
+    }),
   email: z.string().email("Valid email required"),
   message: z.string().min(10, "Message required"),
 });

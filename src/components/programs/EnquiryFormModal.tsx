@@ -6,11 +6,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { useAuth } from '../../hooks/useAuth';
 
 // 1. Zod Validation Schema
 const enquirySchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits").regex(/^[0-9+\-\s()]*$/, "Invalid characters in phone number"),
+  phone: z.string()
+    .regex(/^[0-9+\-\s()]*$/, "Invalid characters in phone number")
+    .refine(val => (val.match(/\d/g) || []).length >= 10, {
+      message: "Enter a valid phone number (at least 10 digits)"
+    }),
   email: z.string().email("Invalid email address"),
   userType: z.enum(["Student", "Parent"], { message: "Please select if you are a Student or Parent" }),
   educationDetails: z.string().min(3, "Please provide your current class/year and school/college"),
@@ -25,6 +30,7 @@ type EnquiryFormValues = z.infer<typeof enquirySchema>;
 export interface TargetInfo {
   id: string;
   title: string;
+  instituteId?: string;
 }
 
 interface EnquiryFormModalProps {
@@ -35,6 +41,7 @@ interface EnquiryFormModalProps {
 }
 
 export default function EnquiryFormModal({ isOpen, onClose, target, type = 'course' }: EnquiryFormModalProps) {
+  const { user } = useAuth();
   const [isSuccess, setIsSuccess] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -47,6 +54,10 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
   } = useForm<EnquiryFormValues>({
     resolver: zodResolver(enquirySchema),
     defaultValues: {
+      name: user?.displayName || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      city: user?.city || '',
       userType: "Student",
       consentGiven: true
     }
@@ -61,13 +72,21 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      reset({
+        name: user?.displayName || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        city: user?.city || '',
+        userType: "Student",
+        consentGiven: true
+      });
     } else {
       document.body.style.overflow = 'unset';
     }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]);
+  }, [isOpen, user, reset]);
 
   if (!isOpen || !target) return null;
 
@@ -80,6 +99,8 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
         name: data.name,
         phone: data.phone,
         email: data.email,
+        studentId: user?.uid || '',
+        instituteId: target.instituteId || '',
         userType: data.userType,
         educationDetails: data.educationDetails,
         city: data.city,

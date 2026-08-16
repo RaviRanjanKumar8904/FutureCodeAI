@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { X, BookOpen, Clock, Tag, Image as ImageIcon, FileText, Layers, IndianRupee } from 'lucide-react';
+import { collection, addDoc, doc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
+import { X, BookOpen, Clock, Tag, Image as ImageIcon, FileText, Layers, IndianRupee, Building2, Calendar, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AddCourseModalProps {
@@ -13,6 +13,7 @@ interface AddCourseModalProps {
 
 export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData }: AddCourseModalProps) {
   const [loading, setLoading] = useState(false);
+  const [centers, setCenters] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     category: 'Programming Languages',
@@ -23,35 +24,63 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
     thumbnailUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800',
     description: '',
     isTopSelling: false,
+    centerId: '',
+    batchId: '',
+    timing: '6:00 PM - 8:00 PM',
+    startDate: '',
+    capacity: 50,
   });
 
   useEffect(() => {
-    if (isOpen) {
-      if (initialData) {
-        setFormData({
-          title: initialData.title || '',
-          category: initialData.category || 'Programming Languages',
-          duration: initialData.duration || '',
-          level: initialData.level || 'Beginner to Advanced',
-          originalPrice: initialData.originalPrice || 2500,
-          discountedPrice: initialData.discountedPrice || 990,
-          thumbnailUrl: initialData.thumbnailUrl || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800',
-          description: initialData.description || '',
-          isTopSelling: initialData.isTopSelling || false,
-        });
-      } else {
-        setFormData({
-          title: '',
-          category: 'Programming Languages',
-          duration: '',
-          level: 'Beginner to Advanced',
-          originalPrice: 2500,
-          discountedPrice: 990,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800',
-          description: '',
-          isTopSelling: false,
-        });
+    if (!isOpen) return;
+
+    const fetchCenters = async () => {
+      try {
+        const centersSnap = await getDocs(query(collection(db, 'collaborators'), orderBy('name')));
+        const centersData = centersSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((c: any) => c.isApproved);
+        setCenters(centersData);
+      } catch (err) {
+        console.error("Error loading centers for course modal:", err);
       }
+    };
+    fetchCenters();
+
+    if (initialData) {
+      setFormData({
+        title: initialData.title || initialData.courseName || '',
+        category: initialData.category || 'Programming Languages',
+        duration: initialData.duration || '',
+        level: initialData.level || 'Beginner to Advanced',
+        originalPrice: initialData.originalPrice || 2500,
+        discountedPrice: initialData.discountedPrice || 990,
+        thumbnailUrl: initialData.thumbnailUrl || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800',
+        description: initialData.description || '',
+        isTopSelling: initialData.isTopSelling || false,
+        centerId: initialData.centerId || '',
+        batchId: initialData.batchId || '',
+        timing: initialData.timing || initialData.batchTimings || '6:00 PM - 8:00 PM',
+        startDate: initialData.startDate || '',
+        capacity: initialData.capacity || initialData.totalSeats || 50,
+      });
+    } else {
+      setFormData({
+        title: '',
+        category: 'Programming Languages',
+        duration: '',
+        level: 'Beginner to Advanced',
+        originalPrice: 2500,
+        discountedPrice: 990,
+        thumbnailUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=800',
+        description: '',
+        isTopSelling: false,
+        centerId: '',
+        batchId: '',
+        timing: '6:00 PM - 8:00 PM',
+        startDate: '',
+        capacity: 50,
+      });
     }
   }, [isOpen, initialData]);
 
@@ -60,8 +89,17 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
     setLoading(true);
 
     try {
+      const selectedCenter = centers.find(c => c.id === formData.centerId);
+      const instituteId = selectedCenter ? (selectedCenter.userId || selectedCenter.uid || selectedCenter.id || '') : (initialData?.instituteId || '');
+      const institute = selectedCenter ? {
+        name: selectedCenter.name,
+        city: selectedCenter.city || 'Online',
+        address: selectedCenter.address || ''
+      } : (initialData?.institute || { name: "FutureCodeAI", city: "Purnea", address: "Online & Offline" });
+
       const courseData = {
         title: formData.title,
+        courseName: formData.title,
         category: formData.category,
         duration: formData.duration,
         level: formData.level,
@@ -70,6 +108,15 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
         thumbnailUrl: formData.thumbnailUrl,
         description: formData.description,
         isTopSelling: formData.isTopSelling,
+        centerId: formData.centerId || '',
+        instituteId: instituteId || '',
+        institute,
+        batchId: formData.batchId || (formData.title ? `${formData.title.substring(0, 3).toUpperCase()}-101` : 'BATCH-101'),
+        timing: formData.timing || 'Flexible',
+        batchTimings: formData.timing || 'Flexible',
+        startDate: formData.startDate || 'Immediate',
+        capacity: Number(formData.capacity) || 50,
+        totalSeats: Number(formData.capacity) || 50,
       };
 
       if (initialData?.id) {
@@ -82,12 +129,11 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
           ...courseData,
           isActive: true,
           studentsCount: 0,
-          totalSeats: 200,
           filledSeats: 0,
-          institute: { name: "FutureCodeAI", city: "Purnea", address: "Online & Offline" },
+          filled: 0,
+          status: 'Active',
           syllabus: [{ title: 'Module 1: Introduction', topics: ['Course Overview', 'Setup & Installation'] }],
           galleryUrls: [],
-          batchTimings: "Flexible"
         };
         await addDoc(collection(db, 'courses'), newCourse);
         toast.success('Course added successfully!');
@@ -187,6 +233,63 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
                   placeholder="e.g. Beginner to Advanced"
                 />
+              </div>
+            </div>
+
+            {/* Center / Institute Assignment */}
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                <Building2 size={16} className="text-purple-500"/> Assigned Partner Institute / Coaching Center (Optional)
+              </label>
+              <select 
+                value={formData.centerId}
+                onChange={e => setFormData({...formData, centerId: e.target.value})}
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium"
+              >
+                <option value="">FutureCodeAI Main (Global / Online)</option>
+                {centers.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} — {c.city || 'N/A'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Batch & Schedule Details */}
+            <div className="bg-slate-50 p-6 rounded-2xl border border-gray-100 space-y-4">
+              <h3 className="text-slate-800 font-bold flex items-center gap-2">
+                <Calendar size={18} className="text-purple-500" /> Batch & Capacity Settings
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Batch Code / ID</label>
+                  <input 
+                    type="text" 
+                    value={formData.batchId}
+                    onChange={e => setFormData({...formData, batchId: e.target.value})}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-sm"
+                    placeholder="e.g. FSD-2026-A"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Batch Timing</label>
+                  <input 
+                    type="text" 
+                    value={formData.timing}
+                    onChange={e => setFormData({...formData, timing: e.target.value})}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-sm"
+                    placeholder="e.g. 6:00 PM - 8:00 PM"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1.5">Total Capacity</label>
+                  <input 
+                    type="number" 
+                    value={formData.capacity}
+                    onChange={e => setFormData({...formData, capacity: Number(e.target.value)})}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-sm"
+                  />
+                </div>
               </div>
             </div>
 

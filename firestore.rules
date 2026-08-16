@@ -19,16 +19,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return (isAuthenticated() && request.auth.token.email == 'raviranjan8904@gmail.com') ||
-             (isAuthenticated() 
+      return isAuthenticated() 
              && getRole() == 'admin' 
-             && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+             && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     function isSuperAdmin() {
-      return (isAuthenticated() && request.auth.token.email == 'raviranjan8904@gmail.com') ||
-             (isAdmin() 
-             && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin');
+      return isAdmin() 
+             && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin';
     }
 
     function isInstitute() {
@@ -58,13 +56,20 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------------------
-    // ADMINS & AUDIT LOGS
+    // ADMINS, STAFF & AUDIT LOGS
     // ----------------------------------------------------------------------
     match /admins/{adminId} {
       // Admins can read the allow-list
       allow read: if isAdmin();
       // Only Super Admins can add or remove admins
       allow write: if isSuperAdmin();
+    }
+
+    match /staff/{staffId} {
+      // Admins can read and write all staff records
+      // Authenticated users can read/query staff records filtered to their own email (for login allow-list check)
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.email == request.auth.token.email);
+      allow write: if isAdmin();
     }
 
     match /adminLogs/{logId} {
@@ -130,10 +135,10 @@ service cloud.firestore {
     // ----------------------------------------------------------------------
     match /enrollments/{enrollmentId} {
       // Students can only read their own enrollments
-      // Institutes can only read enrollments tied to their specific institute ID
+      // Institutes can read enrollments tied to their specific institute ID or center ID
       allow read: if isAdmin() || 
                      (isStudent() && resource.data.studentId == request.auth.uid) ||
-                     (isInstitute() && resource.data.instituteId == request.auth.uid);
+                     (isInstitute() && (resource.data.instituteId == request.auth.uid || resource.data.centerId == request.auth.uid));
                      
       // Only admins can manage (create, update, delete) enrollments
       allow write: if isAdmin();
@@ -146,11 +151,11 @@ service cloud.firestore {
       // Unauthenticated users (and anyone) can create an enquiry via the public website forms
       allow create: if true;
       
-      // Students can read their own submitted enquiries
+      // Students can read their own submitted enquiries (matching authenticated email or studentId UID)
       // Institutes can read enquiries specifically tagged/assigned to them
       allow read: if isAdmin() || 
-                     (isAuthenticated() && resource.data.studentId == request.auth.uid) ||
-                     (isInstitute() && resource.data.instituteId == request.auth.uid);
+                     (isAuthenticated() && (resource.data.email == request.auth.token.email || resource.data.studentId == request.auth.uid)) ||
+                     (isInstitute() && (resource.data.instituteId == request.auth.uid || resource.data.centerId == request.auth.uid));
                      
       // Only admins can update or delete enquiries (e.g. changing status)
       allow update, delete: if isAdmin();
@@ -160,8 +165,10 @@ service cloud.firestore {
     // COURSES & BATCHES COLLECTION
     // ----------------------------------------------------------------------
     match /courses/{courseId} {
-      // Public can read active courses, admins can read all
-      allow read: if isAdmin() || resource.data.isActive == true;
+      // Public can read active courses, institutes can read assigned courses, admins can read all
+      allow read: if isAdmin() || 
+                     resource.data.isActive == true ||
+                     (isInstitute() && (resource.data.instituteId == request.auth.uid || resource.data.centerId == request.auth.uid));
       // Only admins can modify courses
       allow write: if isAdmin();
     }

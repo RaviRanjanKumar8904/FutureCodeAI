@@ -26,6 +26,8 @@ export interface User {
   role: 'student' | 'admin' | 'institute' | 'staff';
   status?: 'active' | 'pending_verification';
   phone?: string;
+  contactPerson?: string;
+  description?: string;
   school?: string;
   city?: string;
   degree?: string;
@@ -128,10 +130,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // onSnapshot will pick up the existing data and call setUser
     } else {
-      // --- New user creation ---
       // Check if they've been pre-allow-listed as an admin
       const adminSnap = await getDoc(doc(db, 'admins', firebaseUser.uid));
-      const isPreApprovedAdmin = adminSnap.exists() && adminSnap.data()?.pendingRole === 'admin';
+      const isPreApprovedAdmin = adminSnap.exists() && (adminSnap.data()?.role === 'super_admin' || adminSnap.data()?.role === 'admin' || adminSnap.data()?.pendingRole === 'admin');
 
       // Check staff allow-list by email (admin can add staff by email)
       let isPreApprovedStaff = false;
@@ -143,12 +144,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // Hardcode super admin override
-      const isSuperAdmin = firebaseUser.email === 'raviranjan8904@gmail.com';
-
       let finalRole: 'student' | 'admin' | 'institute' | 'staff';
 
-      if (isSuperAdmin || isPreApprovedAdmin) {
+      if (isPreApprovedAdmin) {
         finalRole = 'admin';
       } else if (role === 'admin') {
         // Non-pre-approved user trying to sign up as admin

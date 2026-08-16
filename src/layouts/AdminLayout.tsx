@@ -44,18 +44,17 @@ export default function AdminLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    // If not logged in, or not an admin (and not the hardcoded super admin), kick them out
     if (!user) {
       navigate('/login');
       return;
     }
     
-    if (user.role !== 'admin' && user.email !== 'raviranjan8904@gmail.com') {
+    if (user.role !== 'admin') {
       navigate('/');
     }
   }, [user, navigate]);
 
-  if (!user || (user.role !== 'admin' && user.email !== 'raviranjan8904@gmail.com')) {
+  if (!user || user.role !== 'admin') {
     return null; // Don't render anything while redirecting
   }
 

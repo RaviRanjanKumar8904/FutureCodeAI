@@ -194,6 +194,7 @@ export default function ManageStudents() {
     if (!center) return;
     const tid = toast.loading('Updating centers...');
     try {
+      const instituteId = center.userId || center.uid || center.id || '';
       for (const id of selectedIds) {
         const s = students.find(st => st.id === id);
         if (!s) continue;
@@ -201,12 +202,12 @@ export default function ManageStudents() {
         const enrollSnap = await getDocs(enrollQ);
         if (!enrollSnap.empty) {
           await updateDoc(doc(db, 'enrollments', enrollSnap.docs[0].id), {
-            institute: center.name, centerId: center.id, city: center.city || 'N/A',
+            institute: center.name, centerId: center.id, instituteId, city: center.city || 'N/A',
           });
         } else {
           await addDoc(collection(db, 'enrollments'), {
             studentId: id, studentEmail: s.email, studentName: s.displayName || '',
-            courseName: '', institute: center.name, centerId: center.id,
+            courseName: '', institute: center.name, centerId: center.id, instituteId,
             city: center.city || 'N/A', batch: '', batchTiming: '',
             status: 'Ongoing', image: '', enrolledAt: serverTimestamp(),
           });
@@ -291,7 +292,11 @@ export default function ManageStudents() {
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
