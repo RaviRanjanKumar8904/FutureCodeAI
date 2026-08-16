@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
 import { collection, addDoc, doc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
-import { X, BookOpen, Clock, Tag, Image as ImageIcon, FileText, Layers, IndianRupee, Building2, Calendar, Users } from 'lucide-react';
+import { X, BookOpen, Clock, Tag, Image as ImageIcon, FileText, Layers, IndianRupee, Building2, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AddCourseModalProps {
