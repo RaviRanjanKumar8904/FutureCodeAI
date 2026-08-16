@@ -90,7 +90,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
 
     try {
       const selectedCenter = centers.find(c => c.id === formData.centerId);
-      const instituteId = selectedCenter ? (selectedCenter.userId || selectedCenter.uid || selectedCenter.id || '') : (initialData?.instituteId || '');
+      const instituteId = selectedCenter ? (selectedCenter.linkedUserId || selectedCenter.id || '') : (initialData?.instituteId || '');
       const institute = selectedCenter ? {
         name: selectedCenter.name,
         city: selectedCenter.city || 'Online',

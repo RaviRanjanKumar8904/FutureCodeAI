@@ -122,7 +122,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
 
       // Determine linked institute ID from selected center
       const selectedCenter = centers.find(c => c.id === formData.centerId);
-      const instituteId = selectedCenter ? (selectedCenter.userId || selectedCenter.uid || selectedCenter.id || '') : '';
+      const instituteId = selectedCenter ? (selectedCenter.linkedUserId || selectedCenter.id || '') : '';
 
       // Update or create enrollment doc
       const enrollmentData = {

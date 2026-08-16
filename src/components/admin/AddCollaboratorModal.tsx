@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
-import { X, Building2, MapPin, Mail, Phone, Link as LinkIcon, FileText, User, Image as ImageIcon } from 'lucide-react';
+import { collection, addDoc, doc, updateDoc, getDocs, query, where } from 'firebase/firestore';
+import { X, Building2, MapPin, Mail, Phone, Link as LinkIcon, FileText, User, Image as ImageIcon, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface AddCollaboratorModalProps {
@@ -13,6 +13,7 @@ interface AddCollaboratorModalProps {
 
 export default function AddCollaboratorModal({ isOpen, onClose, onSuccess, initialData }: AddCollaboratorModalProps) {
   const [loading, setLoading] = useState(false);
+  const [instituteUsers, setInstituteUsers] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     type: 'College',
@@ -23,11 +24,25 @@ export default function AddCollaboratorModal({ isOpen, onClose, onSuccess, initi
     contactPerson: '',
     logoUrl: '',
     description: '',
+    linkedUserId: '',
     galleryUrlsString: ''
   });
 
   useEffect(() => {
-    if (isOpen && initialData) {
+    if (!isOpen) return;
+
+    const fetchInstituteUsers = async () => {
+      try {
+        const q = query(collection(db, 'users'), where('role', '==', 'institute'));
+        const snap = await getDocs(q);
+        setInstituteUsers(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+      } catch (err) {
+        console.error("Error loading institute users:", err);
+      }
+    };
+    fetchInstituteUsers();
+
+    if (initialData) {
       setFormData({
         name: initialData.name || '',
         type: initialData.type || 'College',
@@ -38,9 +53,10 @@ export default function AddCollaboratorModal({ isOpen, onClose, onSuccess, initi
         contactPerson: initialData.contactPerson || '',
         logoUrl: initialData.logoUrl || '',
         description: initialData.description || '',
+        linkedUserId: initialData.linkedUserId || initialData.userId || initialData.uid || '',
         galleryUrlsString: initialData.galleryUrls ? initialData.galleryUrls.join(', ') : ''
       });
-    } else if (isOpen && !initialData) {
+    } else {
       setFormData({
         name: '',
         type: 'College',
@@ -51,6 +67,7 @@ export default function AddCollaboratorModal({ isOpen, onClose, onSuccess, initi
         contactPerson: '',
         logoUrl: '',
         description: '',
+        linkedUserId: '',
         galleryUrlsString: ''
       });
     }
@@ -83,6 +100,7 @@ export default function AddCollaboratorModal({ isOpen, onClose, onSuccess, initi
         contactPerson: formData.contactPerson,
         logoUrl: formData.logoUrl,
         description: formData.description,
+        linkedUserId: formData.linkedUserId || '',
         galleryUrls
       };
 
@@ -286,6 +304,32 @@ export default function AddCollaboratorModal({ isOpen, onClose, onSuccess, initi
                     className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors resize-none"
                     placeholder="Complete physical address..."
                   />
+                </div>
+              </div>
+
+              {/* Linked Institute Account (UID) */}
+              <div className="space-y-2 sm:col-span-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center justify-between">
+                  <span>Linked Institute Account (Firebase UID)</span>
+                  <span className="text-xs font-normal text-slate-500">Ties student enrollments to their institute portal</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <UserCheck size={16} className="text-indigo-500" />
+                  </div>
+                  <select
+                    name="linkedUserId"
+                    value={formData.linkedUserId}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors bg-white font-medium"
+                  >
+                    <option value="">-- No Linked Account (Unlinked) --</option>
+                    {instituteUsers.map(u => (
+                      <option key={u.uid} value={u.uid}>
+                        {u.displayName || 'Unnamed Institute'} — {u.email} ({u.uid.substring(0, 8)}...)
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

@@ -194,7 +194,7 @@ export default function ManageStudents() {
     if (!center) return;
     const tid = toast.loading('Updating centers...');
     try {
-      const instituteId = center.userId || center.uid || center.id || '';
+      const instituteId = center.linkedUserId || center.id || '';
       for (const id of selectedIds) {
         const s = students.find(st => st.id === id);
         if (!s) continue;

@@ -126,7 +126,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess }: Enrol
 
       // Determine linked institute ID from selected center
       const selectedCenter = centers.find(c => c.id === formData.centerId);
-      const instituteId = selectedCenter ? (selectedCenter.userId || selectedCenter.uid || selectedCenter.id || '') : '';
+      const instituteId = selectedCenter ? (selectedCenter.linkedUserId || selectedCenter.id || '') : '';
 
       // Create enrollment record
       await addDoc(collection(db, 'enrollments'), {
