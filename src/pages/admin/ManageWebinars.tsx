@@ -52,6 +52,11 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAdminActivity } from '../../utils/adminLogger';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import { 
+  generateWebinarSchedule, 
+  formatDateShort, 
+  formatDateFull 
+} from '../../utils/webinarSchedule';
 
 export interface WebinarItem {
   id: string;
@@ -65,6 +70,8 @@ export interface WebinarItem {
   meetingLink?: string;
   formLink?: string;
   status: 'Upcoming' | 'Live' | 'Completed';
+  postponedDates?: string[];
+  postponements?: Record<string, { reason?: string; postponedAt?: any }>;
   createdAt?: any;
 }
 
@@ -86,37 +93,6 @@ export interface WebinarAttendee {
   source: 'google_form_csv' | 'manual';
   importedAt?: any;
   createdAt?: any;
-}
-
-// Generate array of YYYY-MM-DD dates for N days starting from startDate
-function generateSessionDates(startDateStr: string, totalDays: number): string[] {
-  const dates: string[] = [];
-  if (!startDateStr || totalDays <= 0) return dates;
-
-  const start = new Date(startDateStr);
-  if (isNaN(start.getTime())) return dates;
-
-  for (let i = 0; i < totalDays; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-  return dates;
-}
-
-// Format date into human readable "25 Aug 2026"
-function formatDateShort(dateStr: string): string {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-}
-
-function formatDateFull(dateStr: string): string {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // Robust CSV Parser
@@ -282,6 +258,8 @@ export default function ManageWebinars() {
           meetingLink: data.meetingLink || '',
           formLink: data.formLink || '',
           status: data.status || 'Upcoming',
+          postponedDates: data.postponedDates || [],
+          postponements: data.postponements || {},
           createdAt: data.createdAt,
         } as WebinarItem;
       });
@@ -329,11 +307,133 @@ export default function ManageWebinars() {
     fetchData();
   }, [fetchData]);
 
-  // Compute session dates for the currently selected webinar
-  const activeSessionDates = useMemo(() => {
-    if (!selectedWebinar) return [];
-    return generateSessionDates(selectedWebinar.startDate, selectedWebinar.totalDays || 15);
+  // Compute full session schedule accounting for postponed days (+1 day per postponement)
+  const activeSessionSchedule = useMemo(() => {
+    if (!selectedWebinar) return { schedule: [], activeDates: [], endDate: '' };
+    return generateWebinarSchedule(
+      selectedWebinar.startDate,
+      selectedWebinar.totalDays || 15,
+      selectedWebinar.postponedDates || [],
+      selectedWebinar.postponements || {}
+    );
   }, [selectedWebinar]);
+
+  const activeScheduleList = activeSessionSchedule.schedule;
+  const activeSessionDates = useMemo(() => activeScheduleList.map(s => s.date), [activeScheduleList]);
+
+  // Postpone Modal State
+  const [showPostponeModal, setShowPostponeModal] = useState(false);
+  const [postponeDateTarget, setPostponeDateTarget] = useState<string>('');
+  const [postponeReason, setPostponeReason] = useState<string>('Instructor Unavailable');
+  const [isPostponing, setIsPostponing] = useState(false);
+
+  // Handle Postpone / Resume Day
+  const handleTogglePostponeDay = async (dateStr: string, currentIsPostponed: boolean) => {
+    if (!selectedWebinar) return;
+
+    if (currentIsPostponed) {
+      // Resume / Un-postpone Day
+      setConfirmModalState({
+        isOpen: true,
+        title: 'Resume Postponed Day?',
+        message: `Do you want to reactivate ${formatDateFull(dateStr)} as an active teaching day? The bootcamp schedule will contract back by 1 day.`,
+        variant: 'primary',
+        onConfirm: async () => {
+          const toastId = toast.loading('Resuming day...');
+          try {
+            const updatedPostponedDates = (selectedWebinar.postponedDates || []).filter(d => d !== dateStr);
+            const updatedPostponements = { ...(selectedWebinar.postponements || {}) };
+            delete updatedPostponements[dateStr];
+
+            const { endDate } = generateWebinarSchedule(
+              selectedWebinar.startDate,
+              selectedWebinar.totalDays || 15,
+              updatedPostponedDates,
+              updatedPostponements
+            );
+
+            await updateDoc(doc(db, 'webinars', selectedWebinar.id), {
+              postponedDates: updatedPostponedDates,
+              postponements: updatedPostponements,
+              endDate,
+              updatedAt: serverTimestamp(),
+            });
+
+            const updatedWebinar: WebinarItem = {
+              ...selectedWebinar,
+              postponedDates: updatedPostponedDates,
+              postponements: updatedPostponements,
+              endDate,
+            };
+
+            setSelectedWebinar(updatedWebinar);
+            setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
+            await logAdminActivity(user?.email, 'UPDATED', `Resumed day ${dateStr} for ${selectedWebinar.title}`);
+            toast.success(`Session on ${formatDateShort(dateStr)} resumed!`, { id: toastId });
+          } catch (err) {
+            console.error('Error resuming day:', err);
+            toast.error('Failed to resume day', { id: toastId });
+          } finally {
+            setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+          }
+        }
+      });
+    } else {
+      // Open modal to choose reason
+      setPostponeDateTarget(dateStr);
+      setPostponeReason('Instructor Unavailable');
+      setShowPostponeModal(true);
+    }
+  };
+
+  const handleConfirmPostpone = async () => {
+    if (!selectedWebinar || !postponeDateTarget) return;
+    setIsPostponing(true);
+    const toastId = toast.loading(`Postponing ${formatDateShort(postponeDateTarget)}...`);
+
+    try {
+      const updatedPostponedDates = Array.from(new Set([...(selectedWebinar.postponedDates || []), postponeDateTarget]));
+      const updatedPostponements = {
+        ...(selectedWebinar.postponements || {}),
+        [postponeDateTarget]: {
+          reason: postponeReason.trim() || 'Instructor Unavailable',
+          postponedAt: new Date().toISOString(),
+        }
+      };
+
+      const { endDate } = generateWebinarSchedule(
+        selectedWebinar.startDate,
+        selectedWebinar.totalDays || 15,
+        updatedPostponedDates,
+        updatedPostponements
+      );
+
+      await updateDoc(doc(db, 'webinars', selectedWebinar.id), {
+        postponedDates: updatedPostponedDates,
+        postponements: updatedPostponements,
+        endDate,
+        updatedAt: serverTimestamp(),
+      });
+
+      const updatedWebinar: WebinarItem = {
+        ...selectedWebinar,
+        postponedDates: updatedPostponedDates,
+        postponements: updatedPostponements,
+        endDate,
+      };
+
+      setSelectedWebinar(updatedWebinar);
+      setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
+      await logAdminActivity(user?.email, 'UPDATED', `Postponed day ${postponeDateTarget} (${postponeReason}) for ${selectedWebinar.title}`);
+      toast.success(`Session on ${formatDateShort(postponeDateTarget)} postponed. Schedule extended to ${formatDateFull(endDate)}!`, { id: toastId });
+      setShowPostponeModal(false);
+    } catch (err) {
+      console.error('Error postponing day:', err);
+      toast.error('Failed to postpone day', { id: toastId });
+    } finally {
+      setIsPostponing(false);
+    }
+  };
 
   // Keep activeDate within the selected webinar's date range
   useEffect(() => {
@@ -531,8 +631,14 @@ export default function ManageWebinars() {
     const toastId = toast.loading(editingWebinar ? 'Updating webinar...' : 'Creating webinar...');
 
     try {
-      const dates = generateSessionDates(webinarFormData.startDate, webinarFormData.totalDays || 15);
-      const endDate = dates[dates.length - 1] || webinarFormData.startDate;
+      const postponedDates = editingWebinar?.postponedDates || [];
+      const postponements = editingWebinar?.postponements || {};
+      const { endDate } = generateWebinarSchedule(
+        webinarFormData.startDate, 
+        webinarFormData.totalDays || 15,
+        postponedDates,
+        postponements
+      );
 
       if (editingWebinar) {
         await updateDoc(doc(db, 'webinars', editingWebinar.id), {
@@ -1697,13 +1803,17 @@ export default function ManageWebinars() {
                   </div>
                   <div>
                     <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                      <span>Daily Attendance &amp; Back-Date Tracker</span>
-                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                        Active: {formatDateFull(activeDate)}
+                      <span>Daily Attendance &amp; Schedule Tracker</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
+                        activeScheduleList.find(s => s.date === activeDate)?.isPostponed
+                          ? 'bg-amber-50 text-amber-800 border-amber-300'
+                          : 'bg-purple-50 text-purple-700 border-purple-200'
+                      }`}>
+                        Active: {formatDateFull(activeDate)} {activeScheduleList.find(s => s.date === activeDate)?.isPostponed ? '(Postponed)' : ''}
                       </span>
                     </h3>
                     <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
-                      Select any session day or back-date below to mark or adjust attendance for that specific day.
+                      Select any session day or back-date below to mark attendance or postpone when unavailable.
                     </p>
                   </div>
                 </div>
@@ -1711,13 +1821,34 @@ export default function ManageWebinars() {
 
               {/* Quick Actions & Prev/Next for activeDate */}
               <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={handleMarkAllPresentOnActiveDate}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
-                >
-                  <UserCheck size={14} />
-                  <span>Mark All Present ({formatDateShort(activeDate)})</span>
-                </button>
+                {!activeScheduleList.find(s => s.date === activeDate)?.isPostponed ? (
+                  <button
+                    onClick={handleMarkAllPresentOnActiveDate}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
+                  >
+                    <UserCheck size={14} />
+                    <span>Mark All Present ({formatDateShort(activeDate)})</span>
+                  </button>
+                ) : null}
+
+                {/* Postpone / Resume Toggle Button */}
+                {activeScheduleList.find(s => s.date === activeDate)?.isPostponed ? (
+                  <button
+                    onClick={() => handleTogglePostponeDay(activeDate, true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
+                    title="Resume this session as an active teaching day"
+                  >
+                    <span>▶️ Resume Day</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleTogglePostponeDay(activeDate, false)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
+                    title="Postpone this day (Schedule extends by +1 day)"
+                  >
+                    <span>⏸️ Postpone Day (+1d)</span>
+                  </button>
+                )}
 
                 <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-xl text-xs font-bold text-slate-700">
                   <Calendar size={13} className="text-slate-500" />
@@ -1766,8 +1897,10 @@ export default function ManageWebinars() {
                 ref={dayRibbonRef}
                 className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-none snap-x snap-mandatory overscroll-x-contain flex-1 px-1"
               >
-                {activeSessionDates.map((dateStr, idx) => {
-                  const isActive = activeDate === dateStr;
+                {activeScheduleList.map((scheduleItem) => {
+                  const dateStr = scheduleItem.date;
+                  const isSelected = activeDate === dateStr;
+                  const isPostponed = scheduleItem.isPostponed;
                   const presentCount = attendeesForSelectedWebinar.filter(a => a.dailyAttendance?.[dateStr] === 'Present').length;
                   const total = attendeesForSelectedWebinar.length;
 
@@ -1776,19 +1909,25 @@ export default function ManageWebinars() {
                       key={dateStr}
                       onClick={() => setActiveDate(dateStr)}
                       className={`flex-shrink-0 px-4 py-2.5 rounded-2xl border text-left transition-all cursor-pointer snap-start ${
-                        isActive 
-                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-md shadow-purple-500/25 ring-2 ring-purple-400/50 scale-[1.02]' 
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
+                        isSelected 
+                          ? isPostponed
+                            ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-transparent shadow-md ring-2 ring-amber-400/50 scale-[1.02]'
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-md shadow-purple-500/25 ring-2 ring-purple-400/50 scale-[1.02]'
+                          : isPostponed
+                            ? 'bg-amber-50/90 hover:bg-amber-100 text-amber-900 border-amber-200 shadow-xs'
+                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2.5">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-purple-200' : 'text-slate-400'}`}>
-                          Day {idx + 1}
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${
+                          isSelected ? 'text-white' : isPostponed ? 'text-amber-800' : 'text-slate-400'
+                        }`}>
+                          {isPostponed ? '⏸️ Postponed' : scheduleItem.label}
                         </span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                          isSelected ? 'bg-white/20 text-white' : isPostponed ? 'bg-amber-200 text-amber-950' : 'bg-slate-200 text-slate-600'
                         }`}>
-                          {presentCount}/{total}
+                          {isPostponed ? 'No Class' : `${presentCount}/${total}`}
                         </span>
                       </div>
                       <p className="text-xs font-extrabold mt-0.5 whitespace-nowrap">{formatDateShort(dateStr)}</p>
@@ -1805,6 +1944,31 @@ export default function ManageWebinars() {
                 <ChevronRight size={16} />
               </button>
             </div>
+
+            {/* Postponed Day Banner if current active date is postponed */}
+            {activeScheduleList.find(s => s.date === activeDate)?.isPostponed && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-extrabold text-lg">
+                    ⏸️
+                  </div>
+                  <div>
+                    <p className="font-extrabold text-sm">
+                      Session on {formatDateFull(activeDate)} is Postponed / Rescheduled
+                    </p>
+                    <p className="text-xs text-amber-800 font-medium mt-0.5">
+                      Reason: <strong className="font-bold">{activeScheduleList.find(s => s.date === activeDate)?.reason || 'Instructor Unavailable'}</strong> • The bootcamp has been extended by +1 day (New End Date: <strong>{formatDateFull(selectedWebinar.endDate || activeDate)}</strong>). No attendance required for this date.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleTogglePostponeDay(activeDate, true)}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+                >
+                  ▶️ Resume Active Day
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Search, Filter & Bulk Actions Bar */}
@@ -2834,6 +2998,94 @@ export default function ManageWebinars() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* POSTPONE DAY MODAL */}
+      {showPostponeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
+            <div className="flex justify-between items-center p-4 sm:p-5 border-b border-amber-100 bg-amber-50/80 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold text-lg">
+                  ⏸️
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Postpone Session Day</h2>
+                  <p className="text-xs text-slate-500 font-medium">Extend bootcamp schedule by +1 day</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPostponeModal(false)}
+                className="p-2 hover:bg-amber-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 text-xs sm:text-sm">
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
+                <p className="text-xs text-slate-500 font-medium">Session Date to Postpone:</p>
+                <p className="font-extrabold text-slate-900 text-sm sm:text-base">{formatDateFull(postponeDateTarget)}</p>
+                <p className="text-[11px] text-amber-700 font-bold mt-1">
+                  ⚠️ This day will be marked as "Postponed", and the bootcamp end date will automatically shift forward by +1 day.
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Reason for Postponement <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 gap-2 mb-3">
+                  {[
+                    'Instructor Unavailable',
+                    'National / Regional Holiday',
+                    'Technical / Network Maintenance',
+                    'Emergency / Unavoidable Delay',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setPostponeReason(preset)}
+                      className={`text-left px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                        postponeReason === preset 
+                          ? 'bg-amber-100/80 border-amber-400 text-amber-950 shadow-xs' 
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="text"
+                  required
+                  value={postponeReason}
+                  onChange={(e) => setPostponeReason(e.target.value)}
+                  placeholder="Or enter custom reason..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-xs sm:text-sm font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
+              <button
+                onClick={() => setShowPostponeModal(false)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                disabled={isPostponing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPostpone}
+                disabled={isPostponing || !postponeReason.trim()}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-xs sm:text-sm hover:bg-amber-700 transition-all shadow-md shadow-amber-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              >
+                {isPostponing ? 'Postponing...' : 'Confirm & Extend Bootcamp +1d'}
+              </button>
+            </div>
           </div>
         </div>
       )}
