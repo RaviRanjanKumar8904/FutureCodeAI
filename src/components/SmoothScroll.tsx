@@ -56,7 +56,7 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     }
   }, [location.pathname]);
 
-  // Ensure scroll position resets to top on every route change
+  // Ensure scroll position resets to top on every route change or scrolls to anchor hash
   useEffect(() => {
     if (location.hash) {
       const el = document.querySelector(location.hash);
@@ -76,7 +76,7 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.search, location.hash]);
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -96,4 +96,3 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
   return <>{children}</>;
 }
-
