@@ -1,7 +1,16 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-export type AdminActionType = 'CREATED' | 'UPDATED' | 'DELETED' | 'STATUS_CHANGE' | 'BULK_ACTION' | 'INVITE';
+export type AdminActionType = 
+  | 'CREATED' 
+  | 'UPDATED' 
+  | 'DELETED' 
+  | 'STATUS_CHANGE' 
+  | 'BULK_ACTION' 
+  | 'INVITE' 
+  | 'ISSUED' 
+  | 'BULK_DELETED' 
+  | 'BULK_ISSUED';
 
 export async function logAdminActivity(
   adminEmail: string | null | undefined,

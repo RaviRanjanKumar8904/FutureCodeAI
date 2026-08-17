@@ -3,10 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { db } from '../../firebase/config';
 import { collection, getDocs, deleteDoc, doc, query, where, writeBatch, addDoc, setDoc, getDoc, serverTimestamp, orderBy, updateDoc } from 'firebase/firestore';
 import {
-  Users, Search, Trash2, Mail, Eye, ShieldAlert, GraduationCap, Plus,
+  Users, Search, Trash2, Mail, Eye, GraduationCap, Plus,
   Download, Upload, Award, CheckSquare, Square, Calendar, Filter, X,
-  Edit2, CheckCircle2, AlertCircle, Clock, Sparkles, Building2, UserCheck,
-  FileSpreadsheet, ExternalLink, AlertTriangle, Check
+  Edit2, CheckCircle2, Clock, Sparkles, Building2, UserCheck,
+  FileSpreadsheet, AlertTriangle, Check
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import StudentProfileModal from '../../components/admin/StudentProfileModal';
@@ -710,8 +710,6 @@ export default function ManageStudents() {
   const certifiedCount = students.filter(s => s.certificateId).length;
   const completedUncertifiedCount = students.filter(s => !s.certificateId && s.isDurationCompleted).length;
   const inProgressCount = students.filter(s => !s.certificateId && !s.isDurationCompleted).length;
-  const maleCount = students.filter(s => s.gender?.toLowerCase() === 'male').length;
-  const femaleCount = students.filter(s => s.gender?.toLowerCase() === 'female').length;
   const activeBatchesCount = uniqueBatches.length;
 
   return (

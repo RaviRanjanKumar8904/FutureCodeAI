@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import Reveal from '../Reveal';
 import { 
-  CheckCircle2, XCircle, Download, Calendar, BookOpen, User, 
-  ShieldAlert, Award, Copy, Check, Share2, Eye, ExternalLink, 
-  Sparkles, Building2, ShieldCheck, CheckCircle
+  XCircle, Download, Calendar, BookOpen, User, 
+  ShieldAlert, Award, Copy, Check, Share2, Eye, 
+  Sparkles, CheckCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CertificateModal from '../certificate/CertificateModal';
-import CourseCertificate, { type CertificateData } from '../certificate/CourseCertificate';
+import { type CertificateData } from '../certificate/CourseCertificate';
 import toast from 'react-hot-toast';
 
 interface ResultCardProps {

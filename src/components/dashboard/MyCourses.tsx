@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Clock, ArrowRight, Award, Building2, UserCheck, Sparkles } from 'lucide-react';
+import { BookOpen, Clock, ArrowRight, Award, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';

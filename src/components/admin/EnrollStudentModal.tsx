@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { X, UserPlus, Mail, Phone, BookOpen, Building2, User, Hash, School } from 'lucide-react';
 import toast from 'react-hot-toast';
 
