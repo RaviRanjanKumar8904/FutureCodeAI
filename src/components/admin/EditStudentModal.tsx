@@ -127,19 +127,24 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
     const toastId = toast.loading('Updating student profile...');
 
     try {
-      // 1. Update user document
-      await updateDoc(doc(db, 'users', student.id), {
-        displayName: formData.studentName.trim(),
-        phone: formData.phone.trim(),
-        gender: formData.gender,
-        school: formData.collegeName.trim(),
-        collegeName: formData.collegeName.trim(),
-        rollNo: formData.rollNo.trim(),
-        enrolledCourse: formData.courseName,
-        assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
-        batch: formData.batch,
-        updatedAt: serverTimestamp(),
-      });
+      // 1. Update all associated user documents
+      const allUserIds = Array.from(new Set([...(student.docIds || []), student.id]));
+      await Promise.all(
+        allUserIds.map(uId => 
+          updateDoc(doc(db, 'users', uId), {
+            displayName: formData.studentName.trim(),
+            phone: formData.phone.trim(),
+            gender: formData.gender,
+            school: formData.collegeName.trim(),
+            collegeName: formData.collegeName.trim(),
+            rollNo: formData.rollNo.trim(),
+            enrolledCourse: formData.courseName,
+            assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
+            batch: formData.batch,
+            updatedAt: serverTimestamp(),
+          })
+        )
+      );
 
       // 2. Update or create enrollment record
       const enrollmentData = {
@@ -160,13 +165,28 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
       if (enrollmentId) {
         await updateDoc(doc(db, 'enrollments', enrollmentId), enrollmentData);
       } else {
-        await addDoc(collection(db, 'enrollments'), {
-          ...enrollmentData,
-          studentId: student.id,
-          studentEmail: formData.email,
-          status: 'Ongoing',
-          enrolledAt: serverTimestamp(),
-        });
+        // Check if an enrollment exists by studentEmail and courseName
+        const emailLower = (formData.email || student.email || '').toLowerCase().trim();
+        const enrollQ = query(
+          collection(db, 'enrollments'),
+          where('studentEmail', '==', emailLower)
+        );
+        const existingEnrollSnap = await getDocs(enrollQ);
+        const matchingEnrollment = existingEnrollSnap.docs.find(d => 
+          (d.data().courseName || '').toLowerCase().trim() === formData.courseName.toLowerCase().trim()
+        );
+
+        if (matchingEnrollment) {
+          await updateDoc(matchingEnrollment.ref, enrollmentData);
+        } else {
+          await addDoc(collection(db, 'enrollments'), {
+            ...enrollmentData,
+            studentId: student.id,
+            studentEmail: emailLower,
+            status: 'Ongoing',
+            enrolledAt: serverTimestamp(),
+          });
+        }
       }
 
       toast.success('Student updated successfully!', { id: toastId });

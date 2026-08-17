@@ -139,10 +139,10 @@ service cloud.firestore {
     // ENROLLMENTS COLLECTION
     // ----------------------------------------------------------------------
     match /enrollments/{enrollmentId} {
-      // Students can only read their own enrollments
+      // Students can read their own enrollments by UID or Email
       // Institutes can read enrollments tied to their specific institute ID or center ID
       allow read: if isAdmin() || 
-                     (isStudent() && resource.data.studentId == request.auth.uid) ||
+                     (isAuthenticated() && (resource.data.studentId == request.auth.uid || resource.data.studentEmail == request.auth.token.email)) ||
                      (isInstitute() && (resource.data.instituteId == request.auth.uid || resource.data.centerId == request.auth.uid));
                      
       // Only admins can manage (create, update, delete) enrollments
@@ -196,8 +196,11 @@ service cloud.firestore {
     // CERTIFICATES COLLECTION
     // ----------------------------------------------------------------------
     match /certificates/{certId} {
+      // Anyone can verify individual certificate by ID (direct get)
       allow get: if true;
-      allow list: if isAdmin() || (isStudent() && resource.data.studentId == request.auth.uid);
+      // Students can list their certificates by UID or authenticated email
+      allow list: if isAdmin() || (isAuthenticated() && (resource.data.studentId == request.auth.uid || resource.data.studentEmail == request.auth.token.email));
+      // Only admins can issue/modify certificates
       allow write: if isAdmin();
     }
 
@@ -218,7 +221,8 @@ service cloud.firestore {
     }
 
     match /webinars/{webinarId} {
-      allow read: if request.auth != null;
+      // Prospective and enrolled students can view webinars
+      allow read: if true;
       allow write: if isAdmin();
     }
   }
