@@ -7,12 +7,12 @@ import SEO from '../components/SEO';
 
 import { Info } from 'lucide-react';
 
-// We will build these components next
 import AboutHero from '../components/about/AboutHero';
 import OurStory from '../components/about/OurStory';
 import MissionVision from '../components/about/MissionVision';
 import FounderSection from '../components/about/FounderSection';
 import ValuesSection from '../components/about/ValuesSection';
+import VerticalTimeline from '../components/about/VerticalTimeline';
 import TeamSection from '../components/about/TeamSection';
 
 const aboutSchema = z.object({
@@ -105,6 +105,11 @@ export default function About() {
             {(data.mission || data.vision) && <MissionVision mission={data.mission || ''} vision={data.vision || ''} />}
             {data.founder && <FounderSection founder={data.founder} />}
             {data.values && data.values.length > 0 && <ValuesSection values={data.values} />}
+            <VerticalTimeline milestones={data.milestones && data.milestones.length > 0 ? data.milestones : [
+              { year: '2024', title: 'Founded FutureCode AI', description: 'Established with the mission to bridge the tech education gap across tier 2 & 3 cities with world-class curriculum.' },
+              { year: '2025', title: 'Partnered with MSME & Colleges', description: 'Expanded hands-on training centers across 50+ institutes and launched government-recognized certification.' },
+              { year: '2026', title: '5,000+ Students Certified', description: 'Pioneered AI & Full-Stack internship cohorts with 90%+ placement and internship assistance.' },
+            ]} />
             {data.team && data.team.length > 0 && <TeamSection team={data.team} />}
           </>
         )}

@@ -7,10 +7,12 @@ import ProgramsHero from '../components/programs/ProgramsHero';
 import FilterBar from '../components/programs/FilterBar';
 import CourseCard from '../components/programs/CourseCard';
 import type { CourseData } from '../components/programs/CourseCard';
+import CourseModal from '../components/programs/CourseModal';
 import EnquiryFormModal from '../components/programs/EnquiryFormModal';
 import type { TargetInfo } from '../components/programs/EnquiryFormModal';
 import CityCTA from '../components/programs/CityCTA';
 import SEO from '../components/SEO';
+
 export default function Programs() {
   const [courses, setCourses] = useState<CourseData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,7 @@ export default function Programs() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   
   const [enquiringTarget, setEnquiringTarget] = useState<TargetInfo | null>(null);
+  const [selectedCourseModal, setSelectedCourseModal] = useState<CourseData | null>(null);
 
   const location = useLocation();
 
@@ -60,12 +63,16 @@ export default function Programs() {
     }).sort((a, b) => {
       if (a.isTopSelling && !b.isTopSelling) return -1;
       if (!a.isTopSelling && b.isTopSelling) return 1;
-      return 0; // maintain original order otherwise
+      return 0;
     });
   }, [courses, searchQuery, categoryFilter]);
 
   const handleEnquire = (target: TargetInfo) => {
     setEnquiringTarget(target);
+  };
+
+  const handleViewDetails = (course: CourseData) => {
+    setSelectedCourseModal(course);
   };
 
   return (
@@ -101,6 +108,7 @@ export default function Programs() {
                     course={course} 
                     index={index} 
                     onEnquire={(target) => handleEnquire(target)}
+                    onViewDetails={handleViewDetails}
                   />
                 ))}
               </div>
@@ -125,6 +133,17 @@ export default function Programs() {
         <CityCTA />
       </main>
 
+      {/* Course Detail Modal (Syllabus & Curriculum) */}
+      <CourseModal
+        course={selectedCourseModal}
+        onClose={() => setSelectedCourseModal(null)}
+        onEnquire={(target) => {
+          setSelectedCourseModal(null);
+          handleEnquire(target);
+        }}
+      />
+
+      {/* Course Enquiry Modal */}
       <EnquiryFormModal 
         isOpen={!!enquiringTarget}
         onClose={() => setEnquiringTarget(null)}
