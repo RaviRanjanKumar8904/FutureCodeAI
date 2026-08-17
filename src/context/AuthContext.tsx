@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { auth, db, googleProvider, githubProvider } from '../firebase/config';
 import { 
   signInWithPopup, 
@@ -17,35 +17,9 @@ import {
   where,
   getDocs
 } from 'firebase/firestore';
+import { AuthContext, type User } from './authContextInstance';
 
-export interface User {
-  uid: string;
-  email: string;
-  displayName: string;
-  photoURL: string;
-  role: 'student' | 'admin' | 'institute' | 'staff';
-  status?: 'active' | 'pending_verification';
-  phone?: string;
-  contactPerson?: string;
-  description?: string;
-  school?: string;
-  city?: string;
-  degree?: string;
-  yearOfStudy?: string;
-  githubUrl?: string;
-  linkedinUrl?: string;
-  nameChanged?: boolean;
-}
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  signInWithOAuth: (role: 'student' | 'admin' | 'institute' | 'staff', providerId: 'google' | 'github') => Promise<void>;
-  logout: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export type { User };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -70,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userData = snapshot.data() as User;
 
             // If institute is still pending, don't log them in fully
-            if (userData.role === 'institute' && userData.status === 'pending_verification') {
+            if (userData.role === 'institute' && userData.status === 'pending') {
               auth.signOut();
               setUser(null);
             } else {
@@ -108,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const existingData = userSnap.data() as User;
       
       // Enforce pending verification
-      if (existingData.role === 'institute' && existingData.status === 'pending_verification') {
+      if (existingData.role === 'institute' && existingData.status === 'pending') {
         await auth.signOut();
         throw new Error('pending_verification');
       }
@@ -170,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: firebaseUser.displayName || 'New User',
         photoURL: firebaseUser.photoURL || '',
         role: finalRole,
-        status: finalRole === 'institute' ? 'pending_verification' : 'active',
+        status: finalRole === 'institute' ? 'pending' : 'active',
       };
 
       await setDoc(userRef, {
