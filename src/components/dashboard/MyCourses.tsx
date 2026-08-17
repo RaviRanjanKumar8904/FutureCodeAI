@@ -62,17 +62,19 @@ export default function MyCourses() {
         return;
       }
       try {
-        const [enrollSnap, certSnap, coursesSnap, usersSnap] = await Promise.all([
+        const [enrollSnap, certSnap, coursesSnap, usersSnap, enquirySnap] = await Promise.all([
           getDocs(collection(db, 'enrollments')),
           getDocs(collection(db, 'certificates')),
           getDocs(collection(db, 'courses')),
           getDocs(collection(db, 'users')),
+          getDocs(collection(db, 'enquiries')),
         ]);
 
         const catalogCourses = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         const allEnrollments = enrollSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
         const allCerts = certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        const allEnquiries = enquirySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
         // 1. Find matching certificates
         const matchedCerts = allCerts.filter(c => {
@@ -129,6 +131,29 @@ export default function MyCourses() {
                 city: 'Online',
                 batchTiming: uDoc.batch || 'Regular Cohort',
                 batch: uDoc.batch,
+                status: 'Ongoing',
+                image: '',
+              });
+            }
+          }
+        }
+
+        // From direct course enquiries (if student directly submitted enquiry/admission form)
+        for (const enq of allEnquiries) {
+          if (enq.type === 'course' && matchesUser(user, enq.email, enq.name, enq.studentId)) {
+            const cName = (enq.targetTitle || enq.courseName || 'Course').trim();
+            const key = cName.toLowerCase();
+            if (!enrolledCourseNames.has(key)) {
+              enrolledCourseNames.add(key);
+              matchedEnrollments.push({
+                id: `enquiry-course-${enq.id}`,
+                studentId: user.uid,
+                studentEmail: user.email,
+                studentName: enq.name || user.displayName,
+                courseName: cName,
+                institute: enq.preferredLocation ? `FutureCode AI (${enq.preferredLocation})` : 'FutureCode AI (Online)',
+                city: enq.city || 'Online',
+                batchTiming: 'Cohort Batch',
                 status: 'Ongoing',
                 image: '',
               });

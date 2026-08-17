@@ -10,7 +10,8 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Globe 
+  Globe,
+  Video
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase/config';
@@ -20,6 +21,7 @@ import DashboardHeader from '../components/dashboard/DashboardHeader';
 import MyCourses from '../components/dashboard/MyCourses';
 import MyCertificates from '../components/dashboard/MyCertificates';
 import MyInternships from '../components/dashboard/MyInternships';
+import MyWebinars from '../components/dashboard/MyWebinars';
 import MyEnquiries from '../components/dashboard/MyEnquiries';
 import ProfileSettings from '../components/dashboard/ProfileSettings';
 
@@ -28,6 +30,7 @@ export default function StudentDashboard() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [certCount, setCertCount] = useState(0);
+  const [webinarCount, setWebinarCount] = useState(0);
   const mainRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -39,12 +42,16 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    const fetchCertCount = async () => {
+    const fetchCounts = async () => {
       try {
-        const snap = await getDocs(collection(db, 'certificates'));
+        const [certSnap, webinarSnap] = await Promise.all([
+          getDocs(collection(db, 'certificates')),
+          getDocs(collection(db, 'webinars')),
+        ]);
+
         const userEmailClean = (user.email || '').toLowerCase().trim();
         const userNameClean = (user.displayName || '').toLowerCase().trim();
-        const count = snap.docs.filter(d => {
+        const count = certSnap.docs.filter(d => {
           const c = d.data();
           if (c.revoked) return false;
           const cEmail = (c.studentEmail || '').toLowerCase().trim();
@@ -52,15 +59,23 @@ export default function StudentDashboard() {
           return (userEmailClean && cEmail === userEmailClean) || (user.uid && c.studentId === user.uid) || (userNameClean && cName === userNameClean);
         }).length;
         setCertCount(count);
+
+        // Active webinars count
+        const activeCount = webinarSnap.docs.filter(d => {
+          const data = d.data();
+          return data.status === 'Live' || data.status === 'Upcoming';
+        }).length;
+        setWebinarCount(activeCount);
       } catch (err) {
-        console.error("Error fetching cert count:", err);
+        console.error("Error fetching dashboard counts:", err);
       }
     };
-    fetchCertCount();
+    fetchCounts();
   }, [user]);
 
   const navItems = [
     { name: 'My Courses', path: '/dashboard/student', icon: BookOpen },
+    { name: 'My Webinars', path: '/dashboard/student/webinars', icon: Video, badge: webinarCount > 0 ? webinarCount : undefined },
     { name: 'My Certificates', path: '/dashboard/student/certificates', icon: Award, badge: certCount > 0 ? certCount : undefined },
     { name: 'My Internship', path: '/dashboard/student/internships', icon: Briefcase },
     { name: 'My Enquiries', path: '/dashboard/student/enquiries', icon: MessageSquare },
@@ -216,6 +231,7 @@ export default function StudentDashboard() {
             >
               <Routes>
                 <Route path="/" element={<MyCourses />} />
+                <Route path="/webinars" element={<MyWebinars />} />
                 <Route path="/certificates" element={<MyCertificates />} />
                 <Route path="/internships" element={<MyInternships />} />
                 <Route path="/enquiries" element={<MyEnquiries />} />

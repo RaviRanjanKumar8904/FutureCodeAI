@@ -204,14 +204,17 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------------------
-    // PRIVATE WEBINARS & ATTENDEES (ADMIN ONLY - HIDDEN FROM PUBLIC)
+    // WEBINARS & ATTENDEES (STUDENT DASHBOARD & ADMIN MANAGEMENT)
     // ----------------------------------------------------------------------
     match /webinar_attendees/{attendeeId} {
-      allow read, write: if isAdmin();
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
 
     match /webinars/{webinarId} {
-      allow read, write: if isAdmin();
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }
