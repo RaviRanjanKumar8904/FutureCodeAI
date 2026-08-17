@@ -1,46 +1,95 @@
-import { Suspense, useRef } from 'react';
+import { Suspense, useRef, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PresentationControls, Icosahedron, TorusKnot, Float, Environment } from '@react-three/drei';
+import { PresentationControls, Icosahedron, TorusKnot, Float } from '@react-three/drei';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Code2, Cpu, ShieldCheck } from 'lucide-react';
 import Reveal from '../Reveal';
 import * as THREE from 'three';
 
+// Local Error Boundary for 3D Canvas
+interface CanvasErrorBoundaryProps {
+  children: ReactNode;
+  fallback: ReactNode;
+}
+
+interface CanvasErrorBoundaryState {
+  hasError: boolean;
+}
+
+class CanvasErrorBoundary extends Component<CanvasErrorBoundaryProps, CanvasErrorBoundaryState> {
+  public state: CanvasErrorBoundaryState = { hasError: false };
+
+  public static getDerivedStateFromError(_: Error): CanvasErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn('3D Canvas fallback activated:', error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+// 3D Shapes with pure local lighting (No remote HDR assets needed)
 function AbstractShapes() {
   const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.1;
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.12;
     }
   });
 
   return (
     <group ref={groupRef}>
-      <Float speed={1.5} rotationIntensity={1} floatIntensity={2}>
-        <Icosahedron args={[1, 0]} position={[-1.5, 0.5, 0]}>
+      <Float speed={1.8} rotationIntensity={1.2} floatIntensity={1.8}>
+        <Icosahedron args={[1.1, 0]} position={[-1.4, 0.4, 0]}>
           <meshPhysicalMaterial 
             color="#4F46E5" 
-            roughness={0.1} 
-            metalness={0.8} 
+            roughness={0.15} 
+            metalness={0.85} 
             clearcoat={1} 
             clearcoatRoughness={0.1}
           />
         </Icosahedron>
       </Float>
       
-      <Float speed={2} rotationIntensity={1.5} floatIntensity={1.5}>
-        <TorusKnot args={[0.6, 0.2, 128, 32]} position={[1.5, -0.5, -1]}>
+      <Float speed={2.2} rotationIntensity={1.4} floatIntensity={1.6}>
+        <TorusKnot args={[0.65, 0.22, 128, 32]} position={[1.4, -0.4, -0.8]}>
           <meshPhysicalMaterial 
             color="#06B6D4" 
             roughness={0.2} 
-            metalness={0.9}
-            clearcoat={0.5}
+            metalness={0.9} 
+            clearcoat={0.8}
           />
         </TorusKnot>
       </Float>
     </group>
+  );
+}
+
+// High-Performance Glass Morphism CSS Fallback
+function HeroVisualFallback() {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center">
+      <div className="w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-gradient-to-tr from-primary/30 to-cyan-400/30 blur-2xl animate-pulse" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="p-6 rounded-3xl bg-white/80 backdrop-blur-xl border border-white/60 shadow-2xl space-y-3 max-w-xs text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-primary to-cyan-500 text-white flex items-center justify-center mx-auto shadow-md">
+            <Cpu size={28} />
+          </div>
+          <h3 className="font-extrabold text-slate-900 text-base">FutureCode AI Studio</h3>
+          <p className="text-xs text-slate-500 font-medium">Empowering Next-Gen Engineers with AI &amp; Full-Stack</p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -97,31 +146,47 @@ export default function HeroSection() {
               </Link>
             </div>
           </Reveal>
+
+          {/* Trust Badges */}
+          <Reveal direction="up" delay={0.3}>
+            <div className="pt-4 flex items-center gap-6 justify-center lg:justify-start text-xs font-bold text-slate-500 flex-wrap">
+              <span className="flex items-center gap-1.5 text-slate-700">
+                <ShieldCheck size={16} className="text-emerald-500" />
+                <span>Govt &amp; MSME Recognized</span>
+              </span>
+              <span className="flex items-center gap-1.5 text-slate-700">
+                <Code2 size={16} className="text-indigo-500" />
+                <span>Project-Driven Curriculum</span>
+              </span>
+            </div>
+          </Reveal>
         </motion.div>
 
-        {/* 3D Scene */}
+        {/* 3D Scene / Visual Container with Error Boundary */}
         <div className="h-[35vh] sm:h-[45vh] lg:h-[75vh] w-full relative flex items-center justify-center">
-          <Canvas 
-            dpr={[1, 1.5]}
-            gl={{ antialias: true, powerPreference: 'high-performance' }}
-            camera={{ position: [0, 0, 5], fov: 45 }} 
-            style={{ touchAction: 'pan-y' }}
-          >
-            <ambientLight intensity={1.5} />
-            <directionalLight position={[10, 10, 5]} intensity={2} />
-            <Suspense fallback={null}>
-              <Environment preset="city" />
-              <PresentationControls 
-                global 
-                snap={true}
-                rotation={[0, 0, 0]} 
-                polar={[-Math.PI / 4, Math.PI / 4]} 
-                azimuth={[-Math.PI / 4, Math.PI / 4]}
-              >
-                <AbstractShapes />
-              </PresentationControls>
-            </Suspense>
-          </Canvas>
+          <CanvasErrorBoundary fallback={<HeroVisualFallback />}>
+            <Canvas 
+              dpr={[1, 1.5]}
+              gl={{ antialias: true, powerPreference: 'high-performance' }}
+              camera={{ position: [0, 0, 5], fov: 45 }} 
+              style={{ touchAction: 'pan-y' }}
+            >
+              <ambientLight intensity={1.5} />
+              <directionalLight position={[10, 10, 5]} intensity={2.5} />
+              <pointLight position={[-10, -10, -5]} intensity={1.5} color="#06B6D4" />
+              <Suspense fallback={null}>
+                <PresentationControls 
+                  global 
+                  snap={true}
+                  rotation={[0, 0, 0]} 
+                  polar={[-Math.PI / 4, Math.PI / 4]} 
+                  azimuth={[-Math.PI / 4, Math.PI / 4]}
+                >
+                  <AbstractShapes />
+                </PresentationControls>
+              </Suspense>
+            </Canvas>
+          </CanvasErrorBoundary>
         </div>
 
       </div>
