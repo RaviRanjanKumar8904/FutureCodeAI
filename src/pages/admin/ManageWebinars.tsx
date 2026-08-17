@@ -40,7 +40,11 @@ import {
   AlertCircle,
   TrendingUp,
   SlidersHorizontal,
-  History
+  History,
+  Phone,
+  Mail,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -189,6 +193,9 @@ export default function ManageWebinars() {
   // Detailed Student History Modal
   const [detailStudent, setDetailStudent] = useState<WebinarAttendee | null>(null);
 
+  // Day ribbon ref for mobile scroll
+  const dayRibbonRef = useRef<HTMLDivElement>(null);
+
   // Create / Edit Webinar Modal
   const [showWebinarModal, setShowWebinarModal] = useState(false);
   const [editingWebinar, setEditingWebinar] = useState<WebinarItem | null>(null);
@@ -316,7 +323,6 @@ export default function ManageWebinars() {
   useEffect(() => {
     if (selectedWebinar && activeSessionDates.length > 0) {
       if (!activeSessionDates.includes(activeDate)) {
-        // default to today if in range, otherwise first date
         const today = new Date().toISOString().split('T')[0];
         if (activeSessionDates.includes(today)) {
           setActiveDate(today);
@@ -456,8 +462,6 @@ export default function ManageWebinars() {
     if (!selectedWebinar) return null;
     const metrics = webinarMetrics.get(selectedWebinar.id) || { total: 0, eligibleCount: 0, certCount: 0, colleges: new Set() };
     const eligibleRate = metrics.total > 0 ? Math.round((metrics.eligibleCount / metrics.total) * 100) : 0;
-    
-    // Count present today / on activeDate
     const presentOnActiveDate = attendeesForSelectedWebinar.filter(a => a.dailyAttendance?.[activeDate] === 'Present').length;
 
     return { ...metrics, eligibleRate, presentOnActiveDate };
@@ -629,7 +633,6 @@ export default function ManageWebinars() {
     }
   };
 
-  // Mark all students present on the selected activeDate
   const handleMarkAllPresentOnActiveDate = async () => {
     if (!displayedAttendees.length) return;
     const toastId = toast.loading(`Marking all ${displayedAttendees.length} students Present on ${activeDate}...`);
@@ -659,6 +662,13 @@ export default function ManageWebinars() {
     }
   };
 
+  const scrollDayRibbon = (direction: 'left' | 'right') => {
+    if (dayRibbonRef.current) {
+      const scrollAmount = direction === 'left' ? -200 : 200;
+      dayRibbonRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   // -------------------------------------------------------------
   // 75% ATTENDANCE CERTIFICATE ISSUANCE
   // -------------------------------------------------------------
@@ -681,7 +691,6 @@ export default function ManageWebinars() {
     }
 
     if (attendee.certificateIssued) {
-      // Allow revoking
       try {
         await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
           certificateIssued: false,
@@ -695,12 +704,10 @@ export default function ManageWebinars() {
       return;
     }
 
-    // Issue certificate
     const toastId = toast.loading(`Generating certificate for ${attendee.studentName}...`);
     try {
       const certId = generateCertId();
 
-      // 1. Update attendee
       await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
         certificateIssued: true,
         certificateId: certId,
@@ -708,7 +715,6 @@ export default function ManageWebinars() {
         updatedAt: serverTimestamp(),
       });
 
-      // 2. Add to global certificates collection so it is publicly verifiable!
       await addDoc(collection(db, 'certificates'), {
         certificateId: certId,
         studentName: attendee.studentName,
@@ -736,7 +742,6 @@ export default function ManageWebinars() {
     }
   };
 
-  // Bulk Issue Certificates to All Eligible Students (>= 75%)
   const handleBulkIssueEligibleCertificates = () => {
     const totalDays = selectedWebinar?.totalDays || 15;
     const eligibleAttendees = displayedAttendees.filter(a => {
@@ -763,7 +768,6 @@ export default function ManageWebinars() {
             const certId = generateCertId();
             const { percentage } = computeAttendeeStats(a, totalDays);
 
-            // Update webinar attendee
             batch.update(doc(db, 'webinar_attendees', a.id), {
               certificateIssued: true,
               certificateId: certId,
@@ -771,7 +775,6 @@ export default function ManageWebinars() {
               updatedAt: serverTimestamp(),
             });
 
-            // Create global verifiable certificate
             const certRef = doc(collection(db, 'certificates'));
             batch.set(certRef, {
               certificateId: certId,
@@ -1169,7 +1172,7 @@ export default function ManageWebinars() {
   };
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-5 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto overflow-x-hidden">
       <Toaster position="top-right" />
 
       {/* Hidden File Input for CSV */}
@@ -1184,25 +1187,25 @@ export default function ManageWebinars() {
       {/* ========================================================= */}
       {/* 1. TOP HEADER & BREADCRUMB                                */}
       {/* ========================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm">
-        <div>
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+        <div className="flex flex-col gap-2">
           {selectedWebinar ? (
             <div>
               <button
                 onClick={() => { setSelectedWebinar(null); setSearchTerm(''); }}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl transition-all mb-2 cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl transition-all mb-2 cursor-pointer active:scale-95"
               >
                 <ArrowLeft size={14} />
                 <span>Back to All Webinars</span>
               </button>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                <h1 className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
                   {selectedWebinar.title}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
                   {selectedWebinar.totalDays}-Day Bootcamp
                 </span>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border shrink-0 ${
                   selectedWebinar.status === 'Live' ? 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse' :
                   selectedWebinar.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
                   'bg-indigo-100 text-indigo-700 border-indigo-200'
@@ -1210,40 +1213,40 @@ export default function ManageWebinars() {
                   {selectedWebinar.status}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 flex items-center gap-3 flex-wrap">
-                <span className="flex items-center gap-1"><Calendar size={13}/> {selectedWebinar.startDate} &rarr; {selectedWebinar.endDate || 'End'}</span>
-                {selectedWebinar.time && <span className="flex items-center gap-1"><Clock size={13}/> {selectedWebinar.time}</span>}
-                {selectedWebinar.speaker && <span className="flex items-center gap-1"><User size={13}/> Host: {selectedWebinar.speaker}</span>}
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap">
+                <span className="flex items-center gap-1"><Calendar size={13} className="text-purple-600 shrink-0"/> {selectedWebinar.startDate} &rarr; {selectedWebinar.endDate || 'End'}</span>
+                {selectedWebinar.time && <span className="flex items-center gap-1"><Clock size={13} className="text-slate-400 shrink-0"/> {selectedWebinar.time}</span>}
+                {selectedWebinar.speaker && <span className="flex items-center gap-1"><User size={13} className="text-indigo-600 shrink-0"/> Host: {selectedWebinar.speaker}</span>}
               </p>
             </div>
           ) : (
             <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
-                  <Video size={14} /> Multi-Day Webinars &amp; Daily Attendance
+              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800">
+                  <Video size={13} /> Multi-Day Webinars
                 </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  <Lock size={12} /> Admin Only • Hidden from Public Website
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  <Lock size={11} /> Admin Only
                 </span>
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Multi-Day Webinars &amp; Attendance Management
+              <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Multi-Day Webinars &amp; Attendance
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                Manage 15-day webinars, mark daily attendance for any current or back date, and issue certificates automatically to students with &ge; 75% attendance.
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                Manage 15-day webinars, mark daily attendance for any date, and issue certificates to students with &ge; 75% attendance.
               </p>
             </div>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Action Buttons: Responsive Grid / Flex */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
           <button
             onClick={() => setShowFormatGuide(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-xs active:scale-95"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-xs active:scale-95"
             title="View CSV Header Format"
           >
-            <HelpCircle size={16} className="text-purple-600" />
+            <HelpCircle size={15} className="text-purple-600 shrink-0" />
             <span>CSV Format</span>
           </button>
 
@@ -1251,53 +1254,53 @@ export default function ManageWebinars() {
             <>
               <button
                 onClick={handleBulkIssueEligibleCertificates}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer active:scale-95"
                 title="Issue Certificates to all students with >= 75% attendance"
               >
-                <Award size={16} />
-                <span>Issue &ge; 75% Certs ({selectedWebinarStats?.eligibleCount || 0})</span>
+                <Award size={15} className="shrink-0" />
+                <span className="truncate">Issue &ge;75% ({selectedWebinarStats?.eligibleCount || 0})</span>
               </button>
 
               <button
                 onClick={() => triggerCsvUploadForWebinar(selectedWebinar)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
               >
-                <Upload size={16} />
+                <Upload size={15} className="shrink-0" />
                 <span>Import CSV</span>
               </button>
 
               <button
                 onClick={() => handleOpenAddStudent(selectedWebinar)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
               >
-                <Plus size={16} />
+                <Plus size={15} className="shrink-0" />
                 <span>Add Student</span>
               </button>
 
               <button
                 onClick={exportAttendeesCSV}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
                 title="Export all multi-day attendance records to CSV"
               >
-                <Download size={16} />
-                <span>Export Attendance</span>
+                <Download size={15} className="shrink-0" />
+                <span>Export CSV</span>
               </button>
             </>
           ) : (
             <>
               <button
                 onClick={handleOpenCreateWebinar}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
               >
-                <Plus size={16} />
-                <span>Create Multi-Day Webinar</span>
+                <Plus size={15} className="shrink-0" />
+                <span>Create Webinar</span>
               </button>
 
               <button
                 onClick={() => triggerCsvUploadForWebinar()}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
               >
-                <Upload size={16} />
+                <Upload size={15} className="shrink-0" />
                 <span>Import CSV</span>
               </button>
             </>
@@ -1309,101 +1312,101 @@ export default function ManageWebinars() {
       {/* 2. STATS SUMMARY GRID                                     */}
       {/* ========================================================= */}
       {selectedWebinar ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Enrolled</span>
-              <Users size={18} className="text-purple-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Enrolled</span>
+              <Users size={16} className="text-purple-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{selectedWebinarStats?.total || 0}</p>
-            <p className="text-[11px] font-medium text-slate-500">Registered students</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-slate-900">{selectedWebinarStats?.total || 0}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500">Students registered</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Present Today / Selected</span>
-              <CheckCircle2 size={18} className="text-emerald-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Present</span>
+              <CheckCircle2 size={16} className="text-emerald-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600">{selectedWebinarStats?.presentOnActiveDate || 0}</p>
-            <p className="text-[11px] font-medium text-slate-500">On {activeDate}</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-emerald-600">{selectedWebinarStats?.presentOnActiveDate || 0}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 truncate">On {activeDate}</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Eligible (&ge; 75%)</span>
-              <TrendingUp size={18} className="text-indigo-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Eligible</span>
+              <TrendingUp size={16} className="text-indigo-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600">{selectedWebinarStats?.eligibleCount || 0}</p>
-            <p className="text-[11px] font-bold text-indigo-700">{selectedWebinarStats?.eligibleRate || 0}% of cohort</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-indigo-600">{selectedWebinarStats?.eligibleCount || 0}</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-indigo-700">&ge; 75% ({selectedWebinarStats?.eligibleRate || 0}%)</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Certificates Issued</span>
-              <Award size={18} className="text-amber-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Certificates</span>
+              <Award size={16} className="text-amber-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-amber-600">{selectedWebinarStats?.certCount || 0}</p>
-            <p className="text-[11px] font-medium text-slate-500">Issued credentials</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-amber-600">{selectedWebinarStats?.certCount || 0}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500">Issued credentials</p>
           </div>
 
-          <div className="col-span-2 sm:col-span-1 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="col-span-2 sm:col-span-1 bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Colleges</span>
-              <School size={18} className="text-purple-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Colleges</span>
+              <School size={16} className="text-purple-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{selectedWebinarStats?.colleges.size || 0}</p>
-            <p className="text-[11px] font-medium text-slate-500">Institutions reached</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-slate-900">{selectedWebinarStats?.colleges.size || 0}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500">Institutions reached</p>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Multi-Day Webinars</span>
-              <Video size={18} className="text-purple-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Webinars</span>
+              <Video size={16} className="text-purple-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{globalStats.totalWebinars}</p>
-            <p className="text-[11px] font-medium text-slate-500">Active &amp; completed bootcamps</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-slate-900">{globalStats.totalWebinars}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500">Active sessions</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Students</span>
-              <Users size={18} className="text-indigo-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Students</span>
+              <Users size={16} className="text-indigo-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600">{globalStats.totalStudents}</p>
-            <p className="text-[11px] font-medium text-slate-500">Enrolled across bootcamps</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-indigo-600">{globalStats.totalStudents}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500">Enrolled cohort</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Eligible (&ge; 75%)</span>
-              <TrendingUp size={18} className="text-emerald-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Eligible (&ge;75%)</span>
+              <TrendingUp size={16} className="text-emerald-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600">{globalStats.totalEligible}</p>
-            <p className="text-[11px] font-bold text-emerald-700">Eligible for certificates</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-emerald-600">{globalStats.totalEligible}</p>
+            <p className="text-[10px] sm:text-[11px] font-bold text-emerald-700">Eligible for certs</p>
           </div>
 
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Certificates Issued</span>
-              <Award size={18} className="text-amber-500" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider">Certificates</span>
+              <Award size={16} className="text-amber-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-amber-600">{globalStats.totalCerts}</p>
-            <p className="text-[11px] font-medium text-slate-500">Digital credentials</p>
+            <p className="text-xl sm:text-3xl font-extrabold text-amber-600">{globalStats.totalCerts}</p>
+            <p className="text-[10px] sm:text-[11px] font-medium text-slate-500">Issued credentials</p>
           </div>
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* 3. MAIN CONTENT                                           */}
+      {/* 3. MAIN CONTENT: ALL WEBINARS OR INSIDE WEBINAR           */}
       {/* ========================================================= */}
       {!selectedWebinar ? (
         /* ------------------------------------------------------- */
         /* ALL WEBINARS LIST VIEW                                  */
         /* ------------------------------------------------------- */
         <div className="space-y-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3">
             <div className="relative flex-1 w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
@@ -1424,12 +1427,12 @@ export default function ManageWebinars() {
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium w-full sm:w-auto">
                 <Filter size={14} className="text-slate-400 shrink-0" />
                 <select
                   value={webinarStatusFilter}
                   onChange={(e) => setWebinarStatusFilter(e.target.value as any)}
-                  className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full sm:w-auto"
+                  className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full sm:w-auto text-xs"
                 >
                   <option value="All">All Statuses</option>
                   <option value="Upcoming">Upcoming</option>
@@ -1440,7 +1443,7 @@ export default function ManageWebinars() {
 
               <button
                 onClick={fetchData}
-                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0"
+                className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 active:scale-95"
                 title="Refresh webinars"
               >
                 <RefreshCw size={15} />
@@ -1472,7 +1475,7 @@ export default function ManageWebinars() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
               {filteredWebinars.map(webinar => {
                 const metrics = webinarMetrics.get(webinar.id) || { total: 0, eligibleCount: 0, certCount: 0, colleges: new Set() };
                 const eligibleRate = metrics.total > 0 ? Math.round((metrics.eligibleCount / metrics.total) * 100) : 0;
@@ -1481,7 +1484,7 @@ export default function ManageWebinars() {
                   <div
                     key={webinar.id}
                     onClick={() => { setSelectedWebinar(webinar); setSearchTerm(''); }}
-                    className="bg-white rounded-3xl border border-slate-200/80 hover:border-purple-300 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+                    className="bg-white rounded-3xl border border-slate-200/80 hover:border-purple-300 p-4 sm:p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden active:scale-[0.99]"
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-2">
@@ -1530,51 +1533,51 @@ export default function ManageWebinars() {
                       <div className="bg-slate-50 p-3 rounded-2xl space-y-1.5 text-xs text-slate-600">
                         <div className="flex items-center gap-2">
                           <Calendar size={13} className="text-purple-600 shrink-0" />
-                          <span className="font-bold text-slate-800">{webinar.startDate} &rarr; {webinar.endDate || 'End'}</span>
+                          <span className="font-bold text-slate-800 truncate">{webinar.startDate} &rarr; {webinar.endDate || 'End'}</span>
                         </div>
                         {webinar.speaker && (
                           <div className="flex items-center gap-2">
                             <User size={13} className="text-indigo-600 shrink-0" />
-                            <span>Host: <strong className="text-slate-800">{webinar.speaker}</strong></span>
+                            <span className="truncate">Host: <strong className="text-slate-800">{webinar.speaker}</strong></span>
                           </div>
                         )}
                         {webinar.time && (
                           <div className="flex items-center gap-2 text-slate-500">
                             <Clock size={13} className="text-slate-400 shrink-0" />
-                            <span>{webinar.time}</span>
+                            <span className="truncate">{webinar.time}</span>
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Footer Metrics */}
-                    <div className="pt-4 mt-3 border-t border-slate-100 space-y-3">
-                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="pt-3.5 mt-3 border-t border-slate-100 space-y-3">
+                      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center text-xs">
                         <div className="bg-purple-50/60 p-2 rounded-xl">
-                          <p className="font-extrabold text-purple-900 text-sm">{metrics.total}</p>
-                          <p className="text-[10px] text-purple-700 uppercase font-bold">Students</p>
+                          <p className="font-extrabold text-purple-900 text-sm sm:text-base">{metrics.total}</p>
+                          <p className="text-[9px] sm:text-[10px] text-purple-700 uppercase font-bold">Students</p>
                         </div>
                         <div className="bg-emerald-50/60 p-2 rounded-xl">
-                          <p className="font-extrabold text-emerald-800 text-sm">{metrics.eligibleCount}</p>
-                          <p className="text-[10px] text-emerald-700 uppercase font-bold">&ge;75% ({eligibleRate}%)</p>
+                          <p className="font-extrabold text-emerald-800 text-sm sm:text-base">{metrics.eligibleCount}</p>
+                          <p className="text-[9px] sm:text-[10px] text-emerald-700 uppercase font-bold">&ge;75% ({eligibleRate}%)</p>
                         </div>
                         <div className="bg-amber-50/60 p-2 rounded-xl">
-                          <p className="font-extrabold text-amber-800 text-sm">{metrics.certCount}</p>
-                          <p className="text-[10px] text-amber-700 uppercase font-bold">Certificates</p>
+                          <p className="font-extrabold text-amber-800 text-sm sm:text-base">{metrics.certCount}</p>
+                          <p className="text-[9px] sm:text-[10px] text-amber-700 uppercase font-bold">Certs</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelectedWebinar(webinar); }}
-                          className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                          className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95"
                         >
                           <Calendar size={14} />
-                          <span>Mark Daily Attendance ({webinar.totalDays} Days)</span>
+                          <span>Daily Attendance ({webinar.totalDays} Days)</span>
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); triggerCsvUploadForWebinar(webinar); }}
-                          className="p-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold transition-all"
+                          className="p-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold transition-all active:scale-95"
                           title="Import Google Form CSV into this webinar"
                         >
                           <Upload size={14} />
@@ -1595,85 +1598,105 @@ export default function ManageWebinars() {
           {/* ===================================================== */}
           {/* DAILY ATTENDANCE & BACK DATE SELECTOR BAR             */}
           {/* ===================================================== */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-purple-200 shadow-sm space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+          <div className="bg-white p-3.5 sm:p-5 rounded-3xl border border-purple-200 shadow-sm space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <Calendar size={18} className="text-purple-600" />
+                <div className="flex items-center gap-1.5">
+                  <Calendar size={16} className="text-purple-600 shrink-0" />
                   <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
                     Daily Attendance &amp; Back-Date Tracker
                   </h3>
                 </div>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Select any day or back-date below to mark or adjust attendance for that specific session.
+                <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
+                  Swipe through the {selectedWebinar.totalDays} days or pick any back-date.
                 </p>
               </div>
 
               {/* Quick Actions for activeDate */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                 <button
                   onClick={handleMarkAllPresentOnActiveDate}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs active:scale-95"
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs active:scale-95"
                 >
                   <UserCheck size={14} />
-                  <span>Mark All Present on {activeDate}</span>
+                  <span>Mark All Present ({activeDate})</span>
                 </button>
 
-                <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700">
-                  <span>Custom Date:</span>
+                <div className="flex-1 sm:flex-initial flex items-center justify-between gap-1.5 bg-slate-100 px-3 py-2 rounded-xl text-xs font-bold text-slate-700">
+                  <span className="shrink-0">Date:</span>
                   <input
                     type="date"
                     value={activeDate}
                     onChange={(e) => setActiveDate(e.target.value)}
-                    className="bg-transparent border-b border-slate-300 font-bold outline-none cursor-pointer"
+                    className="bg-transparent font-bold outline-none cursor-pointer text-xs"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Scrollable Day Ribbon (Day 1 ... Day N) */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {activeSessionDates.map((dateStr, idx) => {
-                const isActive = activeDate === dateStr;
-                // Count present on this date
-                const presentCount = attendeesForSelectedWebinar.filter(a => a.dailyAttendance?.[dateStr] === 'Present').length;
-                const total = attendeesForSelectedWebinar.length;
+            {/* Scrollable Day Ribbon with Mobile Swipe Arrows */}
+            <div className="relative">
+              <button
+                onClick={() => scrollDayRibbon('left')}
+                className="hidden sm:flex absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white shadow-md border border-slate-200 items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors"
+                title="Scroll Left"
+              >
+                <ChevronLeft size={14} />
+              </button>
 
-                return (
-                  <button
-                    key={dateStr}
-                    onClick={() => setActiveDate(dateStr)}
-                    className={`flex-shrink-0 px-3.5 py-2 rounded-2xl border text-left transition-all cursor-pointer ${
-                      isActive 
-                        ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20 scale-[1.02]' 
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`text-[11px] font-extrabold uppercase ${isActive ? 'text-purple-200' : 'text-slate-400'}`}>
-                        Day {idx + 1}
-                      </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
-                      }`}>
-                        {presentCount}/{total}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold mt-0.5">{dateStr}</p>
-                  </button>
-                );
-              })}
+              <div 
+                ref={dayRibbonRef}
+                className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none snap-x snap-mandatory overscroll-x-contain"
+              >
+                {activeSessionDates.map((dateStr, idx) => {
+                  const isActive = activeDate === dateStr;
+                  const presentCount = attendeesForSelectedWebinar.filter(a => a.dailyAttendance?.[dateStr] === 'Present').length;
+                  const total = attendeesForSelectedWebinar.length;
+
+                  return (
+                    <button
+                      key={dateStr}
+                      onClick={() => setActiveDate(dateStr)}
+                      className={`flex-shrink-0 px-3 py-2 rounded-2xl border text-left transition-all cursor-pointer snap-start ${
+                        isActive 
+                          ? 'bg-purple-600 text-white border-purple-600 shadow-md shadow-purple-600/20 scale-[1.02]' 
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={`text-[10px] font-extrabold uppercase ${isActive ? 'text-purple-200' : 'text-slate-400'}`}>
+                          Day {idx + 1}
+                        </span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {presentCount}/{total}
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs font-bold mt-0.5 whitespace-nowrap">{dateStr}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => scrollDayRibbon('right')}
+                className="hidden sm:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full bg-white shadow-md border border-slate-200 items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors"
+                title="Scroll Right"
+              >
+                <ChevronRight size={14} />
+              </button>
             </div>
           </div>
 
           {/* Search, Filter & Bulk Actions Bar */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-            <div className="flex flex-col md:flex-row gap-3">
+          <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+            <div className="flex flex-col md:flex-row gap-2.5 sm:gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="text"
-                  placeholder="Search students by name, email, phone, or college..."
+                  placeholder="Search students by name, email, phone..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
@@ -1690,29 +1713,29 @@ export default function ManageWebinars() {
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* 75% Attendance Filter */}
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
+                <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-medium">
                   <SlidersHorizontal size={14} className="text-slate-400 shrink-0" />
                   <select
                     value={attendanceEligibilityFilter}
                     onChange={(e) => setAttendanceEligibilityFilter(e.target.value as any)}
-                    className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer"
+                    className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full text-xs"
                   >
                     <option value="All">All Students ({attendeesForSelectedWebinar.length})</option>
-                    <option value="Eligible">Eligible (&ge; 75% Attendance)</option>
-                    <option value="Ineligible">Ineligible (&lt; 75% Attendance)</option>
-                    <option value="CertIssued">Certificates Issued</option>
-                    <option value="CertPending">Pending Issuance (&ge; 75%)</option>
+                    <option value="Eligible">Eligible (&ge; 75%)</option>
+                    <option value="Ineligible">Ineligible (&lt; 75%)</option>
+                    <option value="CertIssued">Cert Issued</option>
+                    <option value="CertPending">Pending (&ge; 75%)</option>
                   </select>
                 </div>
 
                 {/* College Filter */}
                 {uniqueColleges.length > 0 && (
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
+                  <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-2 text-xs font-medium">
                     <School size={14} className="text-slate-400 shrink-0" />
                     <select
                       value={selectedCollege}
                       onChange={(e) => setSelectedCollege(e.target.value)}
-                      className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer max-w-[150px] truncate"
+                      className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full max-w-[130px] truncate text-xs"
                     >
                       <option value="All">All Colleges ({uniqueColleges.length})</option>
                       {uniqueColleges.map(c => (
@@ -1724,7 +1747,7 @@ export default function ManageWebinars() {
 
                 <button
                   onClick={fetchData}
-                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors"
+                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 active:scale-95"
                   title="Refresh list"
                 >
                   <RefreshCw size={15} />
@@ -1732,23 +1755,23 @@ export default function ManageWebinars() {
               </div>
             </div>
 
-            {/* Bulk Controls */}
+            {/* Bulk Controls Bar */}
             {selectedIds.length > 0 && (
-              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between gap-3 flex-wrap animate-in fade-in">
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex flex-col sm:flex-row items-center justify-between gap-2.5 animate-in fade-in">
                 <span className="text-xs font-bold text-purple-900">
                   {selectedIds.length} students selected
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <button
                     onClick={handleBulkMarkAttendedActiveDate}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
                   >
                     <UserCheck size={14} />
-                    <span>Mark Present on {activeDate}</span>
+                    <span>Mark Present ({activeDate})</span>
                   </button>
                   <button
                     onClick={handleBulkDelete}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
+                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
                   >
                     <Trash2 size={14} />
                     <span>Delete Selected</span>
@@ -1765,13 +1788,13 @@ export default function ManageWebinars() {
                 <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
                   <Users size={28} />
                 </div>
-                <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Students Match Criteria</h3>
+                <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Students Found</h3>
                 <p className="text-xs text-slate-500 font-medium mb-6">
-                  Try adjusting your filter or import Google Form CSV responses.
+                  Try adjusting your search criteria or import Google Form CSV responses.
                 </p>
                 <button
                   onClick={() => triggerCsvUploadForWebinar(selectedWebinar)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md"
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md active:scale-95"
                 >
                   <Upload size={15} />
                   <span>Import Google Form CSV</span>
@@ -1831,7 +1854,7 @@ export default function ManageWebinars() {
                             <td className="p-4">
                               <button
                                 onClick={() => handleToggleDailyAttendance(attendee, activeDate)}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer active:scale-95 ${
                                   isPresentToday
                                     ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300'
                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1864,7 +1887,7 @@ export default function ManageWebinars() {
                                 </div>
                                 <button
                                   onClick={() => setDetailStudent(attendee)}
-                                  className="text-[11px] text-purple-700 hover:underline font-bold flex items-center gap-1 pt-0.5"
+                                  className="text-[11px] text-purple-700 hover:underline font-bold flex items-center gap-1 pt-0.5 cursor-pointer"
                                 >
                                   <History size={12} />
                                   <span>View / Edit All Days</span>
@@ -1921,7 +1944,7 @@ export default function ManageWebinars() {
                   </table>
                 </div>
 
-                {/* Mobile Cards View */}
+                {/* Mobile App-Style Cards View */}
                 <div className="block md:hidden divide-y divide-slate-100">
                   {displayedAttendees.map((attendee) => {
                     const isSelected = selectedIds.includes(attendee.id);
@@ -1930,34 +1953,48 @@ export default function ManageWebinars() {
                     const { presentDays, percentage, isEligible } = computeAttendeeStats(attendee, totalDays);
 
                     return (
-                      <div key={attendee.id} className={`p-4 space-y-3 ${isSelected ? 'bg-purple-50/40' : ''}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-2.5">
+                      <div key={attendee.id} className={`p-3.5 space-y-3 ${isSelected ? 'bg-purple-50/40' : ''}`}>
+                        {/* Header: Student Info & Delete */}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-start gap-2.5 flex-1 min-w-0">
                             <input
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => handleToggleSelectId(attendee.id)}
-                              className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                              className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500 shrink-0"
                             />
-                            <div>
-                              <h4 className="font-bold text-slate-900 text-sm leading-snug">{attendee.studentName}</h4>
-                              <p className="text-slate-500 font-mono text-xs">{attendee.email}</p>
-                              <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
-                                <School size={11} className="text-indigo-600" />
-                                <span>{attendee.collegeName}</span>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="font-extrabold text-slate-900 text-sm leading-snug truncate">
+                                {attendee.studentName}
+                              </h4>
+                              <p className="text-slate-500 font-mono text-[11px] truncate flex items-center gap-1 mt-0.5">
+                                <Mail size={11} className="shrink-0 text-slate-400" />
+                                <span className="truncate">{attendee.email}</span>
+                              </p>
+                              {attendee.phone && (
+                                <p className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
+                                  <Phone size={11} className="shrink-0 text-slate-400" />
+                                  <span>{attendee.phone}</span>
+                                </p>
+                              )}
+                              <p className="text-slate-500 text-[11px] flex items-center gap-1 mt-0.5 font-medium truncate">
+                                <School size={11} className="text-indigo-600 shrink-0" />
+                                <span className="truncate">{attendee.collegeName}</span>
                               </p>
                             </div>
                           </div>
+
                           <button
                             onClick={() => handleDeleteAttendee(attendee)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
+                            title="Delete Student"
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
 
-                        {/* Overall Progress Widget */}
-                        <div className="bg-slate-50 p-3 rounded-2xl space-y-2">
+                        {/* Overall 15-Day Progress Bar */}
+                        <div className="bg-slate-50 p-2.5 rounded-2xl space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-slate-600 font-medium">15-Day Attendance:</span>
                             <span className={`font-extrabold ${isEligible ? 'text-emerald-700' : 'text-rose-600'}`}>
@@ -1966,7 +2003,7 @@ export default function ManageWebinars() {
                           </div>
                           <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                             <div 
-                              className={`h-full rounded-full ${
+                              className={`h-full rounded-full transition-all ${
                                 percentage >= 75 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-amber-500' : 'bg-rose-500'
                               }`}
                               style={{ width: `${Math.min(100, percentage)}%` }}
@@ -1974,45 +2011,57 @@ export default function ManageWebinars() {
                           </div>
                         </div>
 
-                        {/* Controls */}
-                        <div className="flex items-center justify-between gap-2 pt-1">
+                        {/* Mobile Actions: Daily Toggle, 15 Days Grid, Certificate */}
+                        <div className="grid grid-cols-2 gap-2 pt-0.5">
+                          {/* 1-Tap Daily Attendance */}
                           <button
                             onClick={() => handleToggleDailyAttendance(attendee, activeDate)}
-                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold ${
+                            className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all active:scale-95 ${
                               isPresentToday
-                                ? 'bg-emerald-100 text-emerald-800'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : 'bg-slate-100 text-slate-700'
                             }`}
                           >
-                            {isPresentToday ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-                            <span>{activeDate}: {isPresentToday ? 'Present' : 'Absent'}</span>
+                            {isPresentToday ? <CheckCircle2 size={13} className="shrink-0" /> : <XCircle size={13} className="shrink-0" />}
+                            <span className="truncate">{activeDate.slice(5)}: {isPresentToday ? 'Present' : 'Absent'}</span>
                           </button>
 
+                          {/* 15 Days History Modal Button */}
                           <button
                             onClick={() => setDetailStudent(attendee)}
-                            className="px-2.5 py-1.5 rounded-xl bg-purple-50 text-purple-700 font-bold text-xs flex items-center gap-1"
+                            className="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors active:scale-95"
                           >
-                            <History size={13} />
-                            <span>15 Days</span>
+                            <History size={13} className="shrink-0" />
+                            <span>15 Days Grid</span>
                           </button>
+                        </div>
 
+                        {/* Certificate Status / Button on Mobile */}
+                        <div className="pt-0.5">
                           {attendee.certificateIssued ? (
-                            <span className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                              <Award size={13} />
-                              <span>Issued</span>
-                            </span>
+                            <div className="w-full py-2 px-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-between text-xs font-bold">
+                              <span className="flex items-center gap-1">
+                                <Award size={14} className="text-amber-600" />
+                                <span>Certificate Issued</span>
+                              </span>
+                              <span className="font-mono text-[10px] text-amber-700">{attendee.certificateId}</span>
+                            </div>
                           ) : isEligible ? (
                             <button
                               onClick={() => handleIssueCertificate(attendee)}
-                              className="px-3 py-1.5 rounded-xl bg-amber-500 text-white font-bold text-xs flex items-center gap-1"
+                              className="w-full py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
                             >
-                              <Award size={13} />
-                              <span>Issue Cert</span>
+                              <Award size={14} />
+                              <span>Issue Certificate (&ge; 75% Eligible)</span>
                             </button>
                           ) : (
-                            <span className="px-2 py-1 rounded-xl text-[11px] font-bold bg-rose-50 text-rose-700">
-                              &lt;75%
-                            </span>
+                            <div className="w-full py-1.5 px-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-100 flex items-center justify-between text-[11px] font-bold">
+                              <span className="flex items-center gap-1">
+                                <AlertCircle size={13} />
+                                <span>Ineligible for Certificate</span>
+                              </span>
+                              <span>{percentage}% (&lt;75%)</span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -2037,8 +2086,8 @@ export default function ManageWebinars() {
                   <History size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">{detailStudent.studentName}</h2>
-                  <p className="text-xs text-slate-500 font-medium">{detailStudent.email} • {selectedWebinar.title}</p>
+                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900 truncate max-w-[200px] sm:max-w-none">{detailStudent.studentName}</h2>
+                  <p className="text-xs text-slate-500 font-medium truncate max-w-[200px] sm:max-w-none">{detailStudent.email} • {selectedWebinar.title}</p>
                 </div>
               </div>
               <button 
@@ -2055,22 +2104,22 @@ export default function ManageWebinars() {
                 const totalDays = selectedWebinar.totalDays || 15;
                 const { presentDays, percentage, isEligible } = computeAttendeeStats(detailStudent, totalDays);
                 return (
-                  <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+                  <div className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     isEligible ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
                   }`}>
                     <div>
-                      <p className={`font-extrabold text-sm ${isEligible ? 'text-emerald-900' : 'text-rose-900'}`}>
+                      <p className={`font-extrabold text-xs sm:text-sm ${isEligible ? 'text-emerald-900' : 'text-rose-900'}`}>
                         Attendance: {percentage}% ({presentDays} of {totalDays} Days Attended)
                       </p>
-                      <p className={`text-xs mt-0.5 ${isEligible ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {isEligible ? '✅ Eligible for Course Completion Certificate (>= 75%)' : '❌ Ineligible for Certificate (Below 75% attendance)'}
+                      <p className={`text-[11px] sm:text-xs mt-0.5 ${isEligible ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {isEligible ? '✅ Eligible for Certificate (>= 75%)' : '❌ Ineligible for Certificate (Below 75%)'}
                       </p>
                     </div>
 
                     {!detailStudent.certificateIssued && isEligible && (
                       <button
                         onClick={() => handleIssueCertificate(detailStudent)}
-                        className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md active:scale-95"
+                        className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95"
                       >
                         <Award size={14} />
                         <span>Issue Cert</span>
@@ -2080,12 +2129,12 @@ export default function ManageWebinars() {
                 );
               })()}
 
-              <p className="font-bold text-slate-800">
-                Click any day below to toggle attendance (Present / Absent):
+              <p className="font-bold text-slate-800 text-xs sm:text-sm">
+                Tap any day to toggle attendance:
               </p>
 
-              {/* 15 Days Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {/* 15 Days Grid (2 cols on phone, 3 cols on desktop) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5">
                 {activeSessionDates.map((dateStr, idx) => {
                   const isPresent = detailStudent.dailyAttendance?.[dateStr] === 'Present';
 
@@ -2093,20 +2142,20 @@ export default function ManageWebinars() {
                     <button
                       key={dateStr}
                       onClick={() => handleToggleDailyAttendance(detailStudent, dateStr)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+                      className={`p-2.5 sm:p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between active:scale-95 ${
                         isPresent
                           ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-200 shadow-xs'
                           : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <span className="text-[10px] uppercase font-extrabold text-slate-400 block">Day {idx + 1}</span>
-                        <span className="font-bold text-xs">{dateStr}</span>
+                        <span className="font-bold text-xs truncate block">{dateStr}</span>
                       </div>
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ml-1.5 ${
                         isPresent ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'
                       }`}>
-                        {isPresent ? <Check size={14} /> : <X size={14} />}
+                        {isPresent ? <Check size={13} /> : <X size={13} />}
                       </span>
                     </button>
                   );
@@ -2117,7 +2166,7 @@ export default function ManageWebinars() {
             <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end shrink-0">
               <button
                 onClick={() => setDetailStudent(null)}
-                className="px-5 py-2 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors"
               >
                 Done
               </button>
@@ -2136,7 +2185,7 @@ export default function ManageWebinars() {
                   <Video size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
+                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">
                     {editingWebinar ? 'Edit Multi-Day Webinar' : 'Create Multi-Day Webinar'}
                   </h2>
                   <p className="text-xs text-slate-500 font-medium">Configure duration (e.g. 15 days), timing &amp; meeting links</p>
@@ -2263,18 +2312,18 @@ export default function ManageWebinars() {
                 </div>
               </div>
 
-              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowWebinarModal(false)}
-                  className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingWebinar}
-                  className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
+                  className="flex-1 sm:flex-initial px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                 >
                   {isSavingWebinar ? (
                     <>
@@ -2282,7 +2331,7 @@ export default function ManageWebinars() {
                       <span>Saving...</span>
                     </>
                   ) : (
-                    editingWebinar ? 'Update Webinar' : 'Create Multi-Day Webinar'
+                    editingWebinar ? 'Update Webinar' : 'Create Webinar'
                   )}
                 </button>
               </div>
@@ -2301,7 +2350,7 @@ export default function ManageWebinars() {
                   <FileSpreadsheet size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Google Form CSV Format Specification</h2>
+                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">Google Form CSV Specification</h2>
                   <p className="text-xs text-slate-500 font-medium">How to download and import Google Form responses</p>
                 </div>
               </div>
@@ -2313,8 +2362,8 @@ export default function ManageWebinars() {
               </button>
             </div>
 
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-5 text-xs sm:text-sm">
-              <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 space-y-2">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
+              <div className="bg-purple-50/70 p-3.5 sm:p-4 rounded-2xl border border-purple-100 space-y-2">
                 <h4 className="font-extrabold text-purple-900 flex items-center gap-1.5">
                   <CheckCircle2 size={16} className="text-purple-600" />
                   How to export from Google Forms:
@@ -2328,53 +2377,41 @@ export default function ManageWebinars() {
               </div>
 
               <div>
-                <h4 className="font-extrabold text-slate-900 mb-2">Supported Column Header Names (Case-Insensitive)</h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-                  <table className="w-full text-left text-xs border-collapse">
+                <h4 className="font-extrabold text-slate-900 mb-2">Supported Column Header Names</h4>
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse min-w-[400px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
                         <th className="p-2.5">Field</th>
-                        <th className="p-2.5">Supported Header Keywords</th>
-                        <th className="p-2.5">Required?</th>
+                        <th className="p-2.5">Supported Keywords</th>
                         <th className="p-2.5">Sample Value</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-slate-700">
                       <tr>
-                        <td className="p-2.5 font-bold">Student Name</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Name, Full Name, Student Name, What is your name?</td>
-                        <td className="p-2.5 text-rose-600 font-bold">Required</td>
+                        <td className="p-2.5 font-bold">Student Name <span className="text-rose-500">*</span></td>
+                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Name, Full Name, Student Name</td>
                         <td className="p-2.5">Rahul Sharma</td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 font-bold">Email Address</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Email, Email Address, Student Email, Mail</td>
-                        <td className="p-2.5 text-rose-600 font-bold">Required</td>
+                        <td className="p-2.5 font-bold">Email <span className="text-rose-500">*</span></td>
+                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Email, Email Address, Mail</td>
                         <td className="p-2.5">rahul@example.com</td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 font-bold">Phone Number</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Phone, WhatsApp, Phone Number, Mobile Number</td>
-                        <td className="p-2.5 text-slate-500 font-medium">Optional</td>
+                        <td className="p-2.5 font-bold">Phone</td>
+                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Phone, WhatsApp, Mobile</td>
                         <td className="p-2.5">+91 9876543210</td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 font-bold">College / Institute</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">College, College Name, Institute, University, School</td>
-                        <td className="p-2.5 text-slate-500 font-medium">Optional</td>
+                        <td className="p-2.5 font-bold">College</td>
+                        <td className="p-2.5 font-mono text-[11px] text-purple-700">College, College Name, Institute</td>
                         <td className="p-2.5">MIT Muzaffarpur</td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 font-bold">Branch / Stream</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Branch, Department, Stream, Course, Specialization</td>
-                        <td className="p-2.5 text-slate-500 font-medium">Optional</td>
-                        <td className="p-2.5">Computer Science</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold">Year / Semester</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Year, Semester, Year of Study, Batch, Class</td>
-                        <td className="p-2.5 text-slate-500 font-medium">Optional</td>
-                        <td className="p-2.5">3rd Year (6th Sem)</td>
+                        <td className="p-2.5 font-bold">Branch / Year</td>
+                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Branch, Department, Year</td>
+                        <td className="p-2.5">CSE • 3rd Year</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2382,17 +2419,17 @@ export default function ManageWebinars() {
               </div>
             </div>
 
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
               <button
                 onClick={downloadSampleCSV}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
               >
                 <Download size={15} />
                 <span>Download Sample CSV</span>
               </button>
               <button
                 onClick={() => setShowFormatGuide(false)}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors"
               >
                 Got It
               </button>
@@ -2411,7 +2448,7 @@ export default function ManageWebinars() {
                   <FileSpreadsheet size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Preview &amp; Confirm CSV Import</h2>
+                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">Preview CSV Import</h2>
                   <p className="text-xs text-slate-500 font-medium">Found {parsedRows.length} attendee records in {csvFileName}</p>
                 </div>
               </div>
@@ -2424,7 +2461,7 @@ export default function ManageWebinars() {
             </div>
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
-              <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="bg-purple-50/70 p-3.5 sm:p-4 rounded-2xl border border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-purple-900 mb-1">
                     Destination Webinar Session <span className="text-rose-500">*</span>
@@ -2462,27 +2499,23 @@ export default function ManageWebinars() {
               {/* Preview Table */}
               <div>
                 <h4 className="font-bold text-slate-800 mb-2">Parsed Records Preview ({parsedRows.length})</h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[250px] overflow-y-auto">
-                  <table className="w-full text-left text-xs border-collapse">
+                <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto">
+                  <table className="w-full text-left text-xs border-collapse min-w-[320px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px] sticky top-0 bg-slate-50">
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px] sticky top-0 bg-slate-50">
                         <th className="p-2.5">#</th>
                         <th className="p-2.5">Name</th>
                         <th className="p-2.5">Email</th>
-                        <th className="p-2.5">Phone</th>
                         <th className="p-2.5">College</th>
-                        <th className="p-2.5">Branch</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {parsedRows.slice(0, 50).map((row, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50">
                           <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="p-2.5 font-bold text-slate-900">{row.studentName}</td>
-                          <td className="p-2.5 font-mono text-slate-600">{row.email}</td>
-                          <td className="p-2.5 text-slate-500">{row.phone || '—'}</td>
-                          <td className="p-2.5 text-slate-700">{row.collegeName}</td>
-                          <td className="p-2.5 text-slate-500">{row.branch}</td>
+                          <td className="p-2.5 font-bold text-slate-900 truncate">{row.studentName}</td>
+                          <td className="p-2.5 font-mono text-slate-600 truncate">{row.email}</td>
+                          <td className="p-2.5 text-slate-700 truncate">{row.collegeName}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2491,10 +2524,10 @@ export default function ManageWebinars() {
               </div>
             </div>
 
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/90 flex items-center justify-end gap-3 shrink-0">
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
               <button
                 onClick={() => setShowImportModal(false)}
-                className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
                 disabled={importing}
               >
                 Cancel
@@ -2502,7 +2535,7 @@ export default function ManageWebinars() {
               <button
                 onClick={handleConfirmImport}
                 disabled={importing || !targetWebinarTitle.trim()}
-                className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 {importing ? (
                   <>
@@ -2531,7 +2564,7 @@ export default function ManageWebinars() {
                   <Plus size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Add Student to Webinar</h2>
+                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">Add Student to Webinar</h2>
                   <p className="text-xs text-slate-500 font-medium">Manually register a student for a session</p>
                 </div>
               </div>
@@ -2639,18 +2672,18 @@ export default function ManageWebinars() {
                 </div>
               </div>
 
-              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isAdding}
-                  className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                 >
                   {isAdding ? (
                     <>
