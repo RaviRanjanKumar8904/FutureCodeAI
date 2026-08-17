@@ -1,5 +1,8 @@
 import { useAuth } from '../../hooks/useAuth';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { Camera } from 'lucide-react';
+import UserAvatar from '../UserAvatar';
 
 export default function DashboardHeader() {
   const { user } = useAuth();
@@ -22,29 +25,38 @@ export default function DashboardHeader() {
       {/* Decorative background blob */}
       <div className="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Avatar */}
-      <div className="relative z-10 shrink-0">
-        {user.photoURL ? (
-          <img 
-            src={user.photoURL} 
-            alt={user.displayName || 'User'} 
-            className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-md bg-slate-100 object-cover"
-          />
-        ) : (
-          <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-md bg-indigo-600 text-white flex items-center justify-center font-extrabold text-2xl">
-            {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div className="absolute bottom-0 right-0 w-5 h-5 sm:w-6 sm:h-6 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center shadow-sm">
-          <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
+      {/* Avatar with Quick Edit Link */}
+      <Link 
+        to="/dashboard/student/settings" 
+        className="relative z-10 shrink-0 group block cursor-pointer"
+        title="Change profile picture"
+      >
+        <UserAvatar 
+          photoURL={user.photoURL}
+          name={user.displayName}
+          email={user.email}
+          size="2xl"
+          showStatus={true}
+          className="border-4 border-white shadow-md ring-2 ring-primary/10 group-hover:scale-105 transition-transform"
+        />
+        <div className="absolute inset-0 rounded-full bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity duration-200 backdrop-blur-[2px]">
+          <Camera size={22} className="drop-shadow-md" />
         </div>
-      </div>
+      </Link>
 
       {/* Content */}
       <div className="flex-1 z-10 w-full">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-text-heading mb-1">
-          Welcome back, {firstName}! 👋
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-text-heading mb-1">
+            Welcome back, {firstName}! 👋
+          </h1>
+          <Link
+            to="/dashboard/student/settings"
+            className="text-xs font-bold text-primary hover:text-indigo-700 sm:self-center transition-colors"
+          >
+            Edit Profile →
+          </Link>
+        </div>
         <p className="text-xs sm:text-sm text-slate-500 font-medium mb-4 sm:mb-5">
           Ready to continue your learning journey and projects?
         </p>

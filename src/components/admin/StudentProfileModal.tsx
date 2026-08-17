@@ -1,4 +1,5 @@
 import { X, Mail, Calendar, IdCard, Phone, MapPin, BookOpen, ExternalLink, Building2, Hash, School } from 'lucide-react';
+import UserAvatar from '../UserAvatar';
 
 interface Student {
   id: string;
@@ -52,12 +53,14 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4">
           <div className="flex flex-col items-center text-center pb-2">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-extrabold text-2xl mb-2.5 border-2 border-white shadow-md">
-              {student.photoURL ? (
-                <img src={student.photoURL} alt={student.displayName} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                student.displayName ? student.displayName.charAt(0).toUpperCase() : 'S'
-              )}
+            <div className="mb-2.5">
+              <UserAvatar 
+                photoURL={student.photoURL}
+                name={student.displayName}
+                email={student.email}
+                size="xl"
+                className="border-2 border-white shadow-md"
+              />
             </div>
             <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug">{student.displayName || 'Unnamed Student'}</h3>
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap justify-center">

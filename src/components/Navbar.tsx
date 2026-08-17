@@ -6,6 +6,7 @@ import {
   Home, BookOpen, Briefcase, Building2, Image, User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import UserAvatar from './UserAvatar';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -123,15 +124,14 @@ export default function Navbar() {
                 <div className="relative">
                   <button 
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 p-1 rounded-full border border-gray-200 hover:border-primary transition-colors cursor-pointer"
+                    className="flex items-center gap-2 p-0.5 rounded-full border border-gray-200 hover:border-primary transition-colors cursor-pointer"
                   >
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || 'User'} className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                        {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <UserAvatar 
+                      photoURL={user.photoURL}
+                      name={user.displayName}
+                      email={user.email}
+                      size="sm"
+                    />
                   </button>
 
                   <AnimatePresence>
@@ -144,24 +144,36 @@ export default function Navbar() {
                         className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50"
                       >
                         <div className="px-4 py-2 border-b border-gray-100">
-                          <p className="font-bold text-sm text-slate-800 truncate">{user.displayName || 'User'}</p>
+                          <p className="font-bold text-sm text-text-heading truncate">{user.displayName || 'User'}</p>
                           <p className="text-xs text-slate-500 truncate">{user.email}</p>
                         </div>
                         <Link 
-                          to={getDashboardPath()} 
-                          className="flex items-center gap-2 px-4 py-2.5 text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 font-semibold"
+                          to={getDashboardPath()}
                           onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
                         >
-                          <LayoutDashboard size={15} /> Dashboard
+                          <LayoutDashboard size={16} />
+                          {user.role === 'admin' ? 'Admin Panel' : user.role === 'staff' ? 'Staff Portal' : user.role === 'institute' ? 'Center Portal' : 'My Dashboard'}
                         </Link>
+                        {user.role === 'student' && (
+                          <Link 
+                            to="/dashboard/student/settings"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
+                          >
+                            <UserIcon size={16} />
+                            Profile Settings
+                          </Link>
+                        )}
                         <button 
                           onClick={() => {
                             logout();
                             setDropdownOpen(false);
                           }}
-                          className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 font-semibold text-left cursor-pointer"
+                          className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                         >
-                          <LogOut size={15} /> Sign Out
+                          <LogOut size={16} />
+                          Logout
                         </button>
                       </motion.div>
                     )}
@@ -169,20 +181,12 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2.5">
-                <Link 
-                  to="/login"
-                  className="text-xs sm:text-sm font-bold text-slate-600 hover:text-primary transition-colors px-3 py-2"
-                >
-                  Log in
-                </Link>
-                <Link 
-                  to="/login"
-                  className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-indigo-600 transition-all shadow-glow-primary active:scale-95"
-                >
-                  Get Started
-                </Link>
-              </div>
+              <Link 
+                to="/login" 
+                className="bg-primary text-white px-5 py-2.5 rounded-full font-bold text-xs sm:text-sm hover:bg-indigo-600 transition-all shadow-glow-primary hover:-translate-y-0.5 active:scale-95"
+              >
+                Sign In
+              </Link>
             )}
           </div>
 
@@ -233,13 +237,12 @@ export default function Navbar() {
               {user && (
                 <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/80 to-slate-50 border border-indigo-100/80 flex items-center justify-between mb-1">
                   <div className="flex items-center gap-3 min-w-0">
-                    {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || 'User'} className="w-10 h-10 rounded-full object-cover border border-white shadow-sm shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                        {(user.displayName || user.email || 'U').charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <UserAvatar 
+                      photoURL={user.photoURL}
+                      name={user.displayName}
+                      email={user.email}
+                      size="md"
+                    />
                     <div className="min-w-0">
                       <p className="font-extrabold text-sm text-slate-900 truncate">{user.displayName || 'Logged In User'}</p>
                       <p className="text-[11px] text-slate-500 truncate font-medium">{user.email}</p>

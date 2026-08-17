@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Lock, CheckCircle2 } from 'lucide-react';
+import { Lock, CheckCircle2, Upload, RotateCcw, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import UserAvatar from '../UserAvatar';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, "Name must be at least 2 characters").optional(),
@@ -37,9 +39,55 @@ const AVATAR_OPTIONS = [
   '/avatars/avatar_graduate_1784368005257.png'
 ];
 
+// Helper to compress uploaded images client-side to max 300x300 WebP/JPEG data URL (~80-120kb)
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Failed to parse image'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ProfileSettings() {
   const { user, updateProfile } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting, isDirty } } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -56,32 +104,87 @@ export default function ProfileSettings() {
     }
   });
 
-  const onSubmit = async (data: ProfileFormValues) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    updateProfile({
-      ...(data.displayName && data.displayName !== user?.displayName && { 
-        displayName: data.displayName,
-        nameChanged: true 
-      }),
-      ...(data.photoURL && { photoURL: data.photoURL }),
-      phone: data.phone,
-      school: data.school,
-      city: data.city,
-      degree: data.degree,
-      yearOfStudy: data.yearOfStudy,
-      githubUrl: data.githubUrl,
-      linkedinUrl: data.linkedinUrl,
-    });
-    
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+  const selectedAvatar = watch("photoURL") || user?.photoURL || AVATAR_OPTIONS[0];
+
+  // Instant 1-Click Avatar Selection
+  const handleSelectAvatar = async (avatarUrl: string) => {
+    setValue('photoURL', avatarUrl, { shouldDirty: true });
+    try {
+      await updateProfile({ photoURL: avatarUrl });
+      toast.success('Avatar updated!');
+    } catch (err) {
+      console.error('Error updating avatar:', err);
+    }
   };
 
-  const selectedAvatar = watch("photoURL");
+  // Custom Photo Upload Handler
+  const handleCustomPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPG, PNG, WebP)');
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading('Optimizing & uploading photo...');
+
+    try {
+      const compressedDataUrl = await compressImage(file);
+      setValue('photoURL', compressedDataUrl, { shouldDirty: true });
+      await updateProfile({ photoURL: compressedDataUrl });
+      toast.success('Profile picture updated successfully!', { id: toastId });
+    } catch (err) {
+      console.error('Error uploading custom photo:', err);
+      toast.error('Failed to update picture. Please try another image.', { id: toastId });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Reset to default avatar
+  const handleResetPhoto = async () => {
+    const defaultAvatar = AVATAR_OPTIONS[0];
+    setValue('photoURL', defaultAvatar, { shouldDirty: true });
+    try {
+      await updateProfile({ photoURL: defaultAvatar });
+      toast.success('Reset to default avatar');
+    } catch (err) {
+      console.error('Error resetting photo:', err);
+    }
+  };
+
+  const onSubmit = async (data: ProfileFormValues) => {
+    try {
+      await updateProfile({
+        ...(data.displayName && data.displayName !== user?.displayName && { 
+          displayName: data.displayName,
+          nameChanged: true 
+        }),
+        ...(data.photoURL && { photoURL: data.photoURL }),
+        phone: data.phone || '',
+        school: data.school || '',
+        city: data.city || '',
+        degree: data.degree || '',
+        yearOfStudy: data.yearOfStudy || '',
+        githubUrl: data.githubUrl || '',
+        linkedinUrl: data.linkedinUrl || '',
+      });
+      
+      setIsSaved(true);
+      toast.success('Profile saved successfully!');
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      toast.error('Failed to save profile. Please check your connection.');
+    }
+  };
 
   if (!user) return null;
+
+  const isCustomPhoto = selectedAvatar && !AVATAR_OPTIONS.includes(selectedAvatar);
 
   return (
     <div className="max-w-3xl">
@@ -103,29 +206,119 @@ export default function ProfileSettings() {
           )}
         </AnimatePresence>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 relative z-10">
-          
-          {/* Avatar Picker */}
-          <div className="pb-6 border-b border-gray-100">
-            <label className="block text-sm font-bold text-slate-700 mb-3">Choose Your Avatar</label>
-            <div className="flex flex-wrap gap-3">
-              {AVATAR_OPTIONS.map((avatar, idx) => (
+        {/* Profile Picture / Avatar Management Card */}
+        <div className="pb-8 border-b border-gray-100">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-slate-50/70 p-5 rounded-3xl border border-slate-100 mb-6">
+            {/* Live Preview Avatar */}
+            <div className="relative group">
+              <UserAvatar 
+                photoURL={selectedAvatar} 
+                name={user.displayName}
+                email={user.email}
+                size="2xl"
+                showStatus={true}
+                className="border-4 border-white shadow-lg ring-2 ring-primary/20"
+              />
+            </div>
+
+            {/* Photo Actions */}
+            <div className="space-y-3 text-center sm:text-left flex-1 min-w-0">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-base flex items-center justify-center sm:justify-start gap-2">
+                  <span>Profile Photo</span>
+                  {isCustomPhoto ? (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                      Custom Photo
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                      3D Avatar
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Choose a 3D avatar from below or upload your own custom picture (JPG, PNG, WebP).
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleCustomPhotoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
                 <button
-                  key={idx}
                   type="button"
-                  onClick={() => setValue('photoURL', avatar, { shouldDirty: true })}
-                  className={`relative rounded-full transition-all duration-200 ${
-                    selectedAvatar === avatar 
-                      ? 'ring-4 ring-primary ring-offset-2 scale-110' 
-                      : 'hover:scale-105 hover:bg-slate-50 ring-1 ring-gray-200'
-                  }`}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-indigo-600 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
                 >
-                  <img src={avatar} alt={`Avatar option ${idx + 1}`} className="w-14 h-14 rounded-full bg-slate-100" />
+                  <Upload size={14} />
+                  <span>{isUploading ? 'Optimizing...' : 'Upload Custom Photo'}</span>
                 </button>
-              ))}
+
+                {isCustomPhoto && (
+                  <button
+                    type="button"
+                    onClick={handleResetPhoto}
+                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset to Avatar</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* 3D Preset Avatars */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                <Sparkles size={15} className="text-amber-500" />
+                <span>Choose 3D Avatar (1-Click Apply)</span>
+              </label>
+              <span className="text-[11px] text-slate-400 font-medium">8 Styles</span>
+            </div>
+
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+              {AVATAR_OPTIONS.map((avatar, idx) => {
+                const isSelected = selectedAvatar === avatar;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSelectAvatar(avatar)}
+                    title={`Select avatar style ${idx + 1}`}
+                    className={`relative rounded-2xl p-1 transition-all duration-200 group cursor-pointer ${
+                      isSelected 
+                        ? 'ring-3 ring-primary ring-offset-2 scale-105 bg-indigo-50 shadow-md' 
+                        : 'hover:scale-105 hover:bg-slate-100 bg-slate-50 border border-slate-200/80'
+                    }`}
+                  >
+                    <img 
+                      src={avatar} 
+                      alt={`Avatar option ${idx + 1}`} 
+                      className="w-full aspect-square rounded-xl object-cover bg-white shadow-xs" 
+                    />
+                    {isSelected && (
+                      <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary text-white rounded-full flex items-center justify-center shadow-xs">
+                        <CheckCircle2 size={13} className="stroke-[3]" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Information Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pt-6 relative z-10">
+          
           {/* Locked/Once-editable Fields */}
           <div className="grid md:grid-cols-2 gap-6 pb-6 border-b border-gray-100">
             <div>
@@ -265,7 +458,7 @@ export default function ProfileSettings() {
             <button 
               type="submit" 
               disabled={isSubmitting || (!isDirty && !isSaved)}
-              className="bg-primary text-white px-8 py-3.5 rounded-xl font-bold hover:bg-indigo-600 transition-colors shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-primary text-white px-8 py-3.5 rounded-xl font-bold hover:bg-indigo-600 transition-colors shadow-glow-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer active:scale-95"
             >
               {isSubmitting && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               Save Changes
