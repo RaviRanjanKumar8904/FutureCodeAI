@@ -202,5 +202,17 @@ service cloud.firestore {
       // Only admins can read, update, or delete logs
       allow read, update, delete: if isAdmin();
     }
+
+    // ----------------------------------------------------------------------
+    // PRIVATE WEBINARS & ATTENDEES (ADMIN ONLY - HIDDEN FROM PUBLIC)
+    // ----------------------------------------------------------------------
+    match /webinar_attendees/{attendeeId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /webinars/{webinarId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
+

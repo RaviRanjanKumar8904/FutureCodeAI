@@ -30,6 +30,7 @@ const ManageGallery = lazy(() => import('./pages/admin/ManageGallery'));
 const ManageCertificates = lazy(() => import('./pages/admin/ManageCertificates'));
 const ManageStudents = lazy(() => import('./pages/admin/ManageStudents'));
 const ManageInternships = lazy(() => import('./pages/admin/ManageInternships'));
+const ManageWebinars = lazy(() => import('./pages/admin/ManageWebinars'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
 const InstituteDashboard = lazy(() => import('./pages/InstituteDashboard'));
@@ -113,6 +114,7 @@ function App() {
               {/* Admin Modules */}
               <Route path="internships" element={<ManageInternships />} />
               <Route path="students" element={<ManageStudents />} />
+              <Route path="webinars" element={<ManageWebinars />} />
               <Route path="certificates" element={<ManageCertificates />} />
               <Route path="gallery" element={<ManageGallery />} />
               <Route path="logs" element={<ActivityLogs />} />

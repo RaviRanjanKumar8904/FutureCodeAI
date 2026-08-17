@@ -14,7 +14,8 @@ import {
   Building2,
   ListOrdered,
   Menu,
-  X
+  X,
+  Video
 } from 'lucide-react';
 
 const ADMIN_NAV = [
@@ -23,10 +24,10 @@ const ADMIN_NAV = [
   { name: 'Collaborators', path: '/admin/collaborators', icon: Building2 },
   { name: 'Admins', path: '/admin/admins', icon: ShieldAlert },
   { name: 'Staff', path: '/admin/staff', icon: Users },
-  // Future sections placeholder:
   { name: 'Courses', path: '/admin/courses', icon: BookOpen },
   { name: 'Internships', path: '/admin/internships', icon: Briefcase },
   { name: 'Students', path: '/admin/students', icon: Users },
+  { name: 'Webinars', path: '/admin/webinars', icon: Video },
   { name: 'Certificates', path: '/admin/certificates', icon: Award },
   { name: 'Gallery', path: '/admin/gallery', icon: ImageIcon },
   { name: 'Activity Log', path: '/admin/logs', icon: ListOrdered },
