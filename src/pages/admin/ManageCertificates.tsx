@@ -346,52 +346,55 @@ export default function ManageCertificates() {
 
       {/* Bulk Preview Modal */}
       {showBulkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
                   <Upload size={20} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Confirm Bulk Upload</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">Confirm Bulk Upload</h2>
                   <p className="text-xs font-medium text-slate-500">{bulkData.length} certificates will be issued.</p>
                 </div>
               </div>
-              <button onClick={() => { setShowBulkModal(false); setBulkData([]); }} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
-                <X size={20} />
+              <button 
+                onClick={() => { setShowBulkModal(false); setBulkData([]); }} 
+                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full cursor-pointer active:scale-90"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <div className="overflow-auto flex-1 p-6">
-              <table className="w-full text-left border-collapse text-sm">
+            <div className="overflow-auto flex-1 p-4 sm:p-6 scrollbar-none">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
-                    <th className="p-3">#</th>
-                    <th className="p-3">Student Name</th>
-                    <th className="p-3">Course</th>
-                    <th className="p-3">Issue Date</th>
-                    <th className="p-3">Grade</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                    <th className="p-2.5">#</th>
+                    <th className="p-2.5">Student Name</th>
+                    <th className="p-2.5">Course</th>
+                    <th className="p-2.5">Issue Date</th>
+                    <th className="p-2.5">Grade</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {bulkData.map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="p-3 text-slate-400 font-mono">{idx + 1}</td>
-                      <td className="p-3 font-bold text-slate-900">{row.studentName}</td>
-                      <td className="p-3 text-slate-600">{row.courseName}</td>
-                      <td className="p-3 text-slate-500">{row.issueDate || 'Today'}</td>
-                      <td className="p-3 text-slate-500">{row.grade || '—'}</td>
+                      <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
+                      <td className="p-2.5 font-bold text-slate-900">{row.studentName}</td>
+                      <td className="p-2.5 text-slate-600">{row.courseName}</td>
+                      <td className="p-2.5 text-slate-500">{row.issueDate || 'Today'}</td>
+                      <td className="p-2.5 text-slate-500">{row.grade || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="p-6 border-t border-slate-100 flex gap-3 shrink-0">
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/90 flex gap-3 shrink-0">
               <button
                 onClick={() => { setShowBulkModal(false); setBulkData([]); }}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
                 disabled={bulkUploading}
               >
                 Cancel
@@ -399,11 +402,11 @@ export default function ManageCertificates() {
               <button
                 onClick={handleBulkConfirm}
                 disabled={bulkUploading}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95"
               >
                 {bulkUploading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Issuing...
                   </>
                 ) : (
@@ -417,156 +420,161 @@ export default function ManageCertificates() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/70 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                   <Award size={20} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Issue New Certificate</h2>
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900">Issue New Certificate</h2>
                   <p className="text-xs font-medium text-slate-500">A unique ID will be auto-generated.</p>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
-                <X size={20} />
+              <button 
+                onClick={() => setShowModal(false)} 
+                className="text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-full cursor-pointer active:scale-90"
+              >
+                <X size={18} />
               </button>
             </div>
             
-            <form onSubmit={handleIssueCertificate} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Student Name <span className="text-rose-500">*</span></label>
-                  <input 
-                    type="text"
-                    value={formData.studentName}
-                    onChange={(e) => setFormData({...formData, studentName: e.target.value})}
-                    placeholder="E.g. Rahul Kumar"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                    required
-                  />
+            <form onSubmit={handleIssueCertificate} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 scrollbar-none text-xs sm:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Student Name <span className="text-rose-500">*</span></label>
+                    <input 
+                      type="text"
+                      value={formData.studentName}
+                      onChange={(e) => setFormData({...formData, studentName: e.target.value})}
+                      placeholder="E.g. Rahul Kumar"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Gender</label>
+                    <select 
+                      value={formData.gender}
+                      onChange={(e) => setFormData({...formData, gender: e.target.value as '' | 'Male' | 'Female'})}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base bg-white"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Gender</label>
-                  <select 
-                    value={formData.gender}
-                    onChange={(e) => setFormData({...formData, gender: e.target.value as '' | 'Male' | 'Female'})}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Student Email</label>
-                <input 
-                  type="email"
-                  value={formData.studentEmail}
-                  onChange={(e) => setFormData({...formData, studentEmail: e.target.value})}
-                  placeholder="E.g. student@email.com"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Program / Course Name <span className="text-rose-500">*</span></label>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Student Email</label>
                   <input 
-                    type="text"
-                    value={formData.courseName}
-                    onChange={(e) => setFormData({...formData, courseName: e.target.value})}
-                    placeholder="E.g. Full-Stack Web Development"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                    required
+                    type="email"
+                    value={formData.studentEmail}
+                    onChange={(e) => setFormData({...formData, studentEmail: e.target.value})}
+                    placeholder="E.g. student@email.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
                   />
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Domain / Specialization</label>
-                  <input 
-                    type="text"
-                    value={formData.domain}
-                    onChange={(e) => setFormData({...formData, domain: e.target.value})}
-                    placeholder="E.g. Full Stack Web Development"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Program / Course <span className="text-rose-500">*</span></label>
+                    <input 
+                      type="text"
+                      value={formData.courseName}
+                      onChange={(e) => setFormData({...formData, courseName: e.target.value})}
+                      placeholder="E.g. Full-Stack Web Dev"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Domain / Specialization</label>
+                    <input 
+                      type="text"
+                      value={formData.domain}
+                      onChange={(e) => setFormData({...formData, domain: e.target.value})}
+                      placeholder="E.g. Full Stack Web"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Start Date</label>
+                    <input 
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">End Date</label>
+                    <input 
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => { const v = e.target.value; setFormData({...formData, endDate: v, issueDate: v}); }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Issue Date <span className="text-rose-500">*</span></label>
+                    <input 
+                      type="date"
+                      value={formData.issueDate}
+                      onChange={(e) => { const v = e.target.value; setFormData({...formData, issueDate: v, endDate: v}); }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Grade (Optional)</label>
+                    <input 
+                      type="text"
+                      value={formData.grade}
+                      onChange={(e) => setFormData({...formData, grade: e.target.value})}
+                      placeholder="E.g. A+"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Marks %</label>
+                    <input 
+                      type="text"
+                      value={formData.marksPercentage}
+                      onChange={(e) => setFormData({...formData, marksPercentage: e.target.value})}
+                      placeholder="E.g. 95"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Start Date</label>
-                  <input 
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">End Date</label>
-                  <input 
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => { const v = e.target.value; setFormData({...formData, endDate: v, issueDate: v}); }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Issue Date <span className="text-rose-500">*</span></label>
-                  <input 
-                    type="date"
-                    value={formData.issueDate}
-                    onChange={(e) => { const v = e.target.value; setFormData({...formData, issueDate: v, endDate: v}); }}
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Grade (Optional)</label>
-                  <input 
-                    type="text"
-                    value={formData.grade}
-                    onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                    placeholder="E.g. A+"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Marks %</label>
-                  <input 
-                    type="text"
-                    value={formData.marksPercentage}
-                    onChange={(e) => setFormData({...formData, marksPercentage: e.target.value})}
-                    placeholder="E.g. 95"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                  />
-                </div>
-              </div>
-              
-              <div className="pt-4 flex gap-3">
+              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/90 flex gap-3 shrink-0">
                 <button 
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
                   disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95"
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Issuing...
                     </>
                   ) : (

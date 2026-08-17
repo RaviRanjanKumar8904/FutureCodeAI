@@ -370,7 +370,7 @@ export default function Collaborators() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center overflow-y-auto z-[1000]"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center overflow-y-auto z-[1000]"
             onClick={() => !isSubmitting && setIsFormOpen(false)}
           >
             <motion.div
@@ -378,11 +378,11 @@ export default function Collaborators() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl relative my-auto p-5 sm:p-8 max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl relative my-auto p-4 sm:p-8 max-h-[92dvh] overflow-y-auto scrollbar-none border border-gray-100"
             >
               <button 
                 onClick={() => !isSubmitting && setIsFormOpen(false)}
-                className="absolute top-4 right-4 w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors z-10 cursor-pointer"
+                className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors z-10 cursor-pointer active:scale-90"
               >
                 <X size={18} />
               </button>
@@ -395,75 +395,75 @@ export default function Collaborators() {
                     exit={{ opacity: 0 }}
                     className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center text-center p-6"
                   >
-                    <CheckCircle2 size={64} className="text-emerald-500 mb-4" />
+                    <CheckCircle2 size={56} className="text-emerald-500 mb-3" />
                     <h3 className="text-xl font-extrabold text-text-heading mb-2">Request Submitted!</h3>
                     <p className="text-slate-600 font-medium text-xs sm:text-sm">Thank you for your interest. Our partnership team will contact you shortly.</p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <h2 className="text-xl sm:text-2xl font-extrabold text-text-heading mb-1">Partner with Us</h2>
-              <p className="text-slate-500 mb-6 font-medium text-xs sm:text-sm">Fill out the details below and our team will get in touch.</p>
+              <h2 className="text-lg sm:text-2xl font-extrabold text-text-heading mb-1 pr-8">Partner with Us</h2>
+              <p className="text-slate-500 mb-4 sm:mb-6 font-medium text-xs sm:text-sm">Fill out the details below and our team will get in touch.</p>
 
-              <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4 text-xs sm:text-sm">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-3.5 text-xs sm:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Your Name</label>
-                    <input {...register("name")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
-                    {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name.message}</p>}
+                    <input {...register("name")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base" />
+                    {errors.name && <p className="text-red-500 text-[11px] mt-0.5 font-medium">{errors.name.message}</p>}
                   </div>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Institute / College Name</label>
-                    <input {...register("instituteName")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
-                    {errors.instituteName && <p className="text-red-500 text-xs mt-1 font-medium">{errors.instituteName.message}</p>}
+                    <input {...register("instituteName")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base" />
+                    {errors.instituteName && <p className="text-red-500 text-[11px] mt-0.5 font-medium">{errors.instituteName.message}</p>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Institution Type</label>
-                    <select {...register("type")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium bg-white">
+                    <select {...register("type")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium bg-white text-xs sm:text-base">
                       <option value="Coaching Institute">Coaching Institute</option>
                       <option value="College">College</option>
                     </select>
                   </div>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">City</label>
-                    <input {...register("city")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
-                    {errors.city && <p className="text-red-500 text-xs mt-1 font-medium">{errors.city.message}</p>}
+                    <input {...register("city")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base" />
+                    {errors.city && <p className="text-red-500 text-[11px] mt-0.5 font-medium">{errors.city.message}</p>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Phone Number</label>
-                    <input {...register("phone")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
-                    {errors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{errors.phone.message}</p>}
+                    <input {...register("phone")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base" />
+                    {errors.phone && <p className="text-red-500 text-[11px] mt-0.5 font-medium">{errors.phone.message}</p>}
                   </div>
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Email Address</label>
-                    <input {...register("email")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
-                    {errors.email && <p className="text-red-500 text-xs mt-1 font-medium">{errors.email.message}</p>}
+                    <input {...register("email")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base" />
+                    {errors.email && <p className="text-red-500 text-[11px] mt-0.5 font-medium">{errors.email.message}</p>}
                   </div>
                 </div>
 
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Message / Enquiry Details</label>
-                  <textarea {...register("message")} rows={3} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium resize-none" />
-                  {errors.message && <p className="text-red-500 text-xs mt-1 font-medium">{errors.message.message}</p>}
+                  <textarea {...register("message")} rows={3} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium resize-none text-xs sm:text-base" />
+                  {errors.message && <p className="text-red-500 text-[11px] mt-0.5 font-medium">{errors.message.message}</p>}
                 </div>
 
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 mt-2 active:scale-95 cursor-pointer text-sm"
+                  className="w-full bg-primary text-white py-3 sm:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 mt-2 active:scale-95 cursor-pointer text-xs sm:text-sm"
                 >
                   {isSubmitting ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
                       <span>Submit Partnership Request</span>
-                      <Send size={16} />
+                      <Send size={15} />
                     </>
                   )}
                 </button>

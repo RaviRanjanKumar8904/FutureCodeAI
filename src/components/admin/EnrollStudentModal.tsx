@@ -98,25 +98,25 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
           gender: initialData?.gender || 'Male',
           collegeName: initialData?.collegeName || '',
           rollNo: initialData?.rollNo || '',
-          courseId: matchedCourseId,
-          courseName: matchedCourseName,
+          courseId: matchedCourseId || (coursesData[0]?.id || ''),
+          courseName: matchedCourseName || (coursesData[0] ? (coursesData[0] as any).title : ''),
           centerId: matchedCenterId,
           centerName: matchedCenterName,
           batch: batchOptions[0] || '',
         });
-      } catch (error) {
-        console.error('Error fetching dropdown data:', error);
+      } catch (err) {
+        console.error('Error loading courses/centers:', err);
       }
     };
     fetchData();
-  }, [isOpen, batchOptions, initialData]);
+  }, [isOpen, initialData, batchOptions]);
 
   const handleCourseChange = (courseId: string) => {
     const course = courses.find(c => c.id === courseId);
     setFormData(prev => ({
       ...prev,
       courseId,
-      courseName: course?.title || '',
+      courseName: course?.title || course?.courseName || '',
     }));
   };
 
@@ -131,72 +131,73 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.studentName.trim() || !formData.email.trim() || !formData.courseName.trim()) {
-      toast.error('Please fill in all required fields');
+    if (!formData.studentName.trim() || !formData.email.trim() || !formData.courseId) {
+      toast.error('Please fill all required fields');
       return;
     }
+
     setLoading(true);
     const toastId = toast.loading('Enrolling student...');
 
     try {
-      const cleanEmail = formData.email.toLowerCase().trim();
-      const cleanName = formData.studentName.trim();
+      const emailLower = formData.email.trim().toLowerCase();
+      const matchedCourse = courses.find(c => c.id === formData.courseId);
+      const selectedCenter = centers.find(c => c.id === formData.centerId);
 
-      // Check if user doc already exists with this email
-      const usersQuery = query(collection(db, 'users'), where('email', '==', cleanEmail));
-      const existingUsers = await getDocs(usersQuery);
-      let studentId = '';
+      // Check if student user already exists by email
+      const userQ = query(collection(db, 'users'), where('email', '==', emailLower));
+      const userSnap = await getDocs(userQ);
 
-      if (existingUsers.empty) {
-        // Create user doc
-        const userRef = await addDoc(collection(db, 'users'), {
-          email: cleanEmail,
-          displayName: cleanName,
-          phone: formData.phone || '',
-          gender: formData.gender || 'Male',
-          school: formData.collegeName || '',
-          collegeName: formData.collegeName || '',
-          rollNo: formData.rollNo || '',
-          enrolledCourse: formData.courseName,
+      let studentUid = '';
+      let instituteId = formData.centerId || '';
+
+      if (!userSnap.empty) {
+        // User already exists, update their profile fields
+        const existingUserDoc = userSnap.docs[0];
+        studentUid = existingUserDoc.id;
+        
+        await updateDoc(doc(db, 'users', studentUid), {
+          displayName: formData.studentName.trim(),
+          phone: formData.phone.trim() || existingUserDoc.data()?.phone || '',
+          gender: formData.gender,
+          school: formData.collegeName.trim() || existingUserDoc.data()?.school || '',
+          collegeName: formData.collegeName.trim() || existingUserDoc.data()?.collegeName || '',
+          rollNo: formData.rollNo.trim() || existingUserDoc.data()?.rollNo || '',
+          enrolledCourse: formData.courseName || matchedCourse?.title || '',
           assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
           batch: formData.batch,
-          photoURL: '',
+        });
+      } else {
+        // Create user document placeholder for student
+        const newUserRef = await addDoc(collection(db, 'users'), {
+          displayName: formData.studentName.trim(),
+          email: emailLower,
+          phone: formData.phone.trim(),
+          gender: formData.gender,
+          school: formData.collegeName.trim(),
+          collegeName: formData.collegeName.trim(),
+          rollNo: formData.rollNo.trim(),
+          enrolledCourse: formData.courseName || matchedCourse?.title || '',
+          assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
+          batch: formData.batch,
           role: 'student',
           status: 'active',
-          enrolledByAdmin: true,
+          photoURL: '',
           createdAt: serverTimestamp(),
         });
-        studentId = userRef.id;
-      } else {
-        studentId = existingUsers.docs[0].id;
-        // Update user profile with gender/college/rollNo/enrolledCourse
-        await updateDoc(doc(db, 'users', studentId), {
-          displayName: cleanName,
-          gender: formData.gender || 'Male',
-          school: formData.collegeName || '',
-          collegeName: formData.collegeName || '',
-          rollNo: formData.rollNo || '',
-          phone: formData.phone || '',
-          enrolledCourse: formData.courseName,
-          assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
-          batch: formData.batch,
-        });
+        studentUid = newUserRef.id;
       }
 
-      // Determine linked institute ID from selected center
-      const selectedCenter = centers.find(c => c.id === formData.centerId);
-      const instituteId = selectedCenter ? (selectedCenter.linkedUserId || selectedCenter.id || '') : '';
-      const matchedCourse = courses.find(c => c.id === formData.courseId || c.title?.toLowerCase() === formData.courseName.toLowerCase());
-
-      // Create enrollment record
+      // Create enrollment document
       await addDoc(collection(db, 'enrollments'), {
-        studentId,
-        studentEmail: cleanEmail,
-        studentName: cleanName,
-        gender: formData.gender || 'Male',
-        collegeName: formData.collegeName || '',
-        rollNo: formData.rollNo || '',
-        courseName: formData.courseName,
+        studentId: studentUid,
+        studentName: formData.studentName.trim(),
+        studentEmail: emailLower,
+        phone: formData.phone.trim(),
+        gender: formData.gender,
+        collegeName: formData.collegeName.trim(),
+        rollNo: formData.rollNo.trim(),
+        courseName: formData.courseName || matchedCourse?.title || 'Tech Program',
         courseId: formData.courseId || matchedCourse?.id || '',
         institute: formData.centerName || 'FutureCodeAI (Online)',
         centerId: formData.centerId || '',
@@ -224,195 +225,198 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center overflow-y-auto" style={{ zIndex: 1000 }}>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center overflow-y-auto z-[1100]">
       <div
-        className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative my-auto flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative my-auto flex flex-col max-h-[92dvh] border border-gray-100"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-slate-50/50">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-100 bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
               <UserPlus size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Enroll Student</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Enroll Student</h2>
               <p className="text-xs text-slate-500 font-medium">Add a student to a course, center, and batch</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer active:scale-90"
+            aria-label="Close modal"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
-          {/* Student Name & Email */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <User size={14} className="text-slate-400" />
-                Student Name <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.studentName}
-                onChange={e => setFormData(prev => ({ ...prev, studentName: e.target.value }))}
-                placeholder="e.g. Rahul Kumar"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 scrollbar-none text-xs sm:text-sm">
+            {/* Student Name & Email */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <User size={14} className="text-slate-400" />
+                  Student Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.studentName}
+                  onChange={e => setFormData(prev => ({ ...prev, studentName: e.target.value }))}
+                  placeholder="e.g. Rahul Kumar"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Mail size={14} className="text-slate-400" />
+                  Email Address <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="e.g. rahul@example.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Mail size={14} className="text-slate-400" />
-                Email Address <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={formData.email}
-                onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="e.g. rahul@example.com"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-            </div>
-          </div>
 
-          {/* Phone & Gender */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Phone size={14} className="text-slate-400" />
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                value={formData.phone}
-                onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                placeholder="e.g. +91 9876543210"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
+            {/* Phone & Gender */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Phone size={14} className="text-slate-400" />
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="e.g. +91 9876543210"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Gender <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={formData.gender}
+                  onChange={e => setFormData(prev => ({ ...prev, gender: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
             </div>
+
+            {/* College Name & Roll Number */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <School size={14} className="text-slate-400" />
+                  College / School Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.collegeName}
+                  onChange={e => setFormData(prev => ({ ...prev, collegeName: e.target.value }))}
+                  placeholder="e.g. MIT Muzaffarpur"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Hash size={14} className="text-slate-400" />
+                  Roll Number / Student ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.rollNo}
+                  onChange={e => setFormData(prev => ({ ...prev, rollNo: e.target.value }))}
+                  placeholder="e.g. 21CS045"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Course Selection */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Gender <span className="text-rose-500">*</span>
+              <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <BookOpen size={14} className="text-slate-400" />
+                Course / Program <span className="text-rose-500">*</span>
               </label>
               <select
-                value={formData.gender}
-                onChange={e => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                required
+                value={formData.courseId}
+                onChange={e => handleCourseChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
               >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          {/* College Name & Roll Number */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <School size={14} className="text-slate-400" />
-                College / School Name
-              </label>
-              <input
-                type="text"
-                value={formData.collegeName}
-                onChange={e => setFormData(prev => ({ ...prev, collegeName: e.target.value }))}
-                placeholder="e.g. MIT Muzaffarpur"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Hash size={14} className="text-slate-400" />
-                Roll Number / Student ID
-              </label>
-              <input
-                type="text"
-                value={formData.rollNo}
-                onChange={e => setFormData(prev => ({ ...prev, rollNo: e.target.value }))}
-                placeholder="e.g. 21CS045"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
-          {/* Course Selection */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <BookOpen size={14} className="text-slate-400" />
-              Course / Program <span className="text-rose-500">*</span>
-            </label>
-            <select
-              required
-              value={formData.courseId}
-              onChange={e => handleCourseChange(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-            >
-              <option value="">Select a course...</option>
-              {courses.map(course => (
-                <option key={course.id} value={course.id}>
-                  {course.title || course.courseName} {course.duration ? `(${course.duration})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Center & Batch */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Building2 size={14} className="text-slate-400" />
-                Training Center / Institute
-              </label>
-              <select
-                value={formData.centerId}
-                onChange={e => handleCenterChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-              >
-                <option value="">FutureCode AI (Online)</option>
-                {centers.map(center => (
-                  <option key={center.id} value={center.id}>
-                    {center.name} {center.city ? `(${center.city})` : ''}
+                <option value="">Select a course...</option>
+                {courses.map(course => (
+                  <option key={course.id} value={course.id}>
+                    {course.title || course.courseName} {course.duration ? `(${course.duration})` : ''}
                   </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Batch
-              </label>
-              <select
-                value={formData.batch}
-                onChange={e => setFormData(prev => ({ ...prev, batch: e.target.value }))}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-              >
-                {batchOptions.map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
+
+            {/* Center & Batch */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Building2 size={14} className="text-slate-400" />
+                  Training Center / Institute
+                </label>
+                <select
+                  value={formData.centerId}
+                  onChange={e => handleCenterChange(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                >
+                  <option value="">FutureCode AI (Online)</option>
+                  {centers.map(center => (
+                    <option key={center.id} value={center.id}>
+                      {center.name} {center.city ? `(${center.city})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Batch
+                </label>
+                <select
+                  value={formData.batch}
+                  onChange={e => setFormData(prev => ({ ...prev, batch: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                >
+                  {batchOptions.map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
-          {/* Footer Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">
+          {/* Sticky Footer Actions */}
+          <div className="p-3 sm:p-4 bg-slate-50/90 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors"
+              className="px-4 py-2.5 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs sm:text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
             >
               {loading ? (
                 <>

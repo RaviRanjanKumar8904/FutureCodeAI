@@ -48,7 +48,7 @@ interface EnquiryFormModalProps {
 export default function EnquiryFormModal({ isOpen, onClose, target, type = 'course' }: EnquiryFormModalProps) {
   const { user } = useAuth();
   const [isSuccess, setIsSuccess] = useState(false);
-  const [submitError, setSubmitError] = useState('');
+  const [submitError] = useState('');
 
   const {
     register,
@@ -99,33 +99,17 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
     };
   }, [isOpen, user, reset]);
 
-  if (!isOpen || !target) return null;
-
   const onSubmit = async (data: EnquiryFormValues) => {
-    setSubmitError('');
-
-    if (type === 'internship') {
-      if (!data.collegeName?.trim()) {
-        setSubmitError('Please enter your college/institute name');
-        return;
-      }
-      if (!data.rollNo?.trim()) {
-        setSubmitError('Please enter your Registration / Roll Number');
-        return;
-      }
-    }
+    if (!target) return;
 
     try {
-      // Structure the final payload for Firestore
       const payload = {
         name: data.name,
-        phone: data.phone,
         email: data.email,
+        phone: data.phone,
         gender: data.gender,
-        collegeName: data.collegeName || '',
-        rollNo: data.rollNo || '',
-        studentId: user?.uid || '',
-        instituteId: target.instituteId || '',
+        collegeName: data.collegeName || "N/A",
+        rollNo: data.rollNo || "N/A",
         userType: data.userType,
         educationDetails: data.educationDetails,
         city: data.city,
@@ -152,14 +136,13 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
     setTimeout(() => {
       reset();
       setIsSuccess(false);
-      setSubmitError('');
     }, 300);
   };
 
   return (
     <AnimatePresence>
       {isOpen && target && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }}
@@ -167,202 +150,188 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={handleClose}
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
           />
 
           {/* Modal Content */}
           <motion.div 
-            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+            initial={{ opacity: 0, scale: 0.96, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 15 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-2xl max-h-[92vh] bg-white rounded-[2rem] shadow-2xl flex flex-col z-10 overflow-hidden"
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-2xl max-h-[92dvh] bg-white rounded-3xl sm:rounded-[2rem] shadow-2xl flex flex-col z-10 overflow-hidden border border-gray-100 my-auto"
           >
             <button 
               onClick={handleClose}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors z-20"
+              className="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors z-20 cursor-pointer active:scale-90"
+              aria-label="Close modal"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
             {isSuccess ? (
-              <div className="text-center py-16 px-6 flex flex-col items-center justify-center">
+              <div className="text-center py-12 px-6 flex flex-col items-center justify-center">
                 <motion.div 
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                  className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-500/20"
+                  className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20"
                 >
-                  <CheckCircle2 size={42} />
+                  <CheckCircle2 size={36} />
                 </motion.div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-3">Application Received!</h3>
-                <p className="text-slate-500 font-medium mb-8 max-w-md mx-auto text-base">
-                  Thank you for applying for <strong>{target.title}</strong>. Our admissions counseling team will get in touch with you shortly.
+                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2">Application Received!</h3>
+                <p className="text-slate-500 font-medium mb-6 max-w-md mx-auto text-xs sm:text-sm">
+                  Thank you for applying for <strong>{target.title}</strong>. Our counseling team will get in touch with you shortly.
                 </p>
                 <button 
                   onClick={handleClose}
-                  className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20"
+                  className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20 cursor-pointer active:scale-95 text-xs sm:text-sm"
                 >
                   Done
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col flex-grow overflow-y-auto scrollbar-hide w-full p-6 sm:p-8">
-                <div className="mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2 bg-indigo-50 text-indigo-700">
-                    {type === 'internship' ? '🚀 Internship Track' : '🎓 Professional Course'}
+              <div className="flex flex-col flex-grow overflow-y-auto scrollbar-none w-full p-4 sm:p-7">
+                <div className="mb-4 sm:mb-6 pr-8">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider mb-1.5 bg-indigo-50 text-indigo-700">
+                    {type === 'internship' ? '🚀 Internship Track' : '🎓 Tech Program'}
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-1 tracking-tight">
+                  <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-1 tracking-tight">
                     {type === 'internship' ? 'Apply for Internship' : 'Enquire for Course'}
                   </h3>
-                  <p className="text-slate-500 text-sm font-medium">
-                    Submit your application details for <strong className="text-indigo-600">{target.title}</strong>.
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium">
+                    Submit your application for <strong className="text-indigo-600">{target.title}</strong>.
                   </p>
                 </div>
 
                 {submitError && (
-                  <div className="mb-5 p-4 bg-rose-50 text-rose-700 rounded-xl text-sm font-semibold border border-rose-100">
+                  <div className="mb-4 p-3 bg-rose-50 text-rose-700 rounded-xl text-xs font-semibold border border-rose-100">
                     {submitError}
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5 text-xs sm:text-sm">
                   
                   {/* Name & Gender Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Full Name *</label>
+                      <label className="block font-bold text-slate-700 mb-1">Full Name <span className="text-rose-500">*</span></label>
                       <input 
                         {...register("name")}
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-medium text-slate-800 ${errors.name ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-medium text-slate-800 ${errors.name ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. Rahul Sharma"
                       />
-                      {errors.name && <p className="text-rose-500 text-xs mt-1 ml-1">{errors.name.message}</p>}
+                      {errors.name && <p className="text-rose-500 text-[11px] mt-0.5">{errors.name.message}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Gender *</label>
+                      <label className="block font-bold text-slate-700 mb-1">Gender <span className="text-rose-500">*</span></label>
                       <select
                         {...register("gender")}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-bold text-slate-800 cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-base font-bold text-slate-800 cursor-pointer"
                       >
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                       </select>
-                      {errors.gender && <p className="text-rose-500 text-xs mt-1 ml-1">{errors.gender.message}</p>}
                     </div>
                   </div>
 
-                  {/* Phone & Email Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Contact Info Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Phone Number *</label>
+                      <label className="block font-bold text-slate-700 mb-1">Phone Number <span className="text-rose-500">*</span></label>
                       <input 
                         {...register("phone")}
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-medium text-slate-800 ${errors.phone ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        type="tel"
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-medium text-slate-800 ${errors.phone ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. 9876543210"
                       />
-                      {errors.phone && <p className="text-rose-500 text-xs mt-1 ml-1">{errors.phone.message}</p>}
+                      {errors.phone && <p className="text-rose-500 text-[11px] mt-0.5">{errors.phone.message}</p>}
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Email Address *</label>
+                      <label className="block font-bold text-slate-700 mb-1">Email Address <span className="text-rose-500">*</span></label>
                       <input 
                         {...register("email")}
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-medium text-slate-800 ${errors.email ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        type="email"
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-medium text-slate-800 ${errors.email ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. rahul@example.com"
                       />
-                      {errors.email && <p className="text-rose-500 text-xs mt-1 ml-1">{errors.email.message}</p>}
+                      {errors.email && <p className="text-rose-500 text-[11px] mt-0.5">{errors.email.message}</p>}
                     </div>
                   </div>
 
-                  {/* Internship Specific Fields: College Name & Reg/Roll No */}
-                  {type === 'internship' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-teal-50/50 p-4 rounded-2xl border border-teal-100">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-teal-900 mb-1.5 ml-1 flex items-center gap-1.5">
-                          <Building2 size={13} className="text-teal-600" /> College / Institute Name *
-                        </label>
-                        <input 
-                          {...register("collegeName")}
-                          className="w-full bg-white border border-teal-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm font-medium text-slate-800"
-                          placeholder="e.g. Purnea College / MIT Muzaffarpur"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-teal-900 mb-1.5 ml-1 flex items-center gap-1.5">
-                          <Hash size={13} className="text-teal-600" /> Registration / Roll No *
-                        </label>
-                        <input 
-                          {...register("rollNo")}
-                          className="w-full bg-white border border-teal-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm font-medium text-slate-800"
-                          placeholder="e.g. 21CS045 / Reg No. 1928374"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* User Type Radio (for courses) */}
-                  {type === 'course' && (
+                  {/* College & Roll No (Optional) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Applicant Type *</label>
-                      <div className="flex gap-6 ml-1">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Student" 
-                            {...register("userType")} 
-                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-                          />
-                          <span className="text-slate-700 font-bold text-sm">Student</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Parent" 
-                            {...register("userType")} 
-                            className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-                          />
-                          <span className="text-slate-700 font-bold text-sm">Parent / Guardian</span>
-                        </label>
-                      </div>
+                      <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <Building2 size={13} className="text-slate-400" /> College / Institute (Optional)
+                      </label>
+                      <input 
+                        {...register("collegeName")}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-base font-medium text-slate-800"
+                        placeholder="e.g. MIT Muzaffarpur / Purnea College"
+                      />
                     </div>
-                  )}
 
-                  {/* Education / Branch Details */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">
-                      {type === 'internship' ? "Current Branch & Semester/Year *" : userType === 'Parent' ? "Child's Class / Degree & Institute *" : "Class / Qualification & School/College *"}
-                    </label>
-                    <input 
-                      {...register("educationDetails")}
-                      className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-medium text-slate-800 ${errors.educationDetails ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
-                      placeholder={type === 'internship' ? "e.g. B.Tech Computer Science, 6th Semester" : "e.g. 12th Standard / B.Sc IT 2nd Year"}
-                    />
-                    {errors.educationDetails && <p className="text-rose-500 text-xs mt-1 ml-1">{errors.educationDetails.message}</p>}
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <Hash size={13} className="text-slate-400" /> Reg / Roll No (Optional)
+                      </label>
+                      <input 
+                        {...register("rollNo")}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-base font-medium text-slate-800"
+                        placeholder="e.g. 21CS045"
+                      />
+                    </div>
+                  </div>
+
+                  {/* User Type & Education */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Applying As <span className="text-rose-500">*</span></label>
+                      <select 
+                        {...register("userType")}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-bold text-slate-800 cursor-pointer"
+                      >
+                        <option value="Student">Student (Self)</option>
+                        <option value="Parent">Parent / Guardian</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">
+                        {userType === 'Parent' ? "Student's Current Class / Degree *" : "Current Qualification / Year *"}
+                      </label>
+                      <input 
+                        {...register("educationDetails")}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-medium text-slate-800 ${errors.educationDetails ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        placeholder="e.g. B.Tech 3rd Year / BCA / 12th"
+                      />
+                      {errors.educationDetails && <p className="text-rose-500 text-[11px] mt-0.5">{errors.educationDetails.message}</p>}
+                    </div>
                   </div>
 
                   {/* City & Preferred Location */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Your City *</label>
+                      <label className="block font-bold text-slate-700 mb-1">Current City <span className="text-rose-500">*</span></label>
                       <input 
                         {...register("city")}
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-medium text-slate-800 ${errors.city ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-medium text-slate-800 ${errors.city ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. Purnea / Patna"
                       />
-                      {errors.city && <p className="text-rose-500 text-xs mt-1 ml-1">{errors.city.message}</p>}
+                      {errors.city && <p className="text-rose-500 text-[11px] mt-0.5">{errors.city.message}</p>}
                     </div>
                     
                     {type === 'course' && (
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">Preferred Location</label>
+                        <label className="block font-bold text-slate-700 mb-1">Preferred Center / Mode</label>
                         <select 
                           {...register("preferredLocation")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-bold text-slate-800 cursor-pointer"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-bold text-slate-800 cursor-pointer"
                         >
-                          <option value="">No Preference</option>
+                          <option value="">No Preference / Online</option>
                           {locations.map(loc => (
                             <option key={loc} value={loc}>{loc}</option>
                           ))}
@@ -373,44 +342,44 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
 
                   {/* Message */}
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 ml-1">
-                      {type === 'internship' ? "GitHub / Portfolio / Resume link (Optional)" : "Questions or special requests (Optional)"}
+                    <label className="block font-bold text-slate-700 mb-1">
+                      {type === 'internship' ? "GitHub / Portfolio Link (Optional)" : "Special Requests or Questions (Optional)"}
                     </label>
                     <textarea 
                       {...register("message")}
                       rows={2}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-medium text-slate-800 resize-none"
-                      placeholder={type === 'internship' ? "e.g. https://github.com/myprofile or specific interests..." : "e.g. Inquiring about weekend batch timings..."}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-base font-medium text-slate-800 resize-none"
+                      placeholder={type === 'internship' ? "e.g. https://github.com/myprofile..." : "e.g. Inquiring about batch timing..."}
                     />
                   </div>
 
                   {/* Consent Checkbox */}
                   <div>
-                    <label className="flex items-start gap-3 cursor-pointer group mt-2">
-                      <div className="relative flex items-center justify-center mt-0.5">
+                    <label className="flex items-start gap-2.5 cursor-pointer group mt-1">
+                      <div className="relative flex items-center justify-center mt-0.5 shrink-0">
                         <input 
                           type="checkbox" 
                           defaultChecked={true}
                           {...register("consentGiven")}
-                          className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500/20 checked:border-indigo-600 checked:bg-indigo-600 transition-colors cursor-pointer"
+                          className="peer appearance-none w-4 h-4 border-2 border-slate-300 rounded focus:ring-2 focus:ring-indigo-500/20 checked:border-indigo-600 checked:bg-indigo-600 transition-colors cursor-pointer"
                         />
-                        <CheckCircle2 size={13} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3.5} />
+                        <CheckCircle2 size={11} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" strokeWidth={3.5} />
                       </div>
-                      <span className="text-xs text-slate-500 group-hover:text-slate-700 transition-colors leading-relaxed">
-                        I agree to receive application updates via call, WhatsApp, or email from FutureCodeAI.
+                      <span className="text-[11px] text-slate-500 group-hover:text-slate-700 transition-colors leading-relaxed">
+                        I agree to receive updates and counseling via call, WhatsApp, or email from FutureCodeAI.
                       </span>
                     </label>
-                    {errors.consentGiven && <p className="text-rose-500 text-xs mt-1 ml-7">{errors.consentGiven.message}</p>}
+                    {errors.consentGiven && <p className="text-rose-500 text-[11px] mt-0.5">{errors.consentGiven.message}</p>}
                   </div>
 
                   {/* Submit Button */}
                   <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold text-base hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-600/20 mt-2 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-xs sm:text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 mt-1 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer active:scale-95"
                   >
                     {isSubmitting ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       type === 'internship' ? "Submit Internship Application" : "Submit Course Enquiry"
                     )}

@@ -94,51 +94,54 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center overflow-y-auto" style={{ zIndex: 1000 }}>
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-3 sm:p-6 flex items-center justify-center overflow-y-auto z-[1100]">
       <div 
-        className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative my-auto flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative my-auto flex flex-col max-h-[92dvh] border border-gray-100"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-6 md:p-8 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-md z-10">
+        {/* Header */}
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
           <div>
-            <h2 className="text-2xl font-extrabold text-slate-900">
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
               {initialData ? 'Edit Internship' : 'Add New Internship'}
             </h2>
-            <p className="text-slate-500 font-medium text-sm mt-1">Configure internship details.</p>
+            <p className="text-slate-500 font-medium text-xs">Configure internship details and domain.</p>
           </div>
           <button 
             onClick={onClose}
-            className="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors shrink-0"
+            className="w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-90"
+            aria-label="Close modal"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 md:p-8 overflow-y-auto">
-          <form id="internshipForm" onSubmit={handleSubmit} className="space-y-6">
+        {/* Scrollable Form Body */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none text-xs sm:text-sm">
+          <form id="internshipForm" onSubmit={handleSubmit} className="space-y-4">
             
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <Briefcase size={16} className="text-teal-500"/> Title
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Briefcase size={14} className="text-teal-500"/> Title <span className="text-rose-500">*</span>
                 </label>
                 <input 
                   type="text" 
                   required
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
                   placeholder="e.g. Frontend Developer Intern"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <Layers size={16} className="text-teal-500"/> Domain
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Layers size={14} className="text-teal-500"/> Domain
                 </label>
                 <select 
                   value={formData.domain}
                   onChange={e => setFormData({...formData, domain: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base bg-white"
                 >
                   <option value="Software Development">Software Development</option>
                   <option value="Data Science & AI">Data Science & AI</option>
@@ -149,28 +152,28 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <Clock size={16} className="text-teal-500"/> Duration
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Clock size={14} className="text-teal-500"/> Duration <span className="text-rose-500">*</span>
                 </label>
                 <input 
                   type="text" 
                   required
                   value={formData.duration}
                   onChange={e => setFormData({...formData, duration: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
                   placeholder="e.g. 3 Months"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                  <Tag size={16} className="text-teal-500"/> Type
+                <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Tag size={14} className="text-teal-500"/> Mode
                 </label>
                 <select 
                   value={formData.type}
                   onChange={e => setFormData({...formData, type: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base bg-white"
                 >
                   <option value="Remote">Remote</option>
                   <option value="On-site">On-site</option>
@@ -179,64 +182,58 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
               </div>
             </div>
 
-            <div className="bg-teal-50 p-6 rounded-2xl border border-teal-100">
-              <h3 className="text-teal-900 font-bold mb-4 flex items-center gap-2">
-                <IndianRupee size={18} /> Pricing (Per Month)
+            <div className="bg-teal-50/70 p-4 rounded-2xl border border-teal-100">
+              <h3 className="text-teal-900 font-bold mb-3 flex items-center gap-1.5 text-xs sm:text-sm">
+                <IndianRupee size={16} /> Pricing (Per Month)
               </h3>
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-teal-900/70 mb-2">Original Price</label>
-                  <div className="relative">
-                    <IndianRupee size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      type="number" 
-                      required
-                      value={formData.originalPrice}
-                      onChange={e => setFormData({...formData, originalPrice: e.target.value as any})}
-                      className="w-full bg-white border border-teal-200 rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium"
-                    />
-                  </div>
+                  <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Original Price (₹)</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={formData.originalPrice}
+                    onChange={e => setFormData({...formData, originalPrice: e.target.value as any})}
+                    className="w-full bg-white border border-teal-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-teal-900/70 mb-2">Discounted Price</label>
-                  <div className="relative">
-                    <IndianRupee size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" />
-                    <input 
-                      type="number" 
-                      required
-                      value={formData.discountedPrice}
-                      onChange={e => setFormData({...formData, discountedPrice: e.target.value as any})}
-                      className="w-full bg-white border border-emerald-200 rounded-xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-bold text-emerald-700"
-                    />
-                  </div>
+                  <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Discounted Price (₹)</label>
+                  <input 
+                    type="number" 
+                    required
+                    value={formData.discountedPrice}
+                    onChange={e => setFormData({...formData, discountedPrice: e.target.value as any})}
+                    className="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-bold text-emerald-700 text-xs sm:text-base"
+                  />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                <ImageIcon size={16} className="text-teal-500"/> Thumbnail URL
+              <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <ImageIcon size={14} className="text-teal-500"/> Thumbnail Image URL
               </label>
               <input 
                 type="url" 
                 required
                 value={formData.thumbnailUrl}
                 onChange={e => setFormData({...formData, thumbnailUrl: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
                 placeholder="https://..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                <FileText size={16} className="text-teal-500"/> Description
+              <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <FileText size={14} className="text-teal-500"/> Description
               </label>
               <textarea 
                 required
-                rows={4}
+                rows={3}
                 value={formData.description}
                 onChange={e => setFormData({...formData, description: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium resize-none"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium resize-none text-xs sm:text-base"
                 placeholder="Brief description of the internship..."
               />
             </div>
@@ -244,11 +241,12 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
           </form>
         </div>
 
-        <div className="p-6 md:p-8 border-t border-gray-100 bg-slate-50 flex items-center justify-end gap-4 shrink-0">
+        {/* Sticky Footer */}
+        <div className="p-3 sm:p-4 border-t border-gray-100 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
           <button 
             type="button"
             onClick={onClose}
-            className="px-6 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
+            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
           >
             Cancel
           </button>
@@ -256,10 +254,10 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
             form="internshipForm"
             type="submit"
             disabled={loading}
-            className="bg-teal-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-teal-700 transition-all shadow-lg shadow-teal-600/20 flex items-center gap-2 disabled:opacity-70"
+            className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-teal-700 transition-all shadow-md shadow-teal-600/20 flex items-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
           >
             {loading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               initialData ? 'Save Changes' : 'Add Internship'
             )}
