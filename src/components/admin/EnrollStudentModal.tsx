@@ -152,23 +152,32 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
       let instituteId = formData.centerId || '';
 
       if (!userSnap.empty) {
-        // User already exists, update their profile fields
+        // User already exists, update their profile fields and append to enrolledCourses
         const existingUserDoc = userSnap.docs[0];
+        const existingData = existingUserDoc.data();
         studentUid = existingUserDoc.id;
         
+        const newCourseTitle = formData.courseName || matchedCourse?.title || '';
+        const currentCourses: string[] = Array.isArray(existingData?.enrolledCourses)
+          ? existingData.enrolledCourses
+          : (existingData?.enrolledCourse ? [existingData.enrolledCourse] : []);
+        const updatedCourses = Array.from(new Set([...currentCourses, newCourseTitle])).filter(Boolean);
+
         await updateDoc(doc(db, 'users', studentUid), {
           displayName: formData.studentName.trim(),
-          phone: formData.phone.trim() || existingUserDoc.data()?.phone || '',
+          phone: formData.phone.trim() || existingData?.phone || '',
           gender: formData.gender,
-          school: formData.collegeName.trim() || existingUserDoc.data()?.school || '',
-          collegeName: formData.collegeName.trim() || existingUserDoc.data()?.collegeName || '',
-          rollNo: formData.rollNo.trim() || existingUserDoc.data()?.rollNo || '',
-          enrolledCourse: formData.courseName || matchedCourse?.title || '',
-          assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
-          batch: formData.batch,
+          school: formData.collegeName.trim() || existingData?.school || '',
+          collegeName: formData.collegeName.trim() || existingData?.collegeName || '',
+          rollNo: formData.rollNo.trim() || existingData?.rollNo || '',
+          enrolledCourse: newCourseTitle,
+          enrolledCourses: updatedCourses,
+          assignedCenter: formData.centerName || existingData?.assignedCenter || 'FutureCodeAI (Online)',
+          batch: formData.batch || existingData?.batch,
         });
       } else {
         // Create user document placeholder for student
+        const newCourseTitle = formData.courseName || matchedCourse?.title || '';
         const newUserRef = await addDoc(collection(db, 'users'), {
           displayName: formData.studentName.trim(),
           email: emailLower,
@@ -177,7 +186,8 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
           school: formData.collegeName.trim(),
           collegeName: formData.collegeName.trim(),
           rollNo: formData.rollNo.trim(),
-          enrolledCourse: formData.courseName || matchedCourse?.title || '',
+          enrolledCourse: newCourseTitle,
+          enrolledCourses: [newCourseTitle],
           assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
           batch: formData.batch,
           role: 'student',

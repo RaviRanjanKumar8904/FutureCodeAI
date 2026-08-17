@@ -268,13 +268,23 @@ export default function MyCourses() {
       )}
 
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-extrabold text-text-heading">My Courses</h2>
-          {enrollments.length > 0 && (
-            <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
-              {enrollments.length} {enrollments.length === 1 ? 'Enrolled Course' : 'Enrolled Courses'}
-            </span>
-          )}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-text-heading">My Courses</h2>
+            {enrollments.length > 0 && (
+              <span className="text-xs font-bold px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full border border-indigo-100">
+                {enrollments.length} {enrollments.length === 1 ? 'Course' : 'Courses'}
+              </span>
+            )}
+          </div>
+
+          <Link
+            to="/programs"
+            className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-indigo-700 bg-primary/5 hover:bg-primary/10 px-4 py-2.5 rounded-xl transition-all self-start sm:self-auto"
+          >
+            <span>+ Enroll in Another Course</span>
+            <ArrowRight size={14} />
+          </Link>
         </div>
 
         {enrollments.length === 0 ? (
