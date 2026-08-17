@@ -374,13 +374,14 @@ export default function Contact() {
                     className={`text-slate-400 transition-transform duration-300 shrink-0 ${openFaq === faq.id ? 'rotate-180 text-primary' : ''}`}
                   />
                 </button>
-                <AnimatePresence>
+                <AnimatePresence initial={false}>
                   {openFaq === faq.id && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
                     >
                       <div className="px-6 pb-6 text-slate-600 font-medium leading-relaxed border-t border-gray-50 pt-4">
                         {faq.answer}

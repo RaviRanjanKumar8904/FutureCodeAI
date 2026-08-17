@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useRef } from 'react';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Clock } from 'lucide-react';
 import Reveal from '../Reveal';
 
@@ -35,50 +35,47 @@ interface CourseCardProps {
 
 export default function CourseCard({ course, index, onEnquire }: CourseCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
+  
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const springConfig = { stiffness: 280, damping: 25, mass: 0.5 };
+  const mouseXSpring = useSpring(x, springConfig);
+  const mouseYSpring = useSpring(y, springConfig);
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["10deg", "-10deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-10deg", "10deg"]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-    
-    // Tilt limit (e.g. max 15 degrees)
-    setRotateX(yPct * -15);
-    setRotateY(xPct * 15);
+    const xPct = (e.clientX - rect.left) / rect.width - 0.5;
+    const yPct = (e.clientY - rect.top) / rect.height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
   };
 
   const handleMouseLeave = () => {
-    setRotateX(0);
-    setRotateY(0);
+    x.set(0);
+    y.set(0);
   };
 
   return (
-    <Reveal direction="up" delay={index * 0.1}>
+    <Reveal direction="up" delay={index * 0.08}>
       <motion.div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        animate={{
+        style={{
           rotateX,
           rotateY,
-          transformPerspective: 1000
+          transformStyle: "preserve-3d",
         }}
-        transition={{ type: "spring", stiffness: 300, damping: 20, mass: 0.5 }}
-        className="glass rounded-3xl overflow-hidden h-full flex flex-col group border border-white/60 hover:shadow-[0_20px_40px_rgba(79,70,229,0.15)] relative"
+        className="glass rounded-3xl overflow-hidden h-full flex flex-col group border border-white/60 hover:shadow-[0_20px_40px_rgba(79,70,229,0.15)] relative transform-gpu will-change-transform"
       >
         {/* Dynamic Glare Overlay */}
-        <motion.div 
-          className="absolute inset-0 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(circle at ${50 + rotateY * 5}% ${50 - rotateX * 5}%, rgba(255,255,255,0.4) 0%, transparent 60%)`
-          }}
+        <div 
+          className="absolute inset-0 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/30 via-transparent to-transparent"
         />
 
         <div className="h-32 sm:h-48 overflow-hidden relative">

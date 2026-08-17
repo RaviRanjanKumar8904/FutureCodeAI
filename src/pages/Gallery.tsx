@@ -1,21 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase/config';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { X, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import SEO from '../components/SEO';
 
 interface GalleryImage {
   id: string;
   imageUrl: string;
-  caption: string;
+  title?: string;
+  caption?: string;
   category: string;
+  createdAt?: any;
   uploadedAt?: any;
 }
 
-const CATEGORIES = ["All", "Workshops", "Batches", "Events", "Internship Meetups"];
-
-
+const CATEGORIES = ["All", "Events", "Workshops", "Campus", "Hackathons", "Batches", "Other"];
 
 export default function Gallery() {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -28,8 +28,7 @@ export default function Gallery() {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const q = query(collection(db, 'gallery'), orderBy('uploadedAt', 'desc'));
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(collection(db, 'gallery'));
         
         if (snapshot.empty) {
           setImages([]);
@@ -38,6 +37,13 @@ export default function Gallery() {
             id: doc.id,
             ...doc.data()
           })) as GalleryImage[];
+
+          fetchedImages.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : a.uploadedAt?.toMillis ? a.uploadedAt.toMillis() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : b.uploadedAt?.toMillis ? b.uploadedAt.toMillis() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+            return timeB - timeA;
+          });
+
           setImages(fetchedImages);
         }
       } catch (error) {
@@ -140,41 +146,32 @@ export default function Gallery() {
           ))}
         </div>
 
-        {/* Masonry-style Grid */}
+        {/* Optimized Grid */}
         <motion.div 
-          layout
-          className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6"
+          layout="position"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {filteredImages.map((image, index) => (
               <motion.div
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.4 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                 key={image.id}
-                className="break-inside-avoid"
+                className="w-full"
               >
                 <div 
-                  className="group relative rounded-2xl overflow-hidden cursor-pointer bg-slate-200"
+                  className="group relative rounded-2xl overflow-hidden cursor-pointer bg-slate-100 aspect-[4/3]"
                   onClick={() => setSelectedIndex(index)}
-                  style={{ perspective: 1000 }}
                 >
-                  <motion.div
-                    whileHover={{ 
-                      scale: 1.05,
-                      rotateX: 2,
-                      rotateY: -2,
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="relative w-full h-full origin-center"
-                  >
+                  <div className="relative w-full h-full overflow-hidden">
                     <img 
                       src={image.imageUrl} 
-                      alt={image.caption} 
+                      alt={image.title || image.caption || 'FutureCodeAI Event'} 
                       loading="lazy"
-                      className="w-full h-auto object-cover"
+                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
                     
                     {/* Hover Overlay */}
@@ -183,10 +180,10 @@ export default function Gallery() {
                         {image.category}
                       </span>
                       <h3 className="text-white font-extrabold text-lg line-clamp-2">
-                        {image.caption}
+                        {image.title || image.caption || 'FutureCodeAI Moment'}
                       </h3>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -262,7 +259,7 @@ export default function Gallery() {
                 >
                   <img 
                     src={filteredImages[selectedIndex].imageUrl} 
-                    alt={filteredImages[selectedIndex].caption}
+                    alt={filteredImages[selectedIndex].title || filteredImages[selectedIndex].caption || 'FutureCodeAI Event'}
                     className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
                   />
                   
@@ -272,7 +269,7 @@ export default function Gallery() {
                       {filteredImages[selectedIndex].category}
                     </span>
                     <h2 className="text-2xl md:text-3xl font-extrabold text-white">
-                      {filteredImages[selectedIndex].caption}
+                      {filteredImages[selectedIndex].title || filteredImages[selectedIndex].caption || 'FutureCodeAI Moment'}
                     </h2>
                   </div>
                 </motion.div>

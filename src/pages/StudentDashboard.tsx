@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
@@ -7,12 +7,14 @@ import {
   Briefcase, 
   MessageSquare, 
   Settings, 
-  LogOut,
-  Menu,
-  X,
-  Globe
+  LogOut, 
+  Menu, 
+  X, 
+  Globe 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { db } from '../firebase/config';
+import { collection, getDocs } from 'firebase/firestore';
 
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import MyCourses from '../components/dashboard/MyCourses';
@@ -25,10 +27,41 @@ export default function StudentDashboard() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [certCount, setCertCount] = useState(0);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchCertCount = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'certificates'));
+        const userEmailClean = (user.email || '').toLowerCase().trim();
+        const userNameClean = (user.displayName || '').toLowerCase().trim();
+        const count = snap.docs.filter(d => {
+          const c = d.data();
+          if (c.revoked) return false;
+          const cEmail = (c.studentEmail || '').toLowerCase().trim();
+          const cName = (c.studentName || '').toLowerCase().trim();
+          return (userEmailClean && cEmail === userEmailClean) || (user.uid && c.studentId === user.uid) || (userNameClean && cName === userNameClean);
+        }).length;
+        setCertCount(count);
+      } catch (err) {
+        console.error("Error fetching cert count:", err);
+      }
+    };
+    fetchCertCount();
+  }, [user]);
 
   const navItems = [
     { name: 'My Courses', path: '/dashboard/student', icon: BookOpen },
-    { name: 'My Certificates', path: '/dashboard/student/certificates', icon: Award },
+    { name: 'My Certificates', path: '/dashboard/student/certificates', icon: Award, badge: certCount > 0 ? certCount : undefined },
     { name: 'My Internship', path: '/dashboard/student/internships', icon: Briefcase },
     { name: 'My Enquiries', path: '/dashboard/student/enquiries', icon: MessageSquare },
     { name: 'Profile Settings', path: '/dashboard/student/settings', icon: Settings },
@@ -86,14 +119,21 @@ export default function StudentDashboard() {
                     key={item.name}
                     to={item.path}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${
+                    className={`flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${
                       isActive 
                         ? 'bg-primary text-white shadow-glow-primary' 
                         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
-                    <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                    {item.name}
+                    <div className="flex items-center gap-3">
+                      <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                      <span>{item.name}</span>
+                    </div>
+                    {item.badge !== undefined && (
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${isActive ? 'bg-amber-400 text-slate-950 shadow-sm' : 'bg-amber-100 text-amber-900 border border-amber-200'}`}>
+                        {item.badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -121,7 +161,7 @@ export default function StudentDashboard() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
+      <main ref={mainRef} className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
         <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full pb-8">
           <DashboardHeader />
           

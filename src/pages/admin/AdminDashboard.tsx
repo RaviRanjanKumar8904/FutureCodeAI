@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Users, 
   Building2, 
   BookOpen, 
   MessageSquare, 
-  ArrowUpRight,
-  Clock
+  Award,
+  Briefcase,
+  ShieldCheck,
+  Plus,
+  ArrowRight,
+  TrendingUp,
+  RefreshCw,
+  Phone,
+  Mail,
+  ListOrdered
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -14,284 +23,492 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer
+  ResponsiveContainer 
 } from 'recharts';
 import { db } from '../../firebase/config';
-import { collection, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import toast, { Toaster } from 'react-hot-toast';
+import { logAdminActivity } from '../../utils/adminLogger';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     students: 0,
     institutes: 0,
     courses: 0,
-    enquiries: 0
+    enquiries: 0,
+    certificates: 0,
+    internships: 0,
+    staff: 0
   });
+
   const [trends, setTrends] = useState({
     students: 0,
     institutes: 0,
     courses: 0,
     enquiries: 0
   });
+
   const [recentEnquiries, setRecentEnquiries] = useState<any[]>([]);
-  const [chartData, setChartData] = useState<Array<{ name: string; enquiries: number }>>([]);
+  const [chartData, setChartData] = useState<Array<{ name: string; enquiries: number; students: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [
+        usersSnap, 
+        coursesSnap, 
+        enquiriesSnap, 
+        partnershipSnap, 
+        contactSnap, 
+        collaboratorsSnap,
+        certificatesSnap,
+        internshipsSnap,
+        staffSnap
+      ] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'courses')),
+        getDocs(collection(db, 'enquiries')),
+        getDocs(collection(db, 'partnershipEnquiries')),
+        getDocs(collection(db, 'contactMessages')),
+        getDocs(collection(db, 'collaborators')),
+        getDocs(collection(db, 'certificates')),
+        getDocs(collection(db, 'internships')),
+        getDocs(collection(db, 'staff'))
+      ]);
+
+      const now = Date.now();
+      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+      let newStudents = 0;
+      let newInstitutes = 0;
+      let newCourses = 0;
+      let newEnquiries = 0;
+
+      const usersData = usersSnap.docs.map(d => d.data());
+      const studentCount = usersData.filter(u => {
+        if (u.role === 'student') {
+          if (u.createdAt?.toMillis && now - u.createdAt.toMillis() < thirtyDaysMs) newStudents++;
+          return true;
+        }
+        return false;
+      }).length;
+
+      const instituteCount = collaboratorsSnap.size;
+      collaboratorsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newInstitutes++;
+      });
+
+      coursesSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newCourses++;
+      });
+
+      const totalEnquiriesCount = enquiriesSnap.size + partnershipSnap.size + contactSnap.size;
+
+      enquiriesSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
+      });
+      partnershipSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
+      });
+      contactSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
+      });
+
+      setStats({
+        students: studentCount,
+        institutes: instituteCount,
+        courses: coursesSnap.size,
+        enquiries: totalEnquiriesCount,
+        certificates: certificatesSnap.size,
+        internships: internshipsSnap.size,
+        staff: staffSnap.size
+      });
+
+      setTrends({
+        students: newStudents,
+        institutes: newInstitutes,
+        courses: newCourses,
+        enquiries: newEnquiries
+      });
+
+      // Combine and sort recent leads from all streams
+      const rawEnquiries: any[] = [
+        ...enquiriesSnap.docs.map(d => ({ id: d.id, collection: 'enquiries', type: d.data().type || 'Course Lead', ...d.data() })),
+        ...partnershipSnap.docs.map(d => ({ id: d.id, collection: 'partnershipEnquiries', type: 'Partnership', ...d.data() })),
+        ...contactSnap.docs.map(d => ({ id: d.id, collection: 'contactMessages', type: 'General Contact', ...d.data() }))
+      ];
+
+      rawEnquiries.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+        return timeB - timeA;
+      });
+
+      setRecentEnquiries(rawEnquiries.slice(0, 6));
+
+      // Calculate 6-month chart trends
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const currentMonthIdx = new Date().getMonth();
+      const last6Months = [];
+      for (let i = 5; i >= 0; i--) {
+        const idx = (currentMonthIdx - i + 12) % 12;
+        last6Months.push(months[idx]);
+      }
+
+      // Group enquiries and students by month
+      const trendsMap: Record<string, { enquiries: number; students: number }> = {};
+      last6Months.forEach(m => {
+        trendsMap[m] = { enquiries: 0, students: 0 };
+      });
+
+      rawEnquiries.forEach(e => {
+        const d = e.createdAt?.toDate ? e.createdAt.toDate() : e.createdAt?.seconds ? new Date(e.createdAt.seconds * 1000) : null;
+        if (d) {
+          const m = months[d.getMonth()];
+          if (trendsMap[m]) trendsMap[m].enquiries += 1;
+        }
+      });
+
+      usersData.forEach(u => {
+        if (u.role === 'student' && u.createdAt) {
+          const d = u.createdAt?.toDate ? u.createdAt.toDate() : u.createdAt?.seconds ? new Date(u.createdAt.seconds * 1000) : null;
+          if (d) {
+            const m = months[d.getMonth()];
+            if (trendsMap[m]) trendsMap[m].students += 1;
+          }
+        }
+      });
+
+      setChartData(
+        last6Months.map(m => ({
+          name: m,
+          enquiries: trendsMap[m].enquiries,
+          students: trendsMap[m].students
+        }))
+      );
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard metrics');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // --- Real-time stats from Firestore ---
-        const [usersSnap, coursesSnap, enquiriesSnap, collaboratorsSnap] = await Promise.all([
-          getDocs(collection(db, 'users')),
-          getDocs(collection(db, 'courses')),
-          getDocs(collection(db, 'enquiries')),
-          getDocs(collection(db, 'collaborators')),
-        ]);
-
-        const now = Date.now();
-        const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-
-        let newStudents = 0;
-        let newInstitutes = 0;
-        let newCourses = 0;
-        let newEnquiries = 0;
-
-        const usersData = usersSnap.docs.map(d => d.data());
-        const studentCount = usersData.filter(u => {
-          if (u.role === 'student') {
-            if (u.createdAt?.toMillis && now - u.createdAt.toMillis() < thirtyDaysMs) newStudents++;
-            return true;
-          }
-          return false;
-        }).length;
-
-        const instituteCount = collaboratorsSnap.size;
-        collaboratorsSnap.docs.forEach(d => {
-          const data = d.data();
-          if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newInstitutes++;
-        });
-
-        coursesSnap.docs.forEach(d => {
-          const data = d.data();
-          if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newCourses++;
-        });
-
-        enquiriesSnap.docs.forEach(d => {
-          const data = d.data();
-          if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
-        });
-
-        setStats({
-          students: studentCount,
-          institutes: instituteCount,
-          courses: coursesSnap.size,
-          enquiries: enquiriesSnap.size
-        });
-        
-        setTrends({
-          students: newStudents,
-          institutes: newInstitutes,
-          courses: newCourses,
-          enquiries: newEnquiries
-        });
-
-        // --- Recent enquiries sidebar ---
-        const allEnquiries = enquiriesSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
-        // Sort by createdAt descending, take top 5
-        const sorted = allEnquiries
-          .sort((a, b) => {
-            const aTime = a.createdAt?.toMillis?.() || 0;
-            const bTime = b.createdAt?.toMillis?.() || 0;
-            return bTime - aTime;
-          })
-          .slice(0, 5)
-          .map(enq => {
-            let dateStr = 'N/A';
-            if (enq.createdAt?.toDate) {
-              const d = enq.createdAt.toDate();
-              const diffMs = Date.now() - d.getTime();
-              const diffH = Math.floor(diffMs / 3600000);
-              if (diffH < 1) dateStr = 'Just now';
-              else if (diffH < 24) dateStr = `${diffH}h ago`;
-              else dateStr = `${Math.floor(diffH / 24)}d ago`;
-            }
-            return { ...enq, date: dateStr };
-          });
-
-        setRecentEnquiries(sorted);
-
-        // --- Chart: enquiries per day for last 30 days ---
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        thirtyDaysAgo.setHours(0, 0, 0, 0);
-
-        const chartQuery = query(
-          collection(db, 'enquiries'),
-          where('createdAt', '>=', Timestamp.fromDate(thirtyDaysAgo))
-        );
-        const chartSnap = await getDocs(chartQuery);
-
-        // Build a map of day -> count
-        const dayMap: Record<string, number> = {};
-        // Pre-fill all 30 days so chart has no gaps
-        for (let i = 29; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const key = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-          dayMap[key] = 0;
-        }
-
-        chartSnap.docs.forEach(docSnap => {
-          const data = docSnap.data();
-          if (data.createdAt?.toDate) {
-            const d = data.createdAt.toDate() as Date;
-            const key = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-            if (key in dayMap) {
-              dayMap[key]++;
-            }
-          }
-        });
-
-        const chartArr = Object.entries(dayMap).map(([name, enquiries]) => ({ name, enquiries }));
-        setChartData(chartArr);
-
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchDashboardData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
-      </div>
-    );
-  }
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData();
+  };
 
-  const StatCard = ({ title, value, icon: Icon, trend, color }: any) => (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-          <h3 className="text-3xl font-extrabold text-slate-900">{value.toLocaleString()}</h3>
-        </div>
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
-          <Icon size={24} />
-        </div>
-      </div>
-      <div className="mt-4 flex items-center gap-2 text-sm">
-        {trend > 0 ? (
-          <>
-            <span className="flex items-center gap-1 text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-md">
-              <ArrowUpRight size={16} />
-              +{trend}
-            </span>
-            <span className="text-slate-400">new this month</span>
-          </>
-        ) : (
-          <span className="text-slate-400">No new this month</span>
-        )}
-      </div>
-    </div>
-  );
+  const handleUpdateStatus = async (item: any, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, item.collection, item.id), {
+        status: newStatus
+      });
+      toast.success(`Enquiry marked as ${newStatus}`);
+      await logAdminActivity(
+        user?.email,
+        'STATUS_CHANGE',
+        `Enquiry: ${item.name || item.email}`,
+        `Changed status to ${newStatus}`
+      );
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error updating enquiry:', error);
+      toast.error('Failed to update status');
+    }
+  };
+
+  const statCards = [
+    {
+      title: 'Total Students',
+      value: stats.students,
+      trend: `+${trends.students} this month`,
+      icon: Users,
+      color: 'bg-blue-500',
+      lightBg: 'bg-blue-50 text-blue-700',
+      link: '/admin/students'
+    },
+    {
+      title: 'Partner Institutes',
+      value: stats.institutes,
+      trend: `+${trends.institutes} this month`,
+      icon: Building2,
+      color: 'bg-indigo-500',
+      lightBg: 'bg-indigo-50 text-indigo-700',
+      link: '/admin/collaborators'
+    },
+    {
+      title: 'Active Courses',
+      value: stats.courses,
+      trend: `+${trends.courses} new`,
+      icon: BookOpen,
+      color: 'bg-purple-500',
+      lightBg: 'bg-purple-50 text-purple-700',
+      link: '/admin/courses'
+    },
+    {
+      title: 'Total Enquiries',
+      value: stats.enquiries,
+      trend: `+${trends.enquiries} new leads`,
+      icon: MessageSquare,
+      color: 'bg-amber-500',
+      lightBg: 'bg-amber-50 text-amber-700',
+      link: '/admin/enquiries'
+    },
+    {
+      title: 'Certificates Issued',
+      value: stats.certificates,
+      trend: 'Verified credentials',
+      icon: Award,
+      color: 'bg-emerald-500',
+      lightBg: 'bg-emerald-50 text-emerald-700',
+      link: '/admin/certificates'
+    },
+    {
+      title: 'Active Staff Members',
+      value: stats.staff,
+      trend: 'Managed instructors',
+      icon: ShieldCheck,
+      color: 'bg-rose-500',
+      lightBg: 'bg-rose-50 text-rose-700',
+      link: '/admin/staff'
+    }
+  ];
+
+  const quickLinks = [
+    { name: 'Enroll Student', path: '/admin/students', icon: Users, color: 'text-blue-600 bg-blue-50 hover:bg-blue-100' },
+    { name: 'Issue Certificate', path: '/admin/certificates', icon: Award, color: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
+    { name: 'Manage Courses', path: '/admin/courses', icon: BookOpen, color: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
+    { name: 'Review Enquiries', path: '/admin/enquiries', icon: MessageSquare, color: 'text-amber-600 bg-amber-50 hover:bg-amber-100' },
+    { name: 'Partner Institutes', path: '/admin/collaborators', icon: Building2, color: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' },
+    { name: 'Internship Programs', path: '/admin/internships', icon: Briefcase, color: 'text-teal-600 bg-teal-50 hover:bg-teal-100' },
+    { name: 'Staff & Payroll', path: '/admin/staff', icon: ShieldCheck, color: 'text-rose-600 bg-rose-50 hover:bg-rose-100' },
+    { name: 'Audit Logs', path: '/admin/logs', icon: ListOrdered, color: 'text-slate-600 bg-slate-100 hover:bg-slate-200' },
+  ];
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Top Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Students" 
-          value={stats.students} 
-          icon={Users} 
-          trend={trends.students} 
-          color="bg-blue-50 text-blue-600" 
-        />
-        <StatCard 
-          title="Collaborators" 
-          value={stats.institutes} 
-          icon={Building2} 
-          trend={trends.institutes} 
-          color="bg-emerald-50 text-emerald-600" 
-        />
-        <StatCard 
-          title="Active Courses" 
-          value={stats.courses} 
-          icon={BookOpen} 
-          trend={trends.courses} 
-          color="bg-purple-50 text-purple-600" 
-        />
-        <StatCard 
-          title="Total Enquiries" 
-          value={stats.enquiries} 
-          icon={MessageSquare} 
-          trend={trends.enquiries} 
-          color="bg-amber-50 text-amber-600" 
-        />
+      <Toaster position="top-center" />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Admin Overview</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">Real-time performance metrics and cross-functional operations.</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin text-indigo-600' : 'text-slate-500'} />
+            <span>Refresh</span>
+          </button>
+          
+          <Link 
+            to="/admin/students"
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md shadow-indigo-600/20"
+          >
+            <Plus size={18} />
+            <span>Enroll Student</span>
+          </Link>
+        </div>
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Chart */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-900">Enquiries — Last 30 Days</h3>
-            <p className="text-sm text-slate-500">Daily enquiry volume from Firestore</p>
+      {/* Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {statCards.map((card, idx) => {
+          const Icon = card.icon;
+          return (
+            <Link 
+              key={idx}
+              to={card.link}
+              className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-bold text-slate-500">{card.title}</span>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${card.lightBg} group-hover:scale-105 transition-transform`}>
+                  <Icon size={20} />
+                </div>
+              </div>
+              <div>
+                <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  {loading ? (
+                    <div className="h-9 w-20 bg-slate-200 animate-pulse rounded-lg" />
+                  ) : (
+                    card.value.toLocaleString()
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mt-2">
+                  <TrendingUp size={14} className="text-emerald-500" />
+                  <span>{card.trend}</span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Quick Action Navigation Grid */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Management Hub</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          {quickLinks.map((ql, idx) => {
+            const Icon = ql.icon;
+            return (
+              <Link
+                key={idx}
+                to={ql.path}
+                className={`flex flex-col items-center justify-center text-center p-3.5 rounded-xl font-bold text-xs transition-all ${ql.color}`}
+              >
+                <Icon size={22} className="mb-2" />
+                <span className="leading-tight">{ql.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Charts & Triage Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Trend Area Chart */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Enquiry & Growth Trajectory</h2>
+              <p className="text-xs text-slate-500 font-medium">Monthly lead volume and student conversions</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-bold">
+              <span className="flex items-center gap-1.5 text-indigo-600">
+                <span className="w-3 h-3 rounded-full bg-indigo-600" /> Leads
+              </span>
+              <span className="flex items-center gap-1.5 text-emerald-600">
+                <span className="w-3 h-3 rounded-full bg-emerald-600" /> Students
+              </span>
+            </div>
           </div>
-          <div className="h-80 w-full">
+
+          <div className="h-72 w-full flex-1">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorEnquiries" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
                   </linearGradient>
-                  <linearGradient id="colorEnrollments" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  <linearGradient id="colorStudents" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="4 4" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="name" stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748B" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }}
                 />
-                <Area type="monotone" dataKey="enquiries" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorEnquiries)" />
+                <Area type="monotone" dataKey="enquiries" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorEnquiries)" />
+                <Area type="monotone" dataKey="students" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorStudents)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Recent Enquiries List */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-          <div className="mb-6 flex items-center justify-between">
+        {/* Quick Triage Widget */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Recent Enquiries</h3>
-              <p className="text-sm text-slate-500">Latest leads & contacts</p>
+              <h2 className="text-lg font-bold text-slate-900">Recent Leads</h2>
+              <p className="text-xs text-slate-500 font-medium">Quick triage incoming inquiries</p>
             </div>
-            <button className="text-sm font-medium text-indigo-600 hover:text-indigo-700">View All</button>
+            <Link to="/admin/enquiries" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+              View All <ArrowRight size={14} />
+            </Link>
           </div>
-          
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-            {recentEnquiries.map((enquiry) => (
-              <div key={enquiry.id} className="flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-bold text-slate-600">{enquiry.name.charAt(0)}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{enquiry.name}</p>
-                  <p className="text-xs text-slate-500 truncate">{enquiry.type}</p>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-slate-400 whitespace-nowrap">
-                  <Clock size={12} />
-                  {enquiry.date}
-                </div>
-              </div>
-            ))}
+
+          <div className="divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[340px]">
+            {loading ? (
+              <div className="py-12 text-center text-slate-400 font-medium text-sm">Loading leads...</div>
+            ) : recentEnquiries.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 font-medium text-sm">No recent enquiries found.</div>
+            ) : (
+              recentEnquiries.map((item) => {
+                const status = (item.status || 'new').toLowerCase();
+                return (
+                  <div key={item.id} className="py-3.5 flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900 leading-tight">
+                          {item.name || item.instituteName || 'Anonymous'}
+                        </h3>
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {item.type || item.targetTitle || 'Inquiry'}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        status === 'converted' || status === 'responded'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : status === 'read' || status === 'in review'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {status}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                      <div className="flex items-center gap-3">
+                        {item.phone && (
+                          <a href={`tel:${item.phone}`} className="hover:text-indigo-600 flex items-center gap-1">
+                            <Phone size={12} /> {item.phone}
+                          </a>
+                        )}
+                        {item.email && (
+                          <a href={`mailto:${item.email}`} className="hover:text-indigo-600 flex items-center gap-1">
+                            <Mail size={12} />
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {status === 'new' && (
+                          <button
+                            onClick={() => handleUpdateStatus(item, 'In Review')}
+                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[10px]"
+                          >
+                            Review
+                          </button>
+                        )}
+                        {status !== 'converted' && (
+                          <Link
+                            to={`/admin/students?enrollName=${encodeURIComponent(item.name || '')}&enrollEmail=${encodeURIComponent(item.email || '')}&enrollPhone=${encodeURIComponent(item.phone || '')}`}
+                            className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[10px]"
+                          >
+                            Enroll
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>

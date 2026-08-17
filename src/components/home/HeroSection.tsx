@@ -44,8 +44,8 @@ function AbstractShapes() {
 
 export default function HeroSection() {
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 1000], [0, 200]);
-  const opacity = useTransform(scrollY, [0, 300], [1, 0]);
+  const y1 = useTransform(scrollY, [0, 800], [0, 80]);
+  const opacity = useTransform(scrollY, [0, 600], [1, 0.2]);
 
   return (
     <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
@@ -56,14 +56,14 @@ export default function HeroSection() {
           style={{ y: y1, opacity }} 
           className="space-y-8"
         >
-          <Reveal direction="up" delay={0.1}>
+          <Reveal direction="up" delay={0.05}>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-md border border-white shadow-premium-card text-sm font-semibold text-primary">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               Powered by FutureCodeAI
             </div>
           </Reveal>
           
-          <Reveal direction="up" delay={0.2}>
+          <Reveal direction="up" delay={0.12}>
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.1] md:leading-[1.05] text-text-heading tracking-tight">
               Learn the Technology That <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-secondary drop-shadow-sm">
@@ -72,13 +72,13 @@ export default function HeroSection() {
             </h1>
           </Reveal>
 
-          <Reveal direction="up" delay={0.3}>
+          <Reveal direction="up" delay={0.18}>
             <p className="text-base sm:text-lg text-slate-500 md:text-xl max-w-xl leading-relaxed font-medium">
               AI, ML, Full-Stack Development & more — taught inside your own coaching institute.
             </p>
           </Reveal>
 
-          <Reveal direction="up" delay={0.4}>
+          <Reveal direction="up" delay={0.24}>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button className="w-full sm:w-auto bg-primary text-white px-8 py-4 rounded-full text-base font-bold hover:bg-indigo-500 transition-all shadow-glow-primary hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] hover:-translate-y-1 active:scale-95 text-center">
                 Explore Courses
@@ -92,7 +92,12 @@ export default function HeroSection() {
 
         {/* 3D Scene */}
         <div className="h-[45vh] sm:h-[50vh] lg:h-[80vh] w-full relative -mt-8 lg:mt-0 flex items-center justify-center">
-          <Canvas camera={{ position: [0, 0, 5], fov: 45 }} style={{ touchAction: 'pan-y' }}>
+          <Canvas 
+            dpr={[1, 1.5]}
+            gl={{ antialias: true, powerPreference: 'high-performance' }}
+            camera={{ position: [0, 0, 5], fov: 45 }} 
+            style={{ touchAction: 'pan-y' }}
+          >
             <ambientLight intensity={1.5} />
             <directionalLight position={[10, 10, 5]} intensity={2} />
             <Suspense fallback={null}>

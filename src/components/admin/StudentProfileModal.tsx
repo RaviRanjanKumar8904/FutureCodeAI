@@ -1,4 +1,4 @@
-import { X, Mail, Calendar, Shield, IdCard, Phone, MapPin, GraduationCap, BookOpen, ExternalLink, Building2 } from 'lucide-react';
+import { X, Mail, Calendar, IdCard, Phone, MapPin, BookOpen, ExternalLink, Building2, Hash, School } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -8,7 +8,10 @@ interface Student {
   role: string;
   createdAt: any;
   phone?: string;
+  gender?: string;
   school?: string;
+  collegeName?: string;
+  rollNo?: string;
   city?: string;
   degree?: string;
   yearOfStudy?: string;
@@ -53,9 +56,16 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
             )}
           </div>
           <h3 className="text-2xl font-bold text-slate-900">{student.displayName || 'Unnamed Student'}</h3>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 mt-2 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
-            Active Account
-          </span>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+              Active Account
+            </span>
+            {student.gender && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                {student.gender}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="p-6 pt-0 space-y-4">
@@ -80,6 +90,42 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
               </div>
             </div>
 
+            {student.phone && (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                  <Phone size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Phone Number</p>
+                  <p className="text-sm font-bold text-slate-700">{student.phone}</p>
+                </div>
+              </div>
+            )}
+
+            {(student.collegeName || student.school) && (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-teal-600 shrink-0">
+                  <School size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">College / Institute</p>
+                  <p className="text-sm font-bold text-teal-800">{student.collegeName || student.school}</p>
+                </div>
+              </div>
+            )}
+
+            {student.rollNo && (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-amber-600 shrink-0">
+                  <Hash size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Reg / Roll Number</p>
+                  <p className="text-sm font-bold text-amber-800 font-mono">{student.rollNo}</p>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
                 <Calendar size={18} />
@@ -91,18 +137,8 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
-                  }) : 'Unknown'}
+                  }) : 'Recent'}
                 </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                <Shield size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Role</p>
-                <p className="text-sm font-bold text-slate-700 capitalize">{student.role}</p>
               </div>
             </div>
 
@@ -142,18 +178,6 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
               </div>
             )}
 
-            {student.phone && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                  <Phone size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Phone Number</p>
-                  <p className="text-sm font-bold text-slate-700">{student.phone}</p>
-                </div>
-              </div>
-            )}
-
             {student.city && (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
@@ -162,42 +186,6 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Location</p>
                   <p className="text-sm font-bold text-slate-700">{student.city}</p>
-                </div>
-              </div>
-            )}
-
-            {student.school && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                  <GraduationCap size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">School / College</p>
-                  <p className="text-sm font-bold text-slate-700">{student.school}</p>
-                </div>
-              </div>
-            )}
-
-            {student.degree && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                  <BookOpen size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Degree / Program</p>
-                  <p className="text-sm font-bold text-slate-700">{student.degree}</p>
-                </div>
-              </div>
-            )}
-
-            {student.yearOfStudy && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                  <Calendar size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Year of Study</p>
-                  <p className="text-sm font-bold text-slate-700">{student.yearOfStudy}</p>
                 </div>
               </div>
             )}
@@ -222,7 +210,7 @@ export default function StudentProfileModal({ isOpen, onClose, student }: Studen
         <div className="p-6 border-t border-gray-100 bg-slate-50 flex items-center justify-end">
           <button 
             onClick={onClose}
-            className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
+            className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-sm"
           >
             Close
           </button>

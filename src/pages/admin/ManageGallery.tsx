@@ -5,6 +5,9 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { Image as ImageIcon, Upload, Trash2, X, Plus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
+import { useAuth } from '../../hooks/useAuth';
+import { logAdminActivity } from '../../utils/adminLogger';
+
 interface GalleryImage {
   id: string;
   title: string;
@@ -15,6 +18,7 @@ interface GalleryImage {
 }
 
 export default function ManageGallery() {
+  const { user } = useAuth();
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -95,6 +99,12 @@ export default function ManageGallery() {
       });
 
       toast.success("Image uploaded successfully!", { id: toastId });
+      await logAdminActivity(
+        user?.email,
+        'CREATED',
+        `Gallery Photo: ${uploadTitle.trim()}`,
+        `Category: ${uploadCategory}`
+      );
       
       // Reset form
       setShowUploadModal(false);
@@ -113,7 +123,7 @@ export default function ManageGallery() {
     }
   };
 
-  const handleDelete = async (id: string, storagePath: string) => {
+  const handleDelete = async (id: string, storagePath: string, title?: string) => {
     if (!window.confirm("Are you sure you want to delete this image? This action cannot be undone.")) {
       return;
     }
@@ -130,6 +140,11 @@ export default function ManageGallery() {
       await deleteDoc(doc(db, 'gallery', id));
 
       toast.success("Image deleted successfully!", { id: toastId });
+      await logAdminActivity(
+        user?.email,
+        'DELETED',
+        `Gallery Photo: ${title || id}`
+      );
       fetchImages();
     } catch (error) {
       console.error("Delete error:", error);

@@ -12,55 +12,88 @@ function isDashboardRoute(pathname: string) {
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const lenisRef = useRef<Lenis | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
+  // Manage Lenis lifecycle based on dashboard vs public routes
   useEffect(() => {
-    // On dashboard routes: do NOT create Lenis at all — let native scroll work
-    if (isDashboardRoute(location.pathname)) {
-      // If a previous Lenis instance exists, destroy it and clean up any residual styles
+    const isDashboard = isDashboardRoute(location.pathname);
+
+    if (isDashboard) {
+      // If entering a dashboard, destroy Lenis so native container scroll works seamlessly
       if (lenisRef.current) {
+        if (rafIdRef.current) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
         lenisRef.current.destroy();
         lenisRef.current = null;
       }
-      // Ensure html/body are scrollable (Lenis sometimes leaves overflow:hidden behind)
+      (window as any).__lenis = null;
       document.documentElement.style.removeProperty('overflow');
       document.body.style.removeProperty('overflow');
-      return;
-    }
+    } else {
+      // Public pages: initialize Lenis if not already active
+      if (!lenisRef.current) {
+        const lenis = new Lenis({
+          duration: 0.95,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          orientation: 'vertical',
+          gestureOrientation: 'vertical',
+          smoothWheel: true,
+          touchMultiplier: 1.5,
+          wheelMultiplier: 1.0,
+        });
 
-    // Public pages: create Lenis for smooth scrolling
-    if (!lenisRef.current) {
-      const lenis = new Lenis({
-        duration: 1.2,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        orientation: 'vertical',
-        gestureOrientation: 'vertical',
-        smoothWheel: true,
-        touchMultiplier: 2,
-      });
+        lenisRef.current = lenis;
+        (window as any).__lenis = lenis;
 
-      lenisRef.current = lenis;
-
-      let rafId: number;
-      function raf(time: number) {
-        lenis.raf(time);
-        rafId = requestAnimationFrame(raf);
+        function raf(time: number) {
+          lenis.raf(time);
+          rafIdRef.current = requestAnimationFrame(raf);
+        }
+        rafIdRef.current = requestAnimationFrame(raf);
       }
-      rafId = requestAnimationFrame(raf);
+    }
+  }, [location.pathname]);
 
-      // Store the rafId for cleanup
-      (lenis as any).__rafId = rafId;
+  // Ensure scroll position resets to top on every route change
+  useEffect(() => {
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) {
+        if (lenisRef.current) {
+          lenisRef.current.scrollTo(location.hash, { immediate: true });
+        } else {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+        return;
+      }
     }
 
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(0, { immediate: true });
+    }
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [location.pathname, location.search]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
     return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
       if (lenisRef.current) {
-        cancelAnimationFrame((lenisRef.current as any).__rafId);
         lenisRef.current.destroy();
         lenisRef.current = null;
-        document.documentElement.style.removeProperty('overflow');
-        document.body.style.removeProperty('overflow');
       }
+      (window as any).__lenis = null;
+      document.documentElement.style.removeProperty('overflow');
+      document.body.style.removeProperty('overflow');
     };
-  }, [location.pathname]);
+  }, []);
 
   return <>{children}</>;
 }
+

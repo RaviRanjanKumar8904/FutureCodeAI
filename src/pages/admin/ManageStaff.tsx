@@ -5,6 +5,7 @@ import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'fireb
 import { useAuth } from '../../hooks/useAuth';
 import { Users, UserPlus, Trash2, Banknote, CalendarDays, Wallet } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { logAdminActivity } from '../../utils/adminLogger';
 
 interface StaffEntry {
   id: string;
@@ -166,6 +167,13 @@ export default function ManageStaff() {
         ...staff
       ]);
 
+      await logAdminActivity(
+        user?.email,
+        'CREATED',
+        `Staff: ${newName.trim() || normalizedEmail}`,
+        `Allow-listed staff member with salary ₹${salaryValue || 0}`
+      );
+
       setNewEmail('');
       setNewName('');
       setNewPhone('');
@@ -201,6 +209,12 @@ export default function ManageStaff() {
       }
       setStaff(staff.filter((s) => s.id !== id));
       toast.success('Staff removed');
+      await logAdminActivity(
+        user?.email,
+        'DELETED',
+        `Staff: ${email}`,
+        'Removed from staff allow-list'
+      );
     } catch (error) {
       console.error('Error removing staff:', error);
       toast.error('Failed to remove staff');
@@ -230,6 +244,12 @@ export default function ManageStaff() {
         )
       );
       toast.success('Salary marked as sent');
+      await logAdminActivity(
+        user?.email,
+        'STATUS_CHANGE',
+        `Staff Payout: ${entry.name || entry.email}`,
+        `Marked salary of ₹${entry.salary || 0} as paid`
+      );
     } catch (error) {
       console.error('Error updating salary status:', error);
       toast.error('Failed to update salary status');

@@ -4,6 +4,7 @@ import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from 'firebase/fi
 import { useAuth } from '../../hooks/useAuth';
 import { Shield, ShieldAlert, Trash2, Plus, UserPlus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { logAdminActivity } from '../../utils/adminLogger';
 
 interface AdminUser {
   id: string; // same as uid
@@ -95,6 +96,13 @@ export default function ManageAdmins() {
         createdAt: new Date().toISOString()
       }]);
       
+      await logAdminActivity(
+        user?.email,
+        'INVITE',
+        `Admin: ${newEmail}`,
+        `Granted admin privileges to UID: ${newUid}`
+      );
+
       setNewEmail('');
       setNewUid('');
     } catch (error) {
@@ -125,6 +133,12 @@ export default function ManageAdmins() {
       }
 
       toast.success("Admin removed successfully");
+      await logAdminActivity(
+        user?.email,
+        'DELETED',
+        `Admin: ${email}`,
+        `Revoked admin privileges for UID: ${uid}`
+      );
       setAdmins(admins.filter(a => a.id !== uid));
     } catch (error) {
       console.error("Error removing admin:", error);

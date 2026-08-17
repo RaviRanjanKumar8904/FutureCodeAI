@@ -12,27 +12,28 @@ interface CourseModalProps {
 export default function CourseModal({ course, onClose, onEnquire }: CourseModalProps) {
   const [openAccordion, setOpenAccordion] = useState<number | null>(0);
 
-  if (!course) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-        {/* Backdrop */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
-        />
+      {course && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+          {/* Backdrop */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
+          />
 
-        {/* Modal Content */}
-        <motion.div 
-          initial={{ opacity: 0, y: 50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="relative w-full max-w-[min(100%,calc(100vw-1.5rem))] max-w-4xl max-h-[calc(100vh-1.5rem)] bg-white rounded-[1.5rem] shadow-[0_28px_70px_-30px_rgba(15,23,42,0.45)] overflow-hidden flex flex-col z-10"
-        >
+          {/* Modal Content */}
+          <motion.div 
+            initial={{ opacity: 0, y: 25, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-[min(100%,calc(100vw-1.5rem))] max-w-4xl max-h-[calc(100vh-1.5rem)] bg-white rounded-[1.5rem] shadow-[0_28px_70px_-30px_rgba(15,23,42,0.45)] overflow-hidden flex flex-col z-10"
+          >
           {/* Header Image */}
           <div className="relative h-44 sm:h-48 md:h-60 shrink-0">
             <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
@@ -167,6 +168,7 @@ export default function CourseModal({ course, onClose, onEnquire }: CourseModalP
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 }

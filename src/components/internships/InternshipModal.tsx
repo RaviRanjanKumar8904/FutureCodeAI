@@ -9,27 +9,28 @@ interface InternshipModalProps {
 }
 
 export default function InternshipModal({ internship, onClose, onApply }: InternshipModalProps) {
-  if (!internship) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-        {/* Backdrop */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
-        />
+      {internship && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+          {/* Backdrop */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer"
+          />
 
-        {/* Modal Content */}
-        <motion.div 
-          initial={{ opacity: 0, y: 50, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="relative w-full max-w-[min(100%,calc(100vw-1.5rem))] max-w-4xl max-h-[calc(100vh-1.5rem)] bg-white rounded-[1.5rem] shadow-[0_28px_70px_-30px_rgba(15,23,42,0.45)] overflow-hidden flex flex-col z-10"
-        >
+          {/* Modal Content */}
+          <motion.div 
+            initial={{ opacity: 0, y: 25, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 15, scale: 0.96 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-[min(100%,calc(100vw-1.5rem))] max-w-4xl max-h-[calc(100vh-1.5rem)] bg-white rounded-[1.5rem] shadow-[0_28px_70px_-30px_rgba(15,23,42,0.45)] overflow-hidden flex flex-col z-10"
+          >
           {/* Header */}
           <div className="relative bg-gradient-to-r from-slate-900 to-[#152a4f] p-6 sm:p-8 md:p-12 shrink-0">
             <button 
@@ -122,6 +123,7 @@ export default function InternshipModal({ internship, onClose, onApply }: Intern
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 }

@@ -1,18 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase/config';
-import { collection, setDoc, updateDoc, getDocs, getDoc, doc, query, orderBy, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { Award, Plus, Trash2, Search, Copy, CheckCircle2, X, Upload, RotateCcw } from 'lucide-react';
+import { collection, setDoc, updateDoc, deleteDoc, getDocs, getDoc, doc, query, orderBy, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { Award, Plus, Trash2, Search, Copy, CheckCircle2, X, Upload, RotateCcw, Ban, Eye } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import Papa from 'papaparse';
+import CertificateModal from '../../components/certificate/CertificateModal';
+import type { CertificateData } from '../../components/certificate/CourseCertificate';
 
 interface Certificate {
   id: string;
   certificateId: string;
   studentName: string;
+  studentEmail?: string;
   courseName: string;
+  domain?: string;
+  gender?: string;
   issueDate: string;
+  startDate?: string;
+  endDate?: string;
   grade: string;
+  marksPercentage?: string;
   issuedBy: string;
   createdAt: any;
   revoked?: boolean;
@@ -29,10 +37,20 @@ export default function ManageCertificates() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     studentName: '',
+    studentEmail: '',
     courseName: '',
+    domain: '',
+    gender: '' as '' | 'Male' | 'Female',
     issueDate: new Date().toISOString().split('T')[0],
-    grade: ''
+    startDate: '',
+    endDate: '',
+    grade: '',
+    marksPercentage: '',
   });
+
+  // Certificate preview state
+  const [previewCert, setPreviewCert] = useState<CertificateData | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Bulk Upload State
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -89,20 +107,29 @@ export default function ManageCertificates() {
     try {
       const certId = await handleGenerateId();
       
-      await setDoc(doc(db, 'certificates', certId), {
+      const certData = {
         ...formData,
         certificateId: certId,
         issuedBy: user?.email || 'Admin',
         createdAt: serverTimestamp()
-      });
+      };
+      // Remove empty optional fields
+      const cleanData = Object.fromEntries(Object.entries(certData).filter(([, v]) => v !== ''));
+      await setDoc(doc(db, 'certificates', certId), cleanData);
 
       toast.success(`Certificate ${certId} issued!`, { id: toastId });
       setShowModal(false);
       setFormData({
         studentName: '',
+        studentEmail: '',
         courseName: '',
+        domain: '',
+        gender: '' as '' | 'Male' | 'Female',
         issueDate: new Date().toISOString().split('T')[0],
-        grade: ''
+        startDate: '',
+        endDate: '',
+        grade: '',
+        marksPercentage: '',
       });
       fetchCertificates();
     } catch (error) {
@@ -148,6 +175,22 @@ export default function ManageCertificates() {
     } catch (error) {
       console.error("Error unrevoking certificate:", error);
       toast.error("Failed to restore certificate", { id: toastId });
+    }
+  };
+
+  const handleDeletePermanently = async (id: string, certId: string, studentName: string) => {
+    if (!window.confirm(`⚠️ PERMANENT DELETE: Are you sure you want to permanently delete certificate "${certId}" for ${studentName}?\n\nThis will completely remove it from the database and cannot be undone.`)) {
+      return;
+    }
+
+    const toastId = toast.loading("Permanently deleting certificate...");
+    try {
+      await deleteDoc(doc(db, 'certificates', id));
+      toast.success("Certificate permanently deleted", { id: toastId });
+      fetchCertificates();
+    } catch (error) {
+      console.error("Error deleting certificate:", error);
+      toast.error("Failed to delete certificate", { id: toastId });
     }
   };
 
@@ -391,49 +434,117 @@ export default function ManageCertificates() {
               </button>
             </div>
             
-            <form onSubmit={handleIssueCertificate} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Student Name <span className="text-rose-500">*</span></label>
-                <input 
-                  type="text"
-                  value={formData.studentName}
-                  onChange={(e) => setFormData({...formData, studentName: e.target.value})}
-                  placeholder="E.g. Rahul Kumar"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">Program / Course Name <span className="text-rose-500">*</span></label>
-                <input 
-                  type="text"
-                  value={formData.courseName}
-                  onChange={(e) => setFormData({...formData, courseName: e.target.value})}
-                  placeholder="E.g. Full-Stack Web Development Internship"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
-                  required
-                />
-              </div>
-              
+            <form onSubmit={handleIssueCertificate} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Student Name <span className="text-rose-500">*</span></label>
+                  <input 
+                    type="text"
+                    value={formData.studentName}
+                    onChange={(e) => setFormData({...formData, studentName: e.target.value})}
+                    placeholder="E.g. Rahul Kumar"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                    required
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Gender</label>
+                  <select 
+                    value={formData.gender}
+                    onChange={(e) => setFormData({...formData, gender: e.target.value as '' | 'Male' | 'Female'})}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">Student Email</label>
+                <input 
+                  type="email"
+                  value={formData.studentEmail}
+                  onChange={(e) => setFormData({...formData, studentEmail: e.target.value})}
+                  placeholder="E.g. student@email.com"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Program / Course Name <span className="text-rose-500">*</span></label>
+                  <input 
+                    type="text"
+                    value={formData.courseName}
+                    onChange={(e) => setFormData({...formData, courseName: e.target.value})}
+                    placeholder="E.g. Full-Stack Web Development"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                    required
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Domain / Specialization</label>
+                  <input 
+                    type="text"
+                    value={formData.domain}
+                    onChange={(e) => setFormData({...formData, domain: e.target.value})}
+                    placeholder="E.g. Full Stack Web Development"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Start Date</label>
+                  <input 
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">End Date</label>
+                  <input 
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => { const v = e.target.value; setFormData({...formData, endDate: v, issueDate: v}); }}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-1.5">Issue Date <span className="text-rose-500">*</span></label>
                   <input 
                     type="date"
                     value={formData.issueDate}
-                    onChange={(e) => setFormData({...formData, issueDate: e.target.value})}
+                    onChange={(e) => { const v = e.target.value; setFormData({...formData, issueDate: v, endDate: v}); }}
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700"
                     required
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Grade / Score (Optional)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Grade (Optional)</label>
                   <input 
                     type="text"
                     value={formData.grade}
                     onChange={(e) => setFormData({...formData, grade: e.target.value})}
-                    placeholder="E.g. A+ or 95%"
+                    placeholder="E.g. A+"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">Marks %</label>
+                  <input 
+                    type="text"
+                    value={formData.marksPercentage}
+                    onChange={(e) => setFormData({...formData, marksPercentage: e.target.value})}
+                    placeholder="E.g. 95"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
                   />
                 </div>
@@ -552,6 +663,30 @@ export default function ManageCertificates() {
                     <td className="p-4 pr-6 align-top text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
+                          onClick={() => {
+                            setPreviewCert({
+                              id: cert.id,
+                              certificateId: cert.certificateId,
+                              studentName: cert.studentName,
+                              studentEmail: cert.studentEmail,
+                              gender: cert.gender,
+                              courseName: cert.courseName,
+                              domain: cert.domain,
+                              startDate: cert.startDate,
+                              endDate: cert.endDate,
+                              issueDate: cert.issueDate,
+                              grade: cert.grade,
+                              marksPercentage: cert.marksPercentage,
+                            });
+                            setShowPreview(true);
+                          }}
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5"
+                          title="Preview & Download Certificate"
+                        >
+                          <Eye size={18} />
+                          <span className="text-xs font-bold hidden sm:inline-block">Preview</span>
+                        </button>
+                        <button 
                           onClick={() => copyVerificationLink(cert.certificateId)}
                           className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5"
                           title="Copy Verification Link"
@@ -562,21 +697,28 @@ export default function ManageCertificates() {
                         {!cert.revoked ? (
                           <button 
                             onClick={() => handleRevoke(cert.id, cert.certificateId)}
-                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Revoke Certificate"
+                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            title="Revoke Certificate (Mark Invalid)"
                           >
-                            <Trash2 size={18} />
+                            <Ban size={18} />
                           </button>
                         ) : (
                           <button 
                             onClick={() => handleUnrevoke(cert.id, cert.certificateId)}
                             className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1.5"
-                            title="Unrevoke Certificate"
+                            title="Restore Certificate (Mark Valid)"
                           >
                             <RotateCcw size={18} />
                             <span className="text-xs font-bold hidden sm:inline-block">Restore</span>
                           </button>
                         )}
+                        <button 
+                          onClick={() => handleDeletePermanently(cert.id, cert.certificateId, cert.studentName)}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Delete Permanently"
+                        >
+                          <Trash2 size={18} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -586,6 +728,13 @@ export default function ManageCertificates() {
           </table>
         </div>
       </div>
+
+      {/* Certificate Preview Modal */}
+      <CertificateModal
+        isOpen={showPreview}
+        onClose={() => { setShowPreview(false); setPreviewCert(null); }}
+        certificate={previewCert}
+      />
     </div>
   );
 }

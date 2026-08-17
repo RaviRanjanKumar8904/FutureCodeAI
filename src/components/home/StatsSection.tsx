@@ -22,7 +22,7 @@ export default function StatsSection() {
   });
 
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "0px 0px -40px 0px", amount: 0.15 });
 
   useEffect(() => {
     const fetchStats = async () => {

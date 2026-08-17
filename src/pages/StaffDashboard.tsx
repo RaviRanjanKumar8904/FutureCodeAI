@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { CalendarDays, ClipboardList, User, LogOut, Menu, X, Globe } from 'lucide-react';
@@ -164,6 +164,14 @@ export default function StaffDashboard() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   if (!user) return <Navigate to="/login" />;
   if (user.role !== 'staff') return <Navigate to="/dashboard/student" />;
@@ -253,7 +261,7 @@ export default function StaffDashboard() {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
+      <main ref={mainRef} className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
         <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full pb-8">
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
@@ -23,6 +23,14 @@ export default function InstituteDashboard() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   const navItems = [
     { name: 'My Students', path: '/dashboard/institute', icon: Users },
@@ -122,7 +130,7 @@ export default function InstituteDashboard() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
+      <main ref={mainRef} className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
         <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full pb-8">
           <InstituteHeader />
           

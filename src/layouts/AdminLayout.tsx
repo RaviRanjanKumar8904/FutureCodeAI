@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
@@ -37,10 +37,14 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
 
-  // Close mobile menu on route change
+  // Close mobile menu and reset scroll position on route change
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
   }, [location.pathname]);
 
   useEffect(() => {
@@ -148,7 +152,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-[100vw] overflow-x-hidden -webkit-overflow-scrolling-touch">
+        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 w-full max-w-[100vw] overflow-x-hidden -webkit-overflow-scrolling-touch">
           <Outlet />
         </main>
       </div>

@@ -5,8 +5,11 @@ import { Building2, Search, CheckCircle2, Image as ImageIcon, Pencil, Trash2, Us
 import toast, { Toaster } from 'react-hot-toast';
 import AddCollaboratorModal from '../../components/admin/AddCollaboratorModal';
 import ApproveInstituteModal from '../../components/admin/ApproveInstituteModal';
+import { logAdminActivity } from '../../utils/adminLogger';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ManageCollaborators() {
+  const { user } = useAuth();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCollab, setEditingCollab] = useState<any>(null);
   const [collaborators, setCollaborators] = useState<any[]>([]);
@@ -41,13 +44,19 @@ export default function ManageCollaborators() {
     fetchCollaborators();
   }, []);
 
-  const handleUpdateStatus = async (id: string, isApproved: boolean, isActive: boolean) => {
+  const handleUpdateStatus = async (id: string, isApproved: boolean, isActive: boolean, name?: string) => {
     try {
       await updateDoc(doc(db, 'collaborators', id), {
         isApproved,
         isActive
       });
       toast.success(`Collaborator ${isApproved ? 'approved' : 'rejected'}`);
+      await logAdminActivity(
+        user?.email,
+        'STATUS_CHANGE',
+        `Collaborator: ${name || id}`,
+        `Updated approval=${isApproved}, active=${isActive}`
+      );
       fetchCollaborators();
     } catch (error) {
       console.error("Error updating:", error);
@@ -60,6 +69,11 @@ export default function ManageCollaborators() {
       try {
         await deleteDoc(doc(db, 'collaborators', id));
         toast.success(`Collaborator deleted`);
+        await logAdminActivity(
+          user?.email,
+          'DELETED',
+          `Collaborator: ${name}`
+        );
         fetchCollaborators();
       } catch (error) {
         console.error("Error deleting:", error);

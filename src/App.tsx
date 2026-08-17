@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import SmoothScroll from './components/SmoothScroll';
+import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import GlobalLoader from './components/GlobalLoader';
@@ -15,6 +16,8 @@ const Collaborators = lazy(() => import('./pages/Collaborators'));
 const VerifyCertificate = lazy(() => import('./pages/VerifyCertificate'));
 const Programs = lazy(() => import('./pages/Programs'));
 const Internships = lazy(() => import('./pages/Internships'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const Terms = lazy(() => import('./pages/Terms'));
 const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const ManageCollaborators = lazy(() => import('./pages/admin/ManageCollaborators'));
@@ -42,6 +45,7 @@ function App() {
     <HelmetProvider>
     <AuthProvider>
     <Router>
+      <ScrollToTop />
       <SmoothScroll>
         <div className="flex flex-col min-h-screen">
           <Navbar />
@@ -58,6 +62,8 @@ function App() {
             <Route path="/programs/*" element={<Programs />} />
             <Route path="/programs" element={<Programs />} />
             <Route path="/internships" element={<Internships />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<Terms />} />
             
             {/* Protected Routes */}
             <Route 
