@@ -31,22 +31,41 @@ import {
   UserCheck, 
   FileSpreadsheet, 
   RefreshCw,
-  Lock
+  Lock,
+  ArrowLeft,
+  Edit,
+  ExternalLink,
+  Clock,
+  User
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAdminActivity } from '../../utils/adminLogger';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 
+export interface WebinarItem {
+  id: string;
+  title: string;
+  topic?: string;
+  speaker?: string;
+  date: string;
+  time?: string;
+  meetingLink?: string;
+  formLink?: string;
+  status: 'Upcoming' | 'Live' | 'Completed';
+  createdAt?: any;
+}
+
 export interface WebinarAttendee {
   id: string;
+  webinarId?: string;
+  webinarTitle: string;
   studentName: string;
   email: string;
   phone?: string;
   collegeName?: string;
   branch?: string;
   yearOfStudy?: string;
-  webinarTitle: string;
   webinarDate?: string;
   timestamp?: string;
   attendanceStatus: 'Attended' | 'Registered' | 'Absent';
@@ -71,7 +90,7 @@ function parseCSV(text: string): string[][] {
     if (char === '"') {
       if (insideQuotes && nextChar === '"') {
         currentCell += '"';
-        i++; // skip escaped quote
+        i++;
       } else {
         insideQuotes = !insideQuotes;
       }
@@ -80,7 +99,7 @@ function parseCSV(text: string): string[][] {
       currentCell = '';
     } else if ((char === '\r' || char === '\n') && !insideQuotes) {
       if (char === '\r' && nextChar === '\n') {
-        i++; // handle CRLF
+        i++;
       }
       currentRow.push(currentCell.trim());
       if (currentRow.some(c => c.length > 0)) {
@@ -126,25 +145,47 @@ function mapCSVHeaders(headers: string[]) {
 
 export default function ManageWebinars() {
   const { user } = useAuth();
+  
+  // Webinars and Attendees State
+  const [webinars, setWebinars] = useState<WebinarItem[]>([]);
   const [attendees, setAttendees] = useState<WebinarAttendee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Active Selected Webinar (Drill-Down Mode)
+  const [selectedWebinar, setSelectedWebinar] = useState<WebinarItem | null>(null);
+
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedWebinar, setSelectedWebinar] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | 'Attended' | 'Registered' | 'Absent'>('All');
   const [selectedCollege, setSelectedCollege] = useState('All');
+  const [webinarStatusFilter, setWebinarStatusFilter] = useState<'All' | 'Upcoming' | 'Live' | 'Completed'>('All');
 
   // Bulk Selection
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Create / Edit Webinar Modal
+  const [showWebinarModal, setShowWebinarModal] = useState(false);
+  const [editingWebinar, setEditingWebinar] = useState<WebinarItem | null>(null);
+  const [webinarFormData, setWebinarFormData] = useState({
+    title: '',
+    topic: '',
+    speaker: '',
+    date: new Date().toISOString().split('T')[0],
+    time: '05:00 PM - 06:30 PM',
+    meetingLink: '',
+    formLink: '',
+    status: 'Upcoming' as 'Upcoming' | 'Live' | 'Completed',
+  });
+  const [isSavingWebinar, setIsSavingWebinar] = useState(false);
 
   // CSV Import Modal & Preview
   const [showImportModal, setShowImportModal] = useState(false);
   const [showFormatGuide, setShowFormatGuide] = useState(false);
   const [csvFileName, setCsvFileName] = useState('');
   const [parsedRows, setParsedRows] = useState<any[]>([]);
-  const [defaultWebinarTitle, setDefaultWebinarTitle] = useState('');
-  const [defaultWebinarDate, setDefaultWebinarDate] = useState(new Date().toISOString().split('T')[0]);
+  const [targetWebinarId, setTargetWebinarId] = useState<string>('');
+  const [targetWebinarTitle, setTargetWebinarTitle] = useState<string>('');
+  const [targetWebinarDate, setTargetWebinarDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -157,6 +198,7 @@ export default function ManageWebinars() {
     collegeName: '',
     branch: '',
     yearOfStudy: '',
+    webinarId: '',
     webinarTitle: '',
     webinarDate: new Date().toISOString().split('T')[0],
     attendanceStatus: 'Registered' as 'Attended' | 'Registered' | 'Absent',
@@ -178,46 +220,95 @@ export default function ManageWebinars() {
     variant: 'primary',
   });
 
-  // Fetch attendees from Firestore
-  const fetchAttendees = async () => {
+  // Fetch all webinars and attendees
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'webinar_attendees'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as WebinarAttendee));
-      setAttendees(list);
+      // 1. Fetch Webinars
+      const webinarsSnap = await getDocs(query(collection(db, 'webinars'), orderBy('createdAt', 'desc')));
+      const webinarsList = webinarsSnap.docs.map(d => ({ id: d.id, ...d.data() } as WebinarItem));
+      setWebinars(webinarsList);
+
+      // 2. Fetch Attendees
+      const attendeesSnap = await getDocs(query(collection(db, 'webinar_attendees'), orderBy('createdAt', 'desc')));
+      const attendeesList = attendeesSnap.docs.map(d => ({ id: d.id, ...d.data() } as WebinarAttendee));
+      setAttendees(attendeesList);
     } catch (err) {
-      console.error('Error fetching webinar attendees:', err);
-      toast.error('Failed to load webinar attendees');
+      console.error('Error fetching webinars data:', err);
+      toast.error('Failed to load webinar data');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAttendees();
+    fetchData();
   }, []);
 
-  // Compute unique webinars and colleges for filters
-  const uniqueWebinars = useMemo(() => {
-    const set = new Set<string>();
-    attendees.forEach(a => {
-      if (a.webinarTitle) set.add(a.webinarTitle);
+  // Compute metrics per webinar
+  const webinarMetrics = useMemo(() => {
+    const map = new Map<string, { total: number; attended: number; absent: number; registered: number; certCount: number; colleges: Set<string> }>();
+    
+    webinars.forEach(w => {
+      map.set(w.id, { total: 0, attended: 0, absent: 0, registered: 0, certCount: 0, colleges: new Set() });
     });
-    return Array.from(set).sort();
-  }, [attendees]);
 
-  const uniqueColleges = useMemo(() => {
-    const set = new Set<string>();
     attendees.forEach(a => {
+      // match by webinarId or fallback to webinarTitle
+      let wid = a.webinarId;
+      if (!wid) {
+        const found = webinars.find(w => w.title.toLowerCase() === a.webinarTitle?.toLowerCase());
+        if (found) wid = found.id;
+      }
+
+      if (wid && map.has(wid)) {
+        const stats = map.get(wid)!;
+        stats.total++;
+        if (a.attendanceStatus === 'Attended') stats.attended++;
+        else if (a.attendanceStatus === 'Absent') stats.absent++;
+        else stats.registered++;
+        if (a.certificateIssued) stats.certCount++;
+        if (a.collegeName && a.collegeName !== 'N/A') stats.colleges.add(a.collegeName);
+      }
+    });
+
+    return map;
+  }, [webinars, attendees]);
+
+  // Overall Global Stats
+  const globalStats = useMemo(() => {
+    const totalWebinars = webinars.length;
+    const totalStudents = attendees.length;
+    const totalAttended = attendees.filter(a => a.attendanceStatus === 'Attended').length;
+    const totalCertificates = attendees.filter(a => a.certificateIssued).length;
+    const rate = totalStudents > 0 ? Math.round((totalAttended / totalStudents) * 100) : 0;
+    return { totalWebinars, totalStudents, totalAttended, totalCertificates, rate };
+  }, [webinars, attendees]);
+
+  // Filtered Attendees for Selected Webinar
+  const attendeesForSelectedWebinar = useMemo(() => {
+    if (!selectedWebinar) return attendees;
+    return attendees.filter(a => {
+      if (a.webinarId && a.webinarId === selectedWebinar.id) return true;
+      if (a.webinarTitle && a.webinarTitle.toLowerCase() === selectedWebinar.title.toLowerCase()) return true;
+      return false;
+    });
+  }, [attendees, selectedWebinar]);
+
+  // Unique colleges for current view
+  const uniqueColleges = useMemo(() => {
+    const list = selectedWebinar ? attendeesForSelectedWebinar : attendees;
+    const set = new Set<string>();
+    list.forEach(a => {
       if (a.collegeName && a.collegeName !== 'N/A') set.add(a.collegeName);
     });
     return Array.from(set).sort();
-  }, [attendees]);
+  }, [selectedWebinar, attendeesForSelectedWebinar, attendees]);
 
-  // Filter attendees
-  const filteredAttendees = useMemo(() => {
-    return attendees.filter(a => {
+  // Filtered list of attendees based on search & filter inputs
+  const displayedAttendees = useMemo(() => {
+    const baseList = selectedWebinar ? attendeesForSelectedWebinar : attendees;
+    return baseList.filter(a => {
       const matchesSearch = 
         !searchTerm ||
         a.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -226,38 +317,180 @@ export default function ManageWebinars() {
         a.collegeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         a.webinarTitle?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesWebinar = selectedWebinar === 'All' || a.webinarTitle === selectedWebinar;
       const matchesStatus = selectedStatus === 'All' || a.attendanceStatus === selectedStatus;
       const matchesCollege = selectedCollege === 'All' || a.collegeName === selectedCollege;
 
-      return matchesSearch && matchesWebinar && matchesStatus && matchesCollege;
+      return matchesSearch && matchesStatus && matchesCollege;
     });
-  }, [attendees, searchTerm, selectedWebinar, selectedStatus, selectedCollege]);
+  }, [selectedWebinar, attendeesForSelectedWebinar, attendees, searchTerm, selectedStatus, selectedCollege]);
 
-  // Overall Stats
-  const stats = useMemo(() => {
-    const total = attendees.length;
-    const attended = attendees.filter(a => a.attendanceStatus === 'Attended').length;
-    const absent = attendees.filter(a => a.attendanceStatus === 'Absent').length;
-    const registered = attendees.filter(a => a.attendanceStatus === 'Registered').length;
-    const certCount = attendees.filter(a => a.certificateIssued).length;
-    const collegesCount = uniqueColleges.length;
-    const attendanceRate = total > 0 ? Math.round((attended / total) * 100) : 0;
+  // Filtered Webinars for the main dashboard
+  const filteredWebinars = useMemo(() => {
+    return webinars.filter(w => {
+      const matchesSearch = 
+        !searchTerm ||
+        w.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        w.speaker?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return { total, attended, absent, registered, certCount, collegesCount, attendanceRate };
-  }, [attendees, uniqueColleges]);
+      const matchesStatus = webinarStatusFilter === 'All' || w.status === webinarStatusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [webinars, searchTerm, webinarStatusFilter]);
 
-  // Handle CSV File Selection
+  // Stats for currently selected webinar
+  const selectedWebinarStats = useMemo(() => {
+    if (!selectedWebinar) return null;
+    const metrics = webinarMetrics.get(selectedWebinar.id) || { total: 0, attended: 0, absent: 0, registered: 0, certCount: 0, colleges: new Set() };
+    const rate = metrics.total > 0 ? Math.round((metrics.attended / metrics.total) * 100) : 0;
+    return { ...metrics, rate };
+  }, [selectedWebinar, webinarMetrics]);
+
+  // -------------------------------------------------------------
+  // WEBINAR CRUD HANDLERS
+  // -------------------------------------------------------------
+  const handleOpenCreateWebinar = () => {
+    setEditingWebinar(null);
+    setWebinarFormData({
+      title: '',
+      topic: '',
+      speaker: '',
+      date: new Date().toISOString().split('T')[0],
+      time: '05:00 PM - 06:30 PM',
+      meetingLink: '',
+      formLink: '',
+      status: 'Upcoming',
+    });
+    setShowWebinarModal(true);
+  };
+
+  const handleOpenEditWebinar = (webinar: WebinarItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingWebinar(webinar);
+    setWebinarFormData({
+      title: webinar.title,
+      topic: webinar.topic || '',
+      speaker: webinar.speaker || '',
+      date: webinar.date || new Date().toISOString().split('T')[0],
+      time: webinar.time || '',
+      meetingLink: webinar.meetingLink || '',
+      formLink: webinar.formLink || '',
+      status: webinar.status || 'Upcoming',
+    });
+    setShowWebinarModal(true);
+  };
+
+  const handleSaveWebinar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!webinarFormData.title.trim() || !webinarFormData.date) {
+      toast.error('Please provide at least a Webinar Title and Date.');
+      return;
+    }
+
+    setIsSavingWebinar(true);
+    const toastId = toast.loading(editingWebinar ? 'Updating webinar...' : 'Creating webinar...');
+
+    try {
+      if (editingWebinar) {
+        await updateDoc(doc(db, 'webinars', editingWebinar.id), {
+          title: webinarFormData.title.trim(),
+          topic: webinarFormData.topic.trim(),
+          speaker: webinarFormData.speaker.trim(),
+          date: webinarFormData.date,
+          time: webinarFormData.time.trim(),
+          meetingLink: webinarFormData.meetingLink.trim(),
+          formLink: webinarFormData.formLink.trim(),
+          status: webinarFormData.status,
+          updatedAt: serverTimestamp(),
+        });
+
+        setWebinars(prev => prev.map(w => w.id === editingWebinar.id ? { ...w, ...webinarFormData } : w));
+        if (selectedWebinar?.id === editingWebinar.id) {
+          setSelectedWebinar({ ...selectedWebinar, ...webinarFormData });
+        }
+        await logAdminActivity(user?.email, 'UPDATED', `Webinar: ${webinarFormData.title}`);
+        toast.success('Webinar updated successfully!', { id: toastId });
+      } else {
+        const newDoc = await addDoc(collection(db, 'webinars'), {
+          title: webinarFormData.title.trim(),
+          topic: webinarFormData.topic.trim(),
+          speaker: webinarFormData.speaker.trim(),
+          date: webinarFormData.date,
+          time: webinarFormData.time.trim(),
+          meetingLink: webinarFormData.meetingLink.trim(),
+          formLink: webinarFormData.formLink.trim(),
+          status: webinarFormData.status,
+          createdAt: serverTimestamp(),
+        });
+
+        const createdItem: WebinarItem = {
+          id: newDoc.id,
+          ...webinarFormData,
+        };
+        setWebinars(prev => [createdItem, ...prev]);
+        await logAdminActivity(user?.email, 'CREATED', `Webinar: ${webinarFormData.title}`);
+        toast.success('Webinar created successfully!', { id: toastId });
+      }
+      setShowWebinarModal(false);
+    } catch (err) {
+      console.error('Error saving webinar:', err);
+      toast.error('Failed to save webinar', { id: toastId });
+    } finally {
+      setIsSavingWebinar(false);
+    }
+  };
+
+  const handleDeleteWebinar = (webinar: WebinarItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setConfirmModalState({
+      isOpen: true,
+      title: 'Delete Webinar',
+      message: `Are you sure you want to delete webinar "${webinar.title}"? Note: Attendees already imported can be kept or removed.`,
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, 'webinars', webinar.id));
+          setWebinars(prev => prev.filter(w => w.id !== webinar.id));
+          if (selectedWebinar?.id === webinar.id) {
+            setSelectedWebinar(null);
+          }
+          await logAdminActivity(user?.email, 'DELETED', `Webinar: ${webinar.title}`);
+          toast.success('Webinar deleted successfully');
+        } catch (err) {
+          console.error('Error deleting webinar:', err);
+          toast.error('Failed to delete webinar');
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // -------------------------------------------------------------
+  // CSV IMPORT & PREVIEW
+  // -------------------------------------------------------------
+  const triggerCsvUploadForWebinar = (webinar?: WebinarItem) => {
+    const target = webinar || selectedWebinar;
+    if (target) {
+      setTargetWebinarId(target.id);
+      setTargetWebinarTitle(target.title);
+      setTargetWebinarDate(target.date);
+    } else if (webinars.length > 0) {
+      setTargetWebinarId(webinars[0].id);
+      setTargetWebinarTitle(webinars[0].title);
+      setTargetWebinarDate(webinars[0].date);
+    } else {
+      setTargetWebinarId('');
+      setTargetWebinarTitle('AI & Full-Stack Career Roadmap');
+      setTargetWebinarDate(new Date().toISOString().split('T')[0]);
+    }
+    fileInputRef.current?.click();
+  };
+
   const handleCSVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setCsvFileName(file.name);
-
-      // Guess webinar title from file name if default is empty
-      if (!defaultWebinarTitle) {
-        const cleanName = file.name.replace(/\.csv$/i, '').replace(/[-_]/g, ' ');
-        setDefaultWebinarTitle(cleanName);
-      }
 
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -272,10 +505,6 @@ export default function ManageWebinars() {
 
         const headers = rows[0];
         const headerMap = mapCSVHeaders(headers);
-
-        if (headerMap.name === -1 && headerMap.email === -1) {
-          toast.error('Could not detect Name or Email column. Please verify CSV format.');
-        }
 
         const parsed: any[] = [];
         for (let i = 1; i < rows.length; i++) {
@@ -323,19 +552,17 @@ export default function ManageWebinars() {
     }
   };
 
-  // Submit parsed CSV to Firestore in batches
   const handleConfirmImport = async () => {
     if (!parsedRows.length) {
       toast.error('No valid rows found to import.');
       return;
     }
 
-    const finalTopic = defaultWebinarTitle.trim() || 'Tech Career & AI Webinar';
+    const finalTitle = targetWebinarTitle.trim() || 'General Webinar';
     setImporting(true);
-    const toastId = toast.loading(`Importing ${parsedRows.length} attendees...`);
+    const toastId = toast.loading(`Importing ${parsedRows.length} students into "${finalTitle}"...`);
 
     try {
-      // Chunk into batches of 450 (Firestore limit is 500 operations per batch)
       const chunkSize = 400;
       for (let i = 0; i < parsedRows.length; i += chunkSize) {
         const chunk = parsedRows.slice(i, i + chunkSize);
@@ -344,14 +571,15 @@ export default function ManageWebinars() {
         chunk.forEach(item => {
           const docRef = doc(collection(db, 'webinar_attendees'));
           batch.set(docRef, {
+            webinarId: targetWebinarId || '',
+            webinarTitle: finalTitle,
+            webinarDate: targetWebinarDate,
             studentName: item.studentName,
             email: item.email,
             phone: item.phone,
             collegeName: item.collegeName,
             branch: item.branch,
             yearOfStudy: item.yearOfStudy,
-            webinarTitle: item.webinarTitle || finalTopic,
-            webinarDate: defaultWebinarDate,
             timestamp: item.timestamp,
             attendanceStatus: item.attendanceStatus,
             certificateIssued: false,
@@ -367,7 +595,7 @@ export default function ManageWebinars() {
       await logAdminActivity(
         user?.email,
         'BULK_ACTION',
-        `Webinar: ${finalTopic}`,
+        `Webinar: ${finalTitle}`,
         `Imported ${parsedRows.length} attendees via Google Form CSV (${csvFileName})`
       );
 
@@ -376,7 +604,7 @@ export default function ManageWebinars() {
       setParsedRows([]);
       setCsvFileName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      fetchAttendees();
+      fetchData();
     } catch (err) {
       console.error('Error importing attendees:', err);
       toast.error('Failed to import CSV records', { id: toastId });
@@ -406,15 +634,16 @@ export default function ManageWebinars() {
     document.body.removeChild(link);
   };
 
-  // Export Filtered Attendees to CSV
+  // Export Attendees to CSV
   const exportAttendeesCSV = () => {
-    if (!filteredAttendees.length) {
+    const targetList = displayedAttendees;
+    if (!targetList.length) {
       toast.error('No attendee records to export');
       return;
     }
 
     const headers = ["Student Name", "Email", "Phone", "College", "Branch", "Year", "Webinar Title", "Webinar Date", "Attendance Status", "Certificate Issued", "Registered Date"];
-    const rows = filteredAttendees.map(a => [
+    const rows = targetList.map(a => [
       a.studentName,
       a.email,
       a.phone || '',
@@ -434,14 +663,17 @@ export default function ManageWebinars() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `webinar_attendees_${selectedWebinar === 'All' ? 'all' : selectedWebinar.replace(/[^a-z0-9]/gi, '_')}.csv`);
+    const prefix = selectedWebinar ? selectedWebinar.title.replace(/[^a-z0-9]/gi, '_') : 'all_webinars';
+    link.setAttribute("download", `webinar_attendees_${prefix}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported ${filteredAttendees.length} records to CSV`);
+    toast.success(`Exported ${targetList.length} records to CSV`);
   };
 
-  // Toggle Attendance Status
+  // -------------------------------------------------------------
+  // ATTENDEE ACTIONS
+  // -------------------------------------------------------------
   const handleToggleAttendance = async (attendee: WebinarAttendee) => {
     const nextStatus: 'Attended' | 'Registered' | 'Absent' = 
       attendee.attendanceStatus === 'Registered' ? 'Attended' :
@@ -460,7 +692,6 @@ export default function ManageWebinars() {
     }
   };
 
-  // Toggle Certificate Issued Flag
   const handleToggleCertificate = async (attendee: WebinarAttendee) => {
     const nextVal = !attendee.certificateIssued;
     try {
@@ -476,7 +707,6 @@ export default function ManageWebinars() {
     }
   };
 
-  // Delete Single Attendee
   const handleDeleteAttendee = (attendee: WebinarAttendee) => {
     setConfirmModalState({
       isOpen: true,
@@ -503,7 +733,7 @@ export default function ManageWebinars() {
   // Bulk Actions
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedIds(filteredAttendees.map(a => a.id));
+      setSelectedIds(displayedAttendees.map(a => a.id));
     } else {
       setSelectedIds([]);
     }
@@ -565,7 +795,24 @@ export default function ManageWebinars() {
     });
   };
 
-  // Add Attendee Manually
+  // Manual Add Student Submit
+  const handleOpenAddStudent = (webinar?: WebinarItem) => {
+    const target = webinar || selectedWebinar;
+    setAddFormData({
+      studentName: '',
+      email: '',
+      phone: '',
+      collegeName: '',
+      branch: '',
+      yearOfStudy: '',
+      webinarId: target?.id || '',
+      webinarTitle: target?.title || (webinars[0]?.title || ''),
+      webinarDate: target?.date || new Date().toISOString().split('T')[0],
+      attendanceStatus: 'Registered',
+    });
+    setShowAddModal(true);
+  };
+
   const handleAddManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addFormData.studentName.trim() || !addFormData.email.trim() || !addFormData.webinarTitle.trim()) {
@@ -574,18 +821,19 @@ export default function ManageWebinars() {
     }
 
     setIsAdding(true);
-    const toastId = toast.loading('Adding attendee...');
+    const toastId = toast.loading('Adding student to webinar...');
 
     try {
       const newDoc = await addDoc(collection(db, 'webinar_attendees'), {
+        webinarId: addFormData.webinarId || '',
+        webinarTitle: addFormData.webinarTitle.trim(),
+        webinarDate: addFormData.webinarDate,
         studentName: addFormData.studentName.trim(),
         email: addFormData.email.trim().toLowerCase(),
         phone: addFormData.phone.trim(),
         collegeName: addFormData.collegeName.trim() || 'N/A',
         branch: addFormData.branch.trim() || 'N/A',
         yearOfStudy: addFormData.yearOfStudy.trim() || 'N/A',
-        webinarTitle: addFormData.webinarTitle.trim(),
-        webinarDate: addFormData.webinarDate,
         timestamp: new Date().toISOString(),
         attendanceStatus: addFormData.attendanceStatus,
         certificateIssued: false,
@@ -593,37 +841,28 @@ export default function ManageWebinars() {
         createdAt: serverTimestamp(),
       });
 
-      setAttendees(prev => [{
+      const newAttendee: WebinarAttendee = {
         id: newDoc.id,
+        webinarId: addFormData.webinarId,
+        webinarTitle: addFormData.webinarTitle.trim(),
+        webinarDate: addFormData.webinarDate,
         studentName: addFormData.studentName.trim(),
         email: addFormData.email.trim().toLowerCase(),
         phone: addFormData.phone.trim(),
         collegeName: addFormData.collegeName.trim() || 'N/A',
         branch: addFormData.branch.trim() || 'N/A',
         yearOfStudy: addFormData.yearOfStudy.trim() || 'N/A',
-        webinarTitle: addFormData.webinarTitle.trim(),
-        webinarDate: addFormData.webinarDate,
         attendanceStatus: addFormData.attendanceStatus,
         certificateIssued: false,
         source: 'manual',
-      }, ...prev]);
+      };
 
-      toast.success('Attendee registered successfully!', { id: toastId });
+      setAttendees(prev => [newAttendee, ...prev]);
+      toast.success('Student added to webinar successfully!', { id: toastId });
       setShowAddModal(false);
-      setAddFormData({
-        studentName: '',
-        email: '',
-        phone: '',
-        collegeName: '',
-        branch: '',
-        yearOfStudy: '',
-        webinarTitle: '',
-        webinarDate: new Date().toISOString().split('T')[0],
-        attendanceStatus: 'Registered',
-      });
     } catch (err) {
       console.error('Error adding attendee:', err);
-      toast.error('Failed to add attendee', { id: toastId });
+      toast.error('Failed to add student', { id: toastId });
     } finally {
       setIsAdding(false);
     }
@@ -642,26 +881,59 @@ export default function ManageWebinars() {
         className="hidden" 
       />
 
-      {/* Header Section */}
+      {/* ========================================================= */}
+      {/* 1. TOP HEADER & BREADCRUMB                                */}
+      {/* ========================================================= */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm">
         <div>
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
-              <Video size={14} /> Private Webinars
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-              <Lock size={12} /> Admin Only • Hidden from Public Website
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Webinar Registrations &amp; CSV Importer
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-            Import student Google Form response sheets, track live session attendance, and manage webinar certificates.
-          </p>
+          {selectedWebinar ? (
+            <div>
+              <button
+                onClick={() => { setSelectedWebinar(null); setSearchTerm(''); }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl transition-all mb-2 cursor-pointer"
+              >
+                <ArrowLeft size={14} />
+                <span>Back to All Webinars</span>
+              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                  {selectedWebinar.title}
+                </h1>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                  selectedWebinar.status === 'Live' ? 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse' :
+                  selectedWebinar.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                  'bg-indigo-100 text-indigo-700 border-indigo-200'
+                }`}>
+                  {selectedWebinar.status}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 flex items-center gap-3 flex-wrap">
+                <span className="flex items-center gap-1"><Calendar size={13}/> {selectedWebinar.date}</span>
+                {selectedWebinar.time && <span className="flex items-center gap-1"><Clock size={13}/> {selectedWebinar.time}</span>}
+                {selectedWebinar.speaker && <span className="flex items-center gap-1"><User size={13}/> Host: {selectedWebinar.speaker}</span>}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
+                  <Video size={14} /> Private Webinars Management
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                  <Lock size={12} /> Admin Only • Hidden from Public Website
+                </span>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                Create Webinars &amp; Manage Enrolled Students
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                Create offline/online webinars, import Google Form response CSVs into each session, and track live student attendance.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Header Action Buttons */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             onClick={() => setShowFormatGuide(true)}
@@ -671,402 +943,804 @@ export default function ManageWebinars() {
             <HelpCircle size={16} className="text-purple-600" />
             <span>CSV Format</span>
           </button>
-          
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
-          >
-            <Upload size={16} />
-            <span>Import Google Form CSV</span>
-          </button>
 
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
-          >
-            <Plus size={16} />
-            <span>Add Single</span>
-          </button>
-
-          <button
-            onClick={exportAttendeesCSV}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
-            title="Export list to CSV"
-          >
-            <Download size={16} />
-            <span className="hidden sm:inline">Export</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Summary Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Registered</span>
-            <Users size={18} className="text-purple-500" />
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{stats.total}</p>
-          <p className="text-[11px] font-medium text-slate-500">Across all private sessions</p>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Attended Live</span>
-            <CheckCircle2 size={18} className="text-emerald-500" />
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600">{stats.attended}</p>
-          <p className="text-[11px] font-bold text-emerald-700">{stats.attendanceRate}% Attendance Rate</p>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Absent / Pending</span>
-            <XCircle size={18} className="text-rose-500" />
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-rose-600">{stats.absent + stats.registered}</p>
-          <p className="text-[11px] font-medium text-slate-500">{stats.registered} registered, {stats.absent} absent</p>
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Colleges</span>
-            <School size={18} className="text-indigo-500" />
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{stats.collegesCount}</p>
-          <p className="text-[11px] font-medium text-slate-500">Unique colleges reached</p>
-        </div>
-
-        <div className="col-span-2 sm:col-span-1 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Certificates</span>
-            <Award size={18} className="text-amber-500" />
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold text-amber-600">{stats.certCount}</p>
-          <p className="text-[11px] font-medium text-slate-500">Issued to participants</p>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search by student name, email, phone, college, or webinar title..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
-            />
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')} 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Webinar Filter */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
-              <Video size={14} className="text-slate-400 shrink-0" />
-              <select
-                value={selectedWebinar}
-                onChange={(e) => setSelectedWebinar(e.target.value)}
-                className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer"
-              >
-                <option value="All">All Webinars ({uniqueWebinars.length})</option>
-                {uniqueWebinars.map(w => (
-                  <option key={w} value={w}>{w}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Attendance Status Filter */}
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
-              <Filter size={14} className="text-slate-400 shrink-0" />
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as any)}
-                className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Attended">Attended (Present)</option>
-                <option value="Registered">Registered (Pending)</option>
-                <option value="Absent">Absent</option>
-              </select>
-            </div>
-
-            {/* College Filter */}
-            {uniqueColleges.length > 0 && (
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
-                <School size={14} className="text-slate-400 shrink-0" />
-                <select
-                  value={selectedCollege}
-                  onChange={(e) => setSelectedCollege(e.target.value)}
-                  className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer max-w-[150px] truncate"
-                >
-                  <option value="All">All Colleges</option>
-                  {uniqueColleges.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <button
-              onClick={fetchAttendees}
-              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors"
-              title="Refresh list"
-            >
-              <RefreshCw size={15} />
-            </button>
-          </div>
-        </div>
-
-        {/* Bulk Action Controls Bar */}
-        {selectedIds.length > 0 && (
-          <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between gap-3 flex-wrap animate-in fade-in">
-            <span className="text-xs font-bold text-purple-900">
-              {selectedIds.length} attendees selected
-            </span>
-            <div className="flex items-center gap-2">
+          {selectedWebinar ? (
+            <>
               <button
-                onClick={handleBulkMarkAttended}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
+                onClick={() => triggerCsvUploadForWebinar(selectedWebinar)}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
               >
-                <UserCheck size={14} />
-                <span>Mark as Attended</span>
+                <Upload size={16} />
+                <span>Import Google Form CSV</span>
               </button>
-              <button
-                onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
-              >
-                <Trash2 size={14} />
-                <span>Delete Selected</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Attendees Table / Mobile Cards */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs font-medium text-slate-500">Loading webinar records...</p>
-          </div>
-        ) : filteredAttendees.length === 0 ? (
-          <div className="py-16 px-4 text-center max-w-md mx-auto">
-            <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <Video size={28} />
-            </div>
-            <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Attendees Found</h3>
-            <p className="text-xs text-slate-500 font-medium mb-6">
-              {attendees.length === 0 
-                ? 'No webinar attendees registered yet. Import a Google Form CSV or add students manually.' 
-                : 'No attendees match your current search and filter settings.'}
-            </p>
-            <div className="flex items-center justify-center gap-3">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md"
+                onClick={() => handleOpenAddStudent(selectedWebinar)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
               >
-                <Upload size={15} />
+                <Plus size={16} />
+                <span>Add Student</span>
+              </button>
+
+              <button
+                onClick={exportAttendeesCSV}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                title="Export this webinar attendees to CSV"
+              >
+                <Download size={16} />
+                <span>Export CSV</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleOpenCreateWebinar}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
+              >
+                <Plus size={16} />
+                <span>Create Webinar</span>
+              </button>
+
+              <button
+                onClick={() => triggerCsvUploadForWebinar()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+              >
+                <Upload size={16} />
                 <span>Import CSV</span>
               </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* 2. STATS SUMMARY GRID                                     */}
+      {/* ========================================================= */}
+      {selectedWebinar ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Enrolled Students</span>
+              <Users size={18} className="text-purple-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{selectedWebinarStats?.total || 0}</p>
+            <p className="text-[11px] font-medium text-slate-500">In this session</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Attended Live</span>
+              <CheckCircle2 size={18} className="text-emerald-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600">{selectedWebinarStats?.attended || 0}</p>
+            <p className="text-[11px] font-bold text-emerald-700">{selectedWebinarStats?.rate || 0}% Attendance Rate</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Absent / Pending</span>
+              <XCircle size={18} className="text-rose-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-rose-600">{(selectedWebinarStats?.absent || 0) + (selectedWebinarStats?.registered || 0)}</p>
+            <p className="text-[11px] font-medium text-slate-500">{selectedWebinarStats?.registered || 0} registered, {selectedWebinarStats?.absent || 0} absent</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Colleges</span>
+              <School size={18} className="text-indigo-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{selectedWebinarStats?.colleges.size || 0}</p>
+            <p className="text-[11px] font-medium text-slate-500">Participating colleges</p>
+          </div>
+
+          <div className="col-span-2 sm:col-span-1 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Certificates</span>
+              <Award size={18} className="text-amber-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-amber-600">{selectedWebinarStats?.certCount || 0}</p>
+            <p className="text-[11px] font-medium text-slate-500">Issued for this session</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Total Webinars</span>
+              <Video size={18} className="text-purple-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">{globalStats.totalWebinars}</p>
+            <p className="text-[11px] font-medium text-slate-500">Created sessions</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Total Students</span>
+              <Users size={18} className="text-indigo-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600">{globalStats.totalStudents}</p>
+            <p className="text-[11px] font-medium text-slate-500">Across all webinars</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Attended Live</span>
+              <CheckCircle2 size={18} className="text-emerald-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600">{globalStats.totalAttended}</p>
+            <p className="text-[11px] font-bold text-emerald-700">{globalStats.rate}% Attendance Rate</p>
+          </div>
+
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
+            <div className="flex items-center justify-between text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Certificates</span>
+              <Award size={18} className="text-amber-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-amber-600">{globalStats.totalCertificates}</p>
+            <p className="text-[11px] font-medium text-slate-500">Issued credentials</p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 3. MAIN CONTENT: WEBINAR CARDS OR ATTENDEE TABLE          */}
+      {/* ========================================================= */}
+      {!selectedWebinar ? (
+        /* ------------------------------------------------------- */
+        /* ALL WEBINARS LIST VIEW                                  */
+        /* ------------------------------------------------------- */
+        <div className="space-y-4">
+          {/* Webinars Filter & Search */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search webinars by title, topic, or speaker..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
+              />
+              {searchTerm && (
+                <button 
+                  onClick={() => setSearchTerm('')} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium w-full sm:w-auto">
+                <Filter size={14} className="text-slate-400 shrink-0" />
+                <select
+                  value={webinarStatusFilter}
+                  onChange={(e) => setWebinarStatusFilter(e.target.value as any)}
+                  className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full sm:w-auto"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Upcoming">Upcoming</option>
+                  <option value="Live">Live Now</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+
               <button
-                onClick={() => setShowFormatGuide(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors"
+                onClick={fetchData}
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0"
+                title="Refresh webinars"
               >
-                <HelpCircle size={15} />
-                <span>View CSV Format</span>
+                <RefreshCw size={15} />
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                    <th className="p-4 w-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.length === filteredAttendees.length && filteredAttendees.length > 0}
-                        onChange={handleSelectAll}
-                        className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                      />
-                    </th>
-                    <th className="p-4">Student &amp; Contact</th>
-                    <th className="p-4">College &amp; Branch</th>
-                    <th className="p-4">Webinar Topic &amp; Date</th>
-                    <th className="p-4">Attendance</th>
-                    <th className="p-4">Certificate</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {filteredAttendees.map((attendee) => {
-                    const isSelected = selectedIds.includes(attendee.id);
-                    return (
-                      <tr key={attendee.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
-                        <td className="p-4">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => handleToggleSelectId(attendee.id)}
-                            className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                          />
-                        </td>
-                        <td className="p-4">
-                          <div className="font-extrabold text-slate-900 text-sm">{attendee.studentName}</div>
-                          <div className="text-slate-500 font-mono text-[11px]">{attendee.email}</div>
-                          {attendee.phone && <div className="text-slate-400 text-[11px]">{attendee.phone}</div>}
-                        </td>
-                        <td className="p-4">
-                          <div className="font-bold text-slate-800 flex items-center gap-1">
-                            <School size={13} className="text-indigo-500 shrink-0" />
-                            <span>{attendee.collegeName}</span>
-                          </div>
-                          {(attendee.branch !== 'N/A' || attendee.yearOfStudy !== 'N/A') && (
-                            <div className="text-slate-400 text-[11px] mt-0.5">
-                              {attendee.branch} {attendee.yearOfStudy ? `• ${attendee.yearOfStudy}` : ''}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="font-bold text-purple-900">{attendee.webinarTitle}</div>
-                          {attendee.webinarDate && (
-                            <div className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
-                              <Calendar size={12} />
-                              <span>{attendee.webinarDate}</span>
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-4">
+
+          {/* Webinars Cards Grid */}
+          {loading ? (
+            <div className="py-20 text-center bg-white rounded-3xl border border-slate-200/80">
+              <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs font-medium text-slate-500">Loading webinars...</p>
+            </div>
+          ) : filteredWebinars.length === 0 ? (
+            <div className="py-16 px-4 text-center max-w-md mx-auto bg-white rounded-3xl border border-slate-200/80">
+              <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Video size={28} />
+              </div>
+              <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Webinars Created Yet</h3>
+              <p className="text-xs text-slate-500 font-medium mb-6">
+                Create a webinar first, and then add students or import Google Form CSV responses directly into it.
+              </p>
+              <button
+                onClick={handleOpenCreateWebinar}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md active:scale-95"
+              >
+                <Plus size={15} />
+                <span>Create First Webinar</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredWebinars.map(webinar => {
+                const metrics = webinarMetrics.get(webinar.id) || { total: 0, attended: 0, absent: 0, registered: 0, certCount: 0, colleges: new Set() };
+                const rate = metrics.total > 0 ? Math.round((metrics.attended / metrics.total) * 100) : 0;
+
+                return (
+                  <div
+                    key={webinar.id}
+                    onClick={() => { setSelectedWebinar(webinar); setSearchTerm(''); }}
+                    className="bg-white rounded-3xl border border-slate-200/80 hover:border-purple-300 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
+                          webinar.status === 'Live' ? 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse' :
+                          webinar.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                          'bg-indigo-100 text-indigo-700 border-indigo-200'
+                        }`}>
+                          {webinar.status === 'Live' ? '● Live Now' : webinar.status}
+                        </span>
+
+                        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => handleToggleAttendance(attendee)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                              attendee.attendanceStatus === 'Attended'
-                                ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                : attendee.attendanceStatus === 'Absent'
-                                ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                            title="Click to toggle status (Attended -> Absent -> Registered)"
+                            onClick={(e) => handleOpenEditWebinar(webinar, e)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+                            title="Edit Webinar Details"
                           >
-                            {attendee.attendanceStatus === 'Attended' && <CheckCircle2 size={13} />}
-                            {attendee.attendanceStatus === 'Absent' && <XCircle size={13} />}
-                            <span>{attendee.attendanceStatus}</span>
+                            <Edit size={15} />
                           </button>
-                        </td>
-                        <td className="p-4">
                           <button
-                            onClick={() => handleToggleCertificate(attendee)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                              attendee.certificateIssued
-                                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
-                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                            }`}
-                            title="Click to toggle certificate issued flag"
-                          >
-                            <Award size={13} />
-                            <span>{attendee.certificateIssued ? 'Issued' : 'Not Issued'}</span>
-                          </button>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button
-                            onClick={() => handleDeleteAttendee(attendee)}
+                            onClick={(e) => handleDeleteWebinar(webinar, e)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                            title="Delete record"
+                            title="Delete Webinar"
                           >
                             <Trash2 size={15} />
                           </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards View */}
-            <div className="block md:hidden divide-y divide-slate-100">
-              {filteredAttendees.map((attendee) => {
-                const isSelected = selectedIds.includes(attendee.id);
-                return (
-                  <div key={attendee.id} className={`p-4 space-y-3 ${isSelected ? 'bg-purple-50/40' : ''}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleSelectId(attendee.id)}
-                          className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500"
-                        />
-                        <div>
-                          <h4 className="font-bold text-slate-900 text-sm leading-snug">{attendee.studentName}</h4>
-                          <p className="text-slate-500 font-mono text-xs">{attendee.email}</p>
-                          {attendee.phone && <p className="text-slate-400 text-xs">{attendee.phone}</p>}
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteAttendee(attendee)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+
+                      <div>
+                        <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-purple-700 transition-colors leading-snug line-clamp-2">
+                          {webinar.title}
+                        </h3>
+                        {webinar.topic && (
+                          <p className="text-xs text-slate-500 font-medium mt-1 line-clamp-2">
+                            {webinar.topic}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-50 p-3 rounded-2xl space-y-1.5 text-xs text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <Calendar size={13} className="text-purple-600 shrink-0" />
+                          <span className="font-bold text-slate-800">{webinar.date}</span>
+                          {webinar.time && <span className="text-slate-400">• {webinar.time}</span>}
+                        </div>
+                        {webinar.speaker && (
+                          <div className="flex items-center gap-2">
+                            <User size={13} className="text-indigo-600 shrink-0" />
+                            <span>Host: <strong className="text-slate-800">{webinar.speaker}</strong></span>
+                          </div>
+                        )}
+                        {webinar.meetingLink && (
+                          <div className="flex items-center gap-2 truncate">
+                            <ExternalLink size={13} className="text-emerald-600 shrink-0" />
+                            <a 
+                              href={webinar.meetingLink} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              onClick={(e) => e.stopPropagation()} 
+                              className="text-emerald-700 font-medium hover:underline truncate"
+                            >
+                              {webinar.meetingLink}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1 text-slate-700">
-                      <p className="font-bold text-purple-900">{attendee.webinarTitle}</p>
-                      <p className="text-slate-500 flex items-center gap-1">
-                        <School size={12} />
-                        <span>{attendee.collegeName}</span>
-                      </p>
-                    </div>
+                    {/* Footer Metrics & Actions */}
+                    <div className="pt-4 mt-3 border-t border-slate-100 space-y-3">
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                        <div className="bg-purple-50/60 p-2 rounded-xl">
+                          <p className="font-extrabold text-purple-900 text-sm">{metrics.total}</p>
+                          <p className="text-[10px] text-purple-700 uppercase font-bold">Students</p>
+                        </div>
+                        <div className="bg-emerald-50/60 p-2 rounded-xl">
+                          <p className="font-extrabold text-emerald-800 text-sm">{metrics.attended}</p>
+                          <p className="text-[10px] text-emerald-700 uppercase font-bold">Attended ({rate}%)</p>
+                        </div>
+                        <div className="bg-amber-50/60 p-2 rounded-xl">
+                          <p className="font-extrabold text-amber-800 text-sm">{metrics.certCount}</p>
+                          <p className="text-[10px] text-amber-700 uppercase font-bold">Certificates</p>
+                        </div>
+                      </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <button
-                        onClick={() => handleToggleAttendance(attendee)}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold ${
-                          attendee.attendanceStatus === 'Attended'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : attendee.attendanceStatus === 'Absent'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {attendee.attendanceStatus === 'Attended' && <CheckCircle2 size={13} />}
-                        {attendee.attendanceStatus === 'Absent' && <XCircle size={13} />}
-                        <span>Status: {attendee.attendanceStatus}</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleToggleCertificate(attendee)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold ${
-                          attendee.certificateIssued
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                            : 'bg-slate-100 text-slate-500'
-                        }`}
-                      >
-                        <Award size={13} />
-                        <span>Cert: {attendee.certificateIssued ? 'Issued' : 'Pending'}</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedWebinar(webinar); }}
+                          className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                        >
+                          <Users size={14} />
+                          <span>Manage Students ({metrics.total})</span>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); triggerCsvUploadForWebinar(webinar); }}
+                          className="p-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold transition-all"
+                          title="Import Google Form CSV into this webinar"
+                        >
+                          <Upload size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        /* ------------------------------------------------------- */
+        /* INSIDE SELECTED WEBINAR: ATTENDEE MANAGEMENT TABLE      */
+        /* ------------------------------------------------------- */
+        <div className="space-y-4">
+          {/* Search & Filter Bar */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search students by name, email, phone, or college..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')} 
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Attendance Status Filter */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
+                  <Filter size={14} className="text-slate-400 shrink-0" />
+                  <select
+                    value={selectedStatus}
+                    onChange={(e) => setSelectedStatus(e.target.value as any)}
+                    className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Attended">Attended (Present)</option>
+                    <option value="Registered">Registered (Pending)</option>
+                    <option value="Absent">Absent</option>
+                  </select>
+                </div>
+
+                {/* College Filter */}
+                {uniqueColleges.length > 0 && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium">
+                    <School size={14} className="text-slate-400 shrink-0" />
+                    <select
+                      value={selectedCollege}
+                      onChange={(e) => setSelectedCollege(e.target.value)}
+                      className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer max-w-[150px] truncate"
+                    >
+                      <option value="All">All Colleges ({uniqueColleges.length})</option>
+                      {uniqueColleges.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  onClick={fetchData}
+                  className="p-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors"
+                  title="Refresh list"
+                >
+                  <RefreshCw size={15} />
+                </button>
+              </div>
+            </div>
+
+            {/* Bulk Action Controls Bar */}
+            {selectedIds.length > 0 && (
+              <div className="p-3 bg-purple-50 rounded-xl border border-purple-100 flex items-center justify-between gap-3 flex-wrap animate-in fade-in">
+                <span className="text-xs font-bold text-purple-900">
+                  {selectedIds.length} students selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkMarkAttended}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
+                  >
+                    <UserCheck size={14} />
+                    <span>Mark as Attended</span>
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete Selected</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Attendees Table / Mobile Cards */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            {displayedAttendees.length === 0 ? (
+              <div className="py-16 px-4 text-center max-w-md mx-auto">
+                <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                  <Users size={28} />
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Students in this Webinar</h3>
+                <p className="text-xs text-slate-500 font-medium mb-6">
+                  Upload your Google Form response CSV or add students individually.
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => triggerCsvUploadForWebinar(selectedWebinar)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md"
+                  >
+                    <Upload size={15} />
+                    <span>Import Google Form CSV</span>
+                  </button>
+                  <button
+                    onClick={() => handleOpenAddStudent(selectedWebinar)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    <Plus size={15} />
+                    <span>Add Student</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
+                        <th className="p-4 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.length === displayedAttendees.length && displayedAttendees.length > 0}
+                            onChange={handleSelectAll}
+                            className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                          />
+                        </th>
+                        <th className="p-4">Student &amp; Contact</th>
+                        <th className="p-4">College &amp; Branch</th>
+                        <th className="p-4">Registration Time</th>
+                        <th className="p-4">Live Attendance</th>
+                        <th className="p-4">Certificate</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {displayedAttendees.map((attendee) => {
+                        const isSelected = selectedIds.includes(attendee.id);
+                        return (
+                          <tr key={attendee.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
+                            <td className="p-4">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleSelectId(attendee.id)}
+                                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="font-extrabold text-slate-900 text-sm">{attendee.studentName}</div>
+                              <div className="text-slate-500 font-mono text-[11px]">{attendee.email}</div>
+                              {attendee.phone && <div className="text-slate-400 text-[11px]">{attendee.phone}</div>}
+                            </td>
+                            <td className="p-4">
+                              <div className="font-bold text-slate-800 flex items-center gap-1">
+                                <School size={13} className="text-indigo-500 shrink-0" />
+                                <span>{attendee.collegeName}</span>
+                              </div>
+                              {(attendee.branch !== 'N/A' || attendee.yearOfStudy !== 'N/A') && (
+                                <div className="text-slate-400 text-[11px] mt-0.5">
+                                  {attendee.branch} {attendee.yearOfStudy ? `• ${attendee.yearOfStudy}` : ''}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-4 text-slate-500 text-[11px]">
+                              {attendee.timestamp ? new Date(attendee.timestamp).toLocaleString() : '—'}
+                            </td>
+                            <td className="p-4">
+                              <button
+                                onClick={() => handleToggleAttendance(attendee)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                                  attendee.attendanceStatus === 'Attended'
+                                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                                    : attendee.attendanceStatus === 'Absent'
+                                    ? 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                                title="Click to toggle status (Attended -> Absent -> Registered)"
+                              >
+                                {attendee.attendanceStatus === 'Attended' && <CheckCircle2 size={13} />}
+                                {attendee.attendanceStatus === 'Absent' && <XCircle size={13} />}
+                                <span>{attendee.attendanceStatus}</span>
+                              </button>
+                            </td>
+                            <td className="p-4">
+                              <button
+                                onClick={() => handleToggleCertificate(attendee)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
+                                  attendee.certificateIssued
+                                    ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                }`}
+                                title="Click to toggle certificate issued flag"
+                              >
+                                <Award size={13} />
+                                <span>{attendee.certificateIssued ? 'Issued' : 'Not Issued'}</span>
+                              </button>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button
+                                onClick={() => handleDeleteAttendee(attendee)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                                title="Delete record"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="block md:hidden divide-y divide-slate-100">
+                  {displayedAttendees.map((attendee) => {
+                    const isSelected = selectedIds.includes(attendee.id);
+                    return (
+                      <div key={attendee.id} className={`p-4 space-y-3 ${isSelected ? 'bg-purple-50/40' : ''}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectId(attendee.id)}
+                              className="w-4 h-4 mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                            />
+                            <div>
+                              <h4 className="font-bold text-slate-900 text-sm leading-snug">{attendee.studentName}</h4>
+                              <p className="text-slate-500 font-mono text-xs">{attendee.email}</p>
+                              {attendee.phone && <p className="text-slate-400 text-xs">{attendee.phone}</p>}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteAttendee(attendee)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1 text-slate-700">
+                          <p className="text-slate-600 flex items-center gap-1 font-medium">
+                            <School size={12} className="text-indigo-600 shrink-0" />
+                            <span>{attendee.collegeName}</span>
+                          </p>
+                          {(attendee.branch !== 'N/A' || attendee.yearOfStudy !== 'N/A') && (
+                            <p className="text-slate-400 text-[11px]">
+                              {attendee.branch} • {attendee.yearOfStudy}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pt-1">
+                          <button
+                            onClick={() => handleToggleAttendance(attendee)}
+                            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold ${
+                              attendee.attendanceStatus === 'Attended'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : attendee.attendanceStatus === 'Absent'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {attendee.attendanceStatus === 'Attended' && <CheckCircle2 size={13} />}
+                            {attendee.attendanceStatus === 'Absent' && <XCircle size={13} />}
+                            <span>Status: {attendee.attendanceStatus}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleCertificate(attendee)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold ${
+                              attendee.certificateIssued
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            <Award size={13} />
+                            <span>Cert: {attendee.certificateIssued ? 'Issued' : 'Pending'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 4. MODALS (CREATE WEBINAR, CSV IMPORT, ADD STUDENT, GUIDE) */}
+      {/* ========================================================= */}
+
+      {/* CREATE / EDIT WEBINAR MODAL */}
+      {showWebinarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                  <Video size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
+                    {editingWebinar ? 'Edit Webinar' : 'Create New Webinar'}
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">Configure session info &amp; meeting details</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowWebinarModal(false)}
+                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveWebinar} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-3.5 text-xs sm:text-sm">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Webinar Title <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={webinarFormData.title}
+                    onChange={(e) => setWebinarFormData({ ...webinarFormData, title: e.target.value })}
+                    placeholder="e.g. Masterclass on AI & Full-Stack Roadmap"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Topic / Subtitle Description
+                  </label>
+                  <input
+                    type="text"
+                    value={webinarFormData.topic}
+                    onChange={(e) => setWebinarFormData({ ...webinarFormData, topic: e.target.value })}
+                    placeholder="e.g. Modern Web Development, System Design, & Industry Career Path"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Host / Speaker Name</label>
+                    <input
+                      type="text"
+                      value={webinarFormData.speaker}
+                      onChange={(e) => setWebinarFormData({ ...webinarFormData, speaker: e.target.value })}
+                      placeholder="e.g. Er. Rahul & Technical Team"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Status</label>
+                    <select
+                      value={webinarFormData.status}
+                      onChange={(e) => setWebinarFormData({ ...webinarFormData, status: e.target.value as any })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white"
+                    >
+                      <option value="Upcoming">Upcoming</option>
+                      <option value="Live">Live Now</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Webinar Date <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={webinarFormData.date}
+                      onChange={(e) => setWebinarFormData({ ...webinarFormData, date: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Time Timing</label>
+                    <input
+                      type="text"
+                      value={webinarFormData.time}
+                      onChange={(e) => setWebinarFormData({ ...webinarFormData, time: e.target.value })}
+                      placeholder="e.g. 05:00 PM - 06:30 PM"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Online Meeting Link (Google Meet / Zoom / YouTube)</label>
+                  <input
+                    type="url"
+                    value={webinarFormData.meetingLink}
+                    onChange={(e) => setWebinarFormData({ ...webinarFormData, meetingLink: e.target.value })}
+                    placeholder="https://meet.google.com/xyz-abcd-efg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Google Form Registration Link (Shared with students)</label>
+                  <input
+                    type="url"
+                    value={webinarFormData.formLink}
+                    onChange={(e) => setWebinarFormData({ ...webinarFormData, formLink: e.target.value })}
+                    placeholder="https://forms.gle/abcdef12345"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowWebinarModal(false)}
+                  className="px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingWebinar}
+                  className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  {isSavingWebinar ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    editingWebinar ? 'Update Webinar' : 'Create Webinar'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* CSV FORMAT & GOOGLE FORM GUIDE MODAL */}
       {showFormatGuide && (
@@ -1100,7 +1774,7 @@ export default function ManageWebinars() {
                   <li>Open your Google Form &rarr; Click on the <strong>Responses</strong> tab.</li>
                   <li>Click the 3 vertical dots (<strong>&vellip;</strong>) next to the Google Sheets icon.</li>
                   <li>Select <strong>Download responses (.csv)</strong>.</li>
-                  <li>Click <strong>Import Google Form CSV</strong> button on this page and select the file.</li>
+                  <li>Open any webinar and click <strong>Import Google Form CSV</strong>.</li>
                 </ol>
               </div>
 
@@ -1154,12 +1828,6 @@ export default function ManageWebinars() {
                         <td className="p-2.5">3rd Year (6th Sem)</td>
                       </tr>
                       <tr>
-                        <td className="p-2.5 font-bold">Webinar Topic</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Webinar, Topic, Event, Session, Title</td>
-                        <td className="p-2.5 text-slate-500 font-medium">Optional*</td>
-                        <td className="p-2.5">AI &amp; Career Roadmap</td>
-                      </tr>
-                      <tr>
                         <td className="p-2.5 font-bold">Timestamp</td>
                         <td className="p-2.5 font-mono text-[11px] text-purple-700">Timestamp, Date, Submitted At</td>
                         <td className="p-2.5 text-slate-500 font-medium">Optional</td>
@@ -1168,9 +1836,6 @@ export default function ManageWebinars() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1.5 italic">
-                  * If your CSV does not include a "Webinar Topic" column, you can set the Topic Title during the import preview screen.
-                </p>
               </div>
             </div>
 
@@ -1216,32 +1881,41 @@ export default function ManageWebinars() {
             </div>
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
-              {/* Global Default Topic & Date Configuration */}
+              {/* Destination Webinar Selection */}
               <div className="bg-purple-50/70 p-4 rounded-2xl border border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block font-bold text-purple-900 mb-1">
-                    Default Webinar Title / Topic <span className="text-rose-500">*</span>
+                    Destination Webinar Session <span className="text-rose-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={defaultWebinarTitle}
-                    onChange={(e) => setDefaultWebinarTitle(e.target.value)}
-                    placeholder="e.g. Masterclass on Full-Stack AI 2026"
+                  <select
+                    value={targetWebinarId}
+                    onChange={(e) => {
+                      const wid = e.target.value;
+                      setTargetWebinarId(wid);
+                      const found = webinars.find(w => w.id === wid);
+                      if (found) {
+                        setTargetWebinarTitle(found.title);
+                        setTargetWebinarDate(found.date);
+                      }
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white font-bold text-slate-900 text-xs sm:text-base"
-                  />
-                  <p className="text-[11px] text-purple-700 mt-0.5">Applied to all imported rows without a specific topic.</p>
+                  >
+                    {webinars.map(w => (
+                      <option key={w.id} value={w.id}>{w.title} ({w.date})</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
                   <label className="block font-bold text-purple-900 mb-1">
-                    Webinar Conducted Date
+                    Webinar Topic / Title Override
                   </label>
                   <input
-                    type="date"
-                    value={defaultWebinarDate}
-                    onChange={(e) => setDefaultWebinarDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white font-medium text-slate-900 text-xs sm:text-base"
+                    type="text"
+                    required
+                    value={targetWebinarTitle}
+                    onChange={(e) => setTargetWebinarTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white font-bold text-slate-900 text-xs sm:text-base"
                   />
                 </div>
               </div>
@@ -1275,11 +1949,6 @@ export default function ManageWebinars() {
                     </tbody>
                   </table>
                 </div>
-                {parsedRows.length > 50 && (
-                  <p className="text-[11px] text-slate-400 mt-1 italic text-center">
-                    Showing first 50 rows of {parsedRows.length} total records.
-                  </p>
-                )}
               </div>
             </div>
 
@@ -1293,7 +1962,7 @@ export default function ManageWebinars() {
               </button>
               <button
                 onClick={handleConfirmImport}
-                disabled={importing || !defaultWebinarTitle.trim()}
+                disabled={importing || !targetWebinarTitle.trim()}
                 className="px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
               >
                 {importing ? (
@@ -1304,7 +1973,7 @@ export default function ManageWebinars() {
                 ) : (
                   <>
                     <Upload size={15} />
-                    <span>Confirm &amp; Import {parsedRows.length} Attendees</span>
+                    <span>Confirm &amp; Import {parsedRows.length} Students</span>
                   </>
                 )}
               </button>
@@ -1313,7 +1982,7 @@ export default function ManageWebinars() {
         </div>
       )}
 
-      {/* MANUAL ADD ATTENDEE MODAL */}
+      {/* MANUAL ADD STUDENT MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto">
@@ -1323,8 +1992,8 @@ export default function ManageWebinars() {
                   <Plus size={20} />
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Add Webinar Attendee</h2>
-                  <p className="text-xs text-slate-500 font-medium">Manually register a student for a webinar</p>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Add Student to Webinar</h2>
+                  <p className="text-xs text-slate-500 font-medium">Manually register a student for a session</p>
                 </div>
               </div>
               <button 
@@ -1337,6 +2006,30 @@ export default function ManageWebinars() {
 
             <form onSubmit={handleAddManualSubmit} className="flex flex-col flex-1 overflow-hidden">
               <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-3.5 text-xs sm:text-sm">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Select Webinar Session <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={addFormData.webinarId}
+                    onChange={(e) => {
+                      const wid = e.target.value;
+                      const found = webinars.find(w => w.id === wid);
+                      setAddFormData({
+                        ...addFormData,
+                        webinarId: wid,
+                        webinarTitle: found?.title || '',
+                        webinarDate: found?.date || addFormData.webinarDate,
+                      });
+                    }}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white"
+                  >
+                    {webinars.map(w => (
+                      <option key={w.id} value={w.id}>{w.title} ({w.date})</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Student Name <span className="text-rose-500">*</span></label>
                   <input
@@ -1396,41 +2089,7 @@ export default function ManageWebinars() {
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Year / Semester</label>
-                    <input
-                      type="text"
-                      value={addFormData.yearOfStudy}
-                      onChange={(e) => setAddFormData({ ...addFormData, yearOfStudy: e.target.value })}
-                      placeholder="e.g. 3rd Year"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Webinar Topic / Title <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={addFormData.webinarTitle}
-                    onChange={(e) => setAddFormData({ ...addFormData, webinarTitle: e.target.value })}
-                    placeholder="e.g. Full-Stack AI & Cloud Bootcamp"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Webinar Date</label>
-                    <input
-                      type="date"
-                      value={addFormData.webinarDate}
-                      onChange={(e) => setAddFormData({ ...addFormData, webinarDate: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Initial Status</label>
+                    <label className="block font-bold text-slate-700 mb-1">Initial Attendance Status</label>
                     <select
                       value={addFormData.attendanceStatus}
                       onChange={(e) => setAddFormData({ ...addFormData, attendanceStatus: e.target.value as any })}
@@ -1463,7 +2122,7 @@ export default function ManageWebinars() {
                       <span>Saving...</span>
                     </>
                   ) : (
-                    'Add Attendee'
+                    'Add Student'
                   )}
                 </button>
               </div>
