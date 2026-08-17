@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../../firebase/config';
 import { collection, setDoc, updateDoc, deleteDoc, getDocs, getDoc, doc, query, orderBy, serverTimestamp, writeBatch } from 'firebase/firestore';
-import { Award, Plus, Trash2, Search, Copy, CheckCircle2, X, Upload, RotateCcw, Ban, Eye } from 'lucide-react';
+import { Award, Plus, Trash2, Search, Copy, CheckCircle2, X, Upload, RotateCcw, Ban, Eye, HelpCircle, Download, FileSpreadsheet } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import Papa from 'papaparse';
@@ -34,6 +34,7 @@ export default function ManageCertificates() {
   
   // Form State
   const [showModal, setShowModal] = useState(false);
+  const [showFormatGuide, setShowFormatGuide] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     studentName: '',
@@ -194,8 +195,28 @@ export default function ManageCertificates() {
     }
   };
 
-  const copyVerificationLink = (id: string) => {
-    const url = `${window.location.origin}/verify?id=${id}`;
+  const downloadSampleCertCsv = () => {
+    const headers = ["Student Name", "Course Name", "Issue Date", "Grade"];
+    const rows = [
+      ["Rahul Kumar", "Full-Stack Web Development", "2026-08-17", "A+"],
+      ["Priya Sharma", "AI & Machine Learning Track", "2026-08-17", "Distinction"],
+      ["Amit Verma", "Data Science & Python", "2026-08-17", "A"]
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "bulk_certificates_sample.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const copyVerificationLink = (certId: string) => {
+    const url = `${window.location.origin}/verify?id=${certId}`;
     navigator.clipboard.writeText(url);
     toast.success("Verification link copied!");
   };
@@ -212,12 +233,19 @@ export default function ManageCertificates() {
       complete: (results) => {
         const rows = results.data as any[];
         const parsed = rows
-          .map(row => ({
-            studentName: (row.studentName || row['Student Name'] || '').trim(),
-            courseName: (row.courseName || row['Course Name'] || '').trim(),
-            issueDate: (row.issueDate || row['Issue Date'] || '').trim(),
-            grade: (row.grade || row['Grade'] || '').trim(),
-          }))
+          .map(row => {
+            const name = (row.studentName || row['Student Name'] || row.name || row.Name || '').trim();
+            const course = (row.courseName || row['Course Name'] || row.course || row.Course || '').trim();
+            const issueDate = (row.issueDate || row['Issue Date'] || row.date || row.Date || new Date().toISOString().split('T')[0]).trim();
+            const grade = (row.grade || row['Grade'] || '').trim();
+
+            return {
+              studentName: name,
+              courseName: course,
+              issueDate: issueDate,
+              grade: grade,
+            };
+          })
           .filter(r => r.studentName && r.courseName);
 
         if (parsed.length === 0) {
@@ -233,7 +261,6 @@ export default function ManageCertificates() {
       }
     });
 
-    // Reset input so re-selecting the same file works
     if (csvInputRef.current) csvInputRef.current.value = '';
   };
 
@@ -248,7 +275,6 @@ export default function ManageCertificates() {
     const toastId = toast.loading(`Issuing ${bulkData.length} certificates...`);
 
     try {
-      // Generate unique IDs for all rows first
       const existingIds = new Set(certificates.map(c => c.certificateId));
       const entries: Array<{ certId: string; row: typeof bulkData[0] }> = [];
 
@@ -262,7 +288,6 @@ export default function ManageCertificates() {
         entries.push({ certId, row });
       }
 
-      // Write in batches of 500 (Firestore limit)
       const BATCH_SIZE = 500;
       for (let i = 0; i < entries.length; i += BATCH_SIZE) {
         const chunk = entries.slice(i, i + BATCH_SIZE);
@@ -303,22 +328,22 @@ export default function ManageCertificates() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto space-y-6">
       <Toaster position="top-center" />
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
             <Award size={24} />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-slate-900">Certificate Generator</h1>
-            <p className="text-slate-500 font-medium">Issue and manage verifiable digital credentials.</p>
+            <p className="text-slate-500 font-medium text-xs sm:text-sm">Issue and manage verifiable digital credentials.</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <input
             ref={csvInputRef}
             type="file"
@@ -327,22 +352,116 @@ export default function ManageCertificates() {
             className="hidden"
             id="csv-upload"
           />
+          <button
+            onClick={() => setShowFormatGuide(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-xs active:scale-95"
+            title="View CSV Header Format"
+          >
+            <HelpCircle size={16} className="text-indigo-600" />
+            <span>CSV Format</span>
+          </button>
           <button 
             onClick={() => csvInputRef.current?.click()}
-            className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-5 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 transition-colors shadow-xs text-xs sm:text-sm cursor-pointer active:scale-95"
           >
-            <Upload size={20} />
-            Bulk Upload (CSV)
+            <Upload size={16} />
+            <span>Bulk Upload (CSV)</span>
           </button>
           <button 
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 text-xs sm:text-sm cursor-pointer active:scale-95"
           >
-            <Plus size={20} />
-            Issue Certificate
+            <Plus size={16} />
+            <span>Issue Certificate</span>
           </button>
         </div>
       </div>
+
+      {/* CSV Format Modal */}
+      {showFormatGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                  <FileSpreadsheet size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">Certificate CSV Import Format</h2>
+                  <p className="text-xs text-slate-500 font-medium">Supported column headers for bulk certificate generation</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowFormatGuide(false)} 
+                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
+              <p className="text-slate-600">
+                Ensure your CSV file contains the following column headers (case-insensitive):
+              </p>
+
+              <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                      <th className="p-2.5">Column Header</th>
+                      <th className="p-2.5">Required?</th>
+                      <th className="p-2.5">Sample Value</th>
+                      <th className="p-2.5">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    <tr>
+                      <td className="p-2.5 font-bold font-mono text-indigo-700">Student Name</td>
+                      <td className="p-2.5 text-rose-600 font-bold">Required</td>
+                      <td className="p-2.5">Rahul Kumar</td>
+                      <td className="p-2.5 text-slate-500">Candidate full name on certificate</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold font-mono text-indigo-700">Course Name</td>
+                      <td className="p-2.5 text-rose-600 font-bold">Required</td>
+                      <td className="p-2.5">Full-Stack Web Dev</td>
+                      <td className="p-2.5 text-slate-500">Program / Track name</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold font-mono text-indigo-700">Issue Date</td>
+                      <td className="p-2.5 text-slate-500 font-medium">Optional</td>
+                      <td className="p-2.5">2026-08-17</td>
+                      <td className="p-2.5 text-slate-500">Defaults to today's date</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold font-mono text-indigo-700">Grade</td>
+                      <td className="p-2.5 text-slate-500 font-medium">Optional</td>
+                      <td className="p-2.5">A+ / Distinction</td>
+                      <td className="p-2.5 text-slate-500">Final evaluation grade</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+              <button
+                onClick={downloadSampleCertCsv}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                <Download size={15} />
+                <span>Download Sample CSV</span>
+              </button>
+              <button
+                onClick={() => setShowFormatGuide(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors"
+              >
+                Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bulk Preview Modal */}
       {showBulkModal && (
