@@ -5,8 +5,6 @@ import * as z from 'zod';
 import BackgroundBlobs from '../components/BackgroundBlobs';
 import SEO from '../components/SEO';
 
-import { Info } from 'lucide-react';
-
 import AboutHero from '../components/about/AboutHero';
 import OurStory from '../components/about/OurStory';
 import MissionVision from '../components/about/MissionVision';
@@ -43,10 +41,37 @@ const aboutSchema = z.object({
   })).optional()
 });
 
+const DEFAULT_ABOUT_DATA = {
+  story: "FutureCodeAI was founded with a clear, uncompromising vision: to democratize advanced technology education by bringing top-tier software engineering, AI, and data science training directly to classrooms and coaching centers across India.",
+  mission: "To equip 100,000+ ambitious students with industry-grade software engineering, AI, and problem-solving skills through hands-on project cohorts and live mentorship.",
+  vision: "To be India's premier decentralized tech ecosystem connecting tier 2 & 3 cities with top global startups and tech careers.",
+  founder: {
+    name: "Ravi Ranjan Kumar",
+    title: "Founder & Lead Architect",
+    bio: "Passionate engineer, educator, and entrepreneur dedicated to building accessible software engineering education and practical tech ecosystems.",
+    quote: "Real tech education isn't about rote learning; it's about shipping real code that changes lives.",
+    photoUrl: "/logo.jpg"
+  },
+  values: [
+    { title: "Hands-On First", desc: "Every concept is reinforced with practical code, live debugging, and real deployments.", iconKey: "code" },
+    { title: "Accessible Excellence", desc: "Bringing Silicon-Valley caliber curriculum right to local coaching institutes and colleges.", iconKey: "target" },
+    { title: "Career Acceleration", desc: "Industry recognized certificates, portfolio projects, and direct hiring referrals.", iconKey: "zap" },
+    { title: "Lifelong Community", desc: "Join an active network of alumni, mentors, and fellow student developers across India.", iconKey: "users" }
+  ],
+  milestones: [
+    { year: '2024', title: 'Founded FutureCode AI', description: 'Established with the mission to bridge the tech education gap across tier 2 & 3 cities with world-class curriculum.' },
+    { year: '2025', title: 'Partnered with MSME & Colleges', description: 'Expanded hands-on training centers across 50+ institutes and launched government-recognized certification.' },
+    { year: '2026', title: '5,000+ Students Certified', description: 'Pioneered AI & Full-Stack internship cohorts with 90%+ placement and internship assistance.' },
+  ],
+  team: [
+    { name: "Ravi Ranjan Kumar", role: "Founder & Lead Educator" },
+    { name: "Technical Advisory Board", role: "Industry Experts & Engineers" }
+  ]
+};
+
 export default function About() {
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<any>(DEFAULT_ABOUT_DATA);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchAboutData = async () => {
@@ -56,18 +81,15 @@ export default function About() {
         
         if (docSnap.exists()) {
           const result = aboutSchema.safeParse(docSnap.data());
-          if (result.success) {
-            setData(result.data);
-          } else {
-            console.error("Firestore data validation failed:", result.error);
-            setError(true);
+          if (result.success && result.data) {
+            setData({
+              ...DEFAULT_ABOUT_DATA,
+              ...result.data
+            });
           }
-        } else {
-          setError(true);
         }
       } catch (error) {
         console.error("Error fetching about page data:", error);
-        setError(true);
       } finally {
         setLoading(false);
       }
@@ -88,16 +110,8 @@ export default function About() {
         <AboutHero />
         
         {loading ? (
-          <div className="flex justify-center py-32">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
-          </div>
-        ) : error || !data ? (
-          <div className="max-w-4xl mx-auto py-32 px-4 text-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Info size={32} className="text-slate-400" />
-            </div>
-            <h2 className="text-3xl font-extrabold text-text-heading mb-4">Content Coming Soon</h2>
-            <p className="text-slate-500 text-lg font-medium">We are currently updating our about page. Please check back later.</p>
+          <div className="flex justify-center py-24">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
           </div>
         ) : (
           <>
@@ -105,11 +119,7 @@ export default function About() {
             {(data.mission || data.vision) && <MissionVision mission={data.mission || ''} vision={data.vision || ''} />}
             {data.founder && <FounderSection founder={data.founder} />}
             {data.values && data.values.length > 0 && <ValuesSection values={data.values} />}
-            <VerticalTimeline milestones={data.milestones && data.milestones.length > 0 ? data.milestones : [
-              { year: '2024', title: 'Founded FutureCode AI', description: 'Established with the mission to bridge the tech education gap across tier 2 & 3 cities with world-class curriculum.' },
-              { year: '2025', title: 'Partnered with MSME & Colleges', description: 'Expanded hands-on training centers across 50+ institutes and launched government-recognized certification.' },
-              { year: '2026', title: '5,000+ Students Certified', description: 'Pioneered AI & Full-Stack internship cohorts with 90%+ placement and internship assistance.' },
-            ]} />
+            <VerticalTimeline milestones={data.milestones || DEFAULT_ABOUT_DATA.milestones} />
             {data.team && data.team.length > 0 && <TeamSection team={data.team} />}
           </>
         )}

@@ -43,20 +43,56 @@ export default function InstituteDashboard() {
   if (user.role !== 'institute') return <Navigate to="/dashboard/student" />;
 
   return (
-    <div className="h-[100dvh] bg-slate-50 flex flex-col md:flex-row font-body">
+    <div className="h-[100dvh] bg-slate-50 flex flex-col md:flex-row font-body overflow-hidden">
       
       {/* Mobile Topbar */}
-      <div className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between z-30 relative shadow-sm shrink-0">
+      <div className="md:hidden bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 py-3 flex items-center justify-between z-30 relative shadow-sm shrink-0">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo.jpg" alt="Logo" className="h-8 w-auto rounded-md" />
-          <span className="font-heading font-extrabold text-lg tracking-tight">
+          <img src="/logo.jpg" alt="Logo" className="h-7 w-auto rounded-lg" />
+          <span className="font-heading font-extrabold text-base tracking-tight">
             <span className="text-[#152a4f]">FutureCode</span>
             <span className="text-[#24a4b5]">AI</span>
           </span>
         </Link>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-slate-600 bg-slate-100 rounded-lg">
-          {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        
+        <div className="flex items-center gap-2">
+          <Link 
+            to="/" 
+            className="p-2 text-slate-500 hover:text-primary rounded-xl bg-slate-50 border border-gray-100"
+            title="Main Website"
+          >
+            <Globe size={18} />
+          </Link>
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)} 
+            className="p-2 text-slate-700 bg-slate-100 rounded-xl active:scale-95 cursor-pointer"
+            aria-label="Toggle Dashboard Menu"
+          >
+            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Horizontal Quick Tabs */}
+      <div className="md:hidden bg-white border-b border-gray-100 px-3 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0 z-20">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              to={item.path}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition-all active:scale-95 ${
+                isActive 
+                  ? 'bg-primary text-white shadow-sm shadow-primary/30' 
+                  : 'bg-slate-50 text-slate-600 border border-gray-200/80'
+              }`}
+            >
+              <Icon size={14} />
+              <span>{item.name.replace('My ', '')}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Sidebar */}
@@ -95,14 +131,14 @@ export default function InstituteDashboard() {
                     key={item.name}
                     to={item.path}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
                       isActive 
                         ? 'bg-primary text-white shadow-glow-primary' 
                         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                   >
                     <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-                    {item.name}
+                    <span>{item.name}</span>
                   </Link>
                 );
               })}
@@ -119,7 +155,7 @@ export default function InstituteDashboard() {
               </Link>
               <button 
                 onClick={logout}
-                className="flex items-center gap-3 w-full px-4 py-3 text-red-600 font-medium hover:bg-red-50 rounded-xl transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-3 text-red-600 font-medium hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
               >
                 <LogOut size={20} />
                 Logout
@@ -131,16 +167,16 @@ export default function InstituteDashboard() {
 
       {/* Main Content */}
       <main ref={mainRef} className="flex-1 min-w-0 min-h-0 overflow-y-auto overscroll-contain scroll-smooth -webkit-overflow-scrolling-touch">
-        <div className="p-4 md:p-8 lg:p-10 max-w-6xl mx-auto w-full pb-8">
+        <div className="p-4 sm:p-6 md:p-8 lg:p-10 max-w-6xl mx-auto w-full pb-12">
           <InstituteHeader />
           
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
             >
               <Routes>
                 <Route path="/" element={<InstituteStudents />} />

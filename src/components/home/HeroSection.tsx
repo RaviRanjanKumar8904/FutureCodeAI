@@ -2,6 +2,8 @@ import { Suspense, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PresentationControls, Icosahedron, TorusKnot, Float, Environment } from '@react-three/drei';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import Reveal from '../Reveal';
 import * as THREE from 'three';
 
@@ -44,54 +46,61 @@ function AbstractShapes() {
 
 export default function HeroSection() {
   const { scrollY } = useScroll();
-  const y1 = useTransform(scrollY, [0, 800], [0, 80]);
-  const opacity = useTransform(scrollY, [0, 600], [1, 0.2]);
+  const y1 = useTransform(scrollY, [0, 800], [0, 60]);
+  const opacity = useTransform(scrollY, [0, 600], [1, 0.3]);
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
-      <div className="container mx-auto px-6 max-w-7xl grid lg:grid-cols-2 gap-12 items-center relative z-10">
+    <section className="relative min-h-[90vh] sm:min-h-screen flex items-center pt-24 sm:pt-32 pb-12 sm:pb-20 overflow-hidden">
+      <div className="container mx-auto px-4 sm:px-6 max-w-7xl grid lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
         
         {/* Text Content */}
         <motion.div 
           style={{ y: y1, opacity }} 
-          className="space-y-8"
+          className="space-y-6 sm:space-y-8 text-center lg:text-left"
         >
           <Reveal direction="up" delay={0.05}>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-md border border-white shadow-premium-card text-sm font-semibold text-primary">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Powered by FutureCodeAI
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-white/80 shadow-sm text-xs sm:text-sm font-bold text-primary">
+              <Sparkles size={14} className="text-amber-500 animate-pulse" />
+              <span>Next-Gen Tech Education Platform</span>
             </div>
           </Reveal>
           
           <Reveal direction="up" delay={0.12}>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold leading-[1.1] md:leading-[1.05] text-text-heading tracking-tight">
-              Learn the Technology That <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-secondary drop-shadow-sm">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.15] sm:leading-[1.1] text-text-heading tracking-tight">
+              Learn the Technology That <br className="hidden sm:inline" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-600 to-secondary drop-shadow-sm">
                 Builds Tomorrow
               </span>
             </h1>
           </Reveal>
 
           <Reveal direction="up" delay={0.18}>
-            <p className="text-base sm:text-lg text-slate-500 md:text-xl max-w-xl leading-relaxed font-medium">
-              AI, ML, Full-Stack Development & more — taught inside your own coaching institute.
+            <p className="text-sm sm:text-lg text-slate-600 md:text-xl max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
+              AI, Machine Learning, Full-Stack Engineering, and Web3 — taught through hands-on projects with industry-recognized certifications.
             </p>
           </Reveal>
 
           <Reveal direction="up" delay={0.24}>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button className="w-full sm:w-auto bg-primary text-white px-8 py-4 rounded-full text-base font-bold hover:bg-indigo-500 transition-all shadow-glow-primary hover:shadow-[0_0_30px_rgba(79,70,229,0.6)] hover:-translate-y-1 active:scale-95 text-center">
-                Explore Courses
-              </button>
-              <button className="w-full sm:w-auto bg-white text-text-heading px-8 py-4 rounded-full text-base font-bold border border-gray-100 hover:border-gray-200 transition-all shadow-soft hover:shadow-soft-lg hover:-translate-y-1 active:scale-95 text-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4 justify-center lg:justify-start">
+              <Link 
+                to="/programs"
+                className="w-full sm:w-auto bg-primary text-white px-7 py-3.5 sm:py-4 rounded-2xl sm:rounded-full text-sm sm:text-base font-extrabold hover:bg-indigo-600 transition-all shadow-glow-primary hover:-translate-y-0.5 active:scale-95 text-center flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Explore Courses</span>
+                <ArrowRight size={18} />
+              </Link>
+              <Link 
+                to="/internships"
+                className="w-full sm:w-auto bg-white text-slate-800 px-7 py-3.5 sm:py-4 rounded-2xl sm:rounded-full text-sm sm:text-base font-bold border border-slate-200/80 hover:bg-slate-50 transition-all shadow-sm hover:-translate-y-0.5 active:scale-95 text-center flex items-center justify-center cursor-pointer"
+              >
                 Apply for Internship
-              </button>
+              </Link>
             </div>
           </Reveal>
         </motion.div>
 
         {/* 3D Scene */}
-        <div className="h-[45vh] sm:h-[50vh] lg:h-[80vh] w-full relative -mt-8 lg:mt-0 flex items-center justify-center">
+        <div className="h-[35vh] sm:h-[45vh] lg:h-[75vh] w-full relative flex items-center justify-center">
           <Canvas 
             dpr={[1, 1.5]}
             gl={{ antialias: true, powerPreference: 'high-performance' }}
@@ -114,6 +123,7 @@ export default function HeroSection() {
             </Suspense>
           </Canvas>
         </div>
+
       </div>
     </section>
   );

@@ -48,7 +48,7 @@ export default function Gallery() {
         }
       } catch (error) {
         console.error("Error fetching gallery images:", error);
-        setImages([]); // Fallback on error
+        setImages([]);
       } finally {
         setLoading(false);
       }
@@ -97,48 +97,51 @@ export default function Gallery() {
   }
 
   return (
-    <div className="pt-32 md:pt-40 pb-20 font-body min-h-screen relative bg-slate-50">
+    <div className="pt-24 sm:pt-32 md:pt-40 pb-16 sm:pb-20 font-body min-h-screen relative bg-slate-50 overflow-hidden">
       <SEO 
-        title="Gallery" 
+        title="Gallery & Campus Life" 
         description="Explore the FutureCodeAI gallery to see our campus, events, student projects, and hackathons."
       />
       {/* Background decoration */}
       <div className="absolute top-0 inset-x-0 h-96 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 relative z-10">
         
         {/* Hero Section */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-14">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-extrabold text-text-heading mb-6 tracking-tight">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary mb-2 block">
+              Life at FutureCodeAI
+            </span>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-text-heading mb-3 sm:mb-4 tracking-tight leading-tight">
               Moments from Our <br className="hidden sm:block"/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
-                Classrooms
+                Classrooms &amp; Labs
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 font-medium">
-              Explore snapshots of our offline batches, interactive workshops, and tech events.
+            <p className="text-xs sm:text-lg text-slate-600 font-medium max-w-xl mx-auto leading-relaxed">
+              Explore snapshots of our offline cohorts, live coding hackathons, and tech seminars.
             </p>
           </motion.div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap justify-center gap-3 mb-16">
+        {/* Filter Tabs (Touch scrollable) */}
+        <div className="flex items-center justify-start sm:justify-center gap-2 overflow-x-auto pb-2 mb-8 sm:mb-12 scrollbar-none">
           {CATEGORIES.map((category) => (
             <button
               key={category}
               onClick={() => {
                 setActiveCategory(category);
-                setSelectedIndex(null); // Reset lightbox if open
+                setSelectedIndex(null);
               }}
-              className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 ${
+              className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
                 activeCategory === category 
-                  ? 'bg-text-heading text-white shadow-lg scale-105' 
-                  : 'bg-white text-slate-500 hover:bg-slate-100 border border-gray-200'
+                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20' 
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-gray-200'
               }`}
             >
               {category}
@@ -149,7 +152,7 @@ export default function Gallery() {
         {/* Optimized Grid */}
         <motion.div 
           layout="position"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
         >
           <AnimatePresence mode="popLayout">
             {filteredImages.map((image, index) => (
@@ -158,12 +161,12 @@ export default function Gallery() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.2 }}
                 key={image.id}
                 className="w-full"
               >
                 <div 
-                  className="group relative rounded-2xl overflow-hidden cursor-pointer bg-slate-100 aspect-[4/3]"
+                  className="group relative rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-slate-100 aspect-[4/3] shadow-sm hover:shadow-xl transition-all"
                   onClick={() => setSelectedIndex(index)}
                 >
                   <div className="relative w-full h-full overflow-hidden">
@@ -174,12 +177,12 @@ export default function Gallery() {
                       className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
                     
-                    {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
-                      <span className="inline-block px-3 py-1 bg-primary/90 text-white text-xs font-bold rounded-full mb-2 w-fit">
+                    {/* Hover Overlay / Mobile info tag */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent flex flex-col justify-end p-4 sm:p-6 transition-opacity">
+                      <span className="inline-block px-2.5 py-0.5 bg-primary/90 text-white text-[10px] sm:text-xs font-bold rounded-full mb-1.5 w-fit">
                         {image.category}
                       </span>
-                      <h3 className="text-white font-extrabold text-lg line-clamp-2">
+                      <h3 className="text-white font-bold text-sm sm:text-base line-clamp-1">
                         {image.title || image.caption || 'FutureCodeAI Moment'}
                       </h3>
                     </div>
@@ -191,90 +194,77 @@ export default function Gallery() {
         </motion.div>
 
         {filteredImages.length === 0 && (
-          <div className="text-center py-20 text-slate-500">
-            <p className="font-bold text-xl mb-2">No moments found</p>
-            <p>Check back later for photos in this category.</p>
+          <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+            <p className="font-bold text-lg text-slate-700 mb-1">No moments found</p>
+            <p className="text-xs text-slate-500">Check back soon for photos in this category.</p>
           </div>
         )}
       </div>
 
-      {/* Lightbox Modal */}
+      {/* Touch-Friendly Lightbox Modal */}
       <AnimatePresence>
-        {selectedIndex !== null && (
+        {selectedIndex !== null && filteredImages[selectedIndex] && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-950/95 backdrop-blur-md flex items-center justify-center"
             onClick={() => setSelectedIndex(null)}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-3 sm:p-6"
           >
-            {/* Close Button */}
-            <button 
-              className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors z-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedIndex(null);
-              }}
+            <button
+              onClick={() => setSelectedIndex(null)}
+              className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 p-2.5 rounded-full transition-colors z-30 cursor-pointer"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
-            {/* Navigation Arrows */}
-            {filteredImages.length > 1 && (
-              <>
-                <button 
-                  className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 md:w-16 md:h-16 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors z-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePrev();
-                  }}
-                >
-                  <ChevronLeft size={32} />
-                </button>
-                <button 
-                  className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 md:w-16 md:h-16 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors z-50"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleNext();
-                  }}
-                >
-                  <ChevronRight size={32} />
-                </button>
-              </>
-            )}
+            {/* Prev Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrev();
+              }}
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition-all z-30 cursor-pointer"
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            {/* Next Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNext();
+              }}
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition-all z-30 cursor-pointer"
+            >
+              <ChevronRight size={24} />
+            </button>
 
             {/* Main Image Container */}
-            <div 
-              className="relative max-w-5xl w-full max-h-[80vh] px-4 md:px-20 flex flex-col items-center justify-center"
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={(e) => e.stopPropagation()}
+              className="relative max-w-4xl max-h-[85vh] w-full flex flex-col items-center justify-center"
             >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={selectedIndex}
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 1.05, y: -20 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="relative w-full flex flex-col items-center"
-                >
-                  <img 
-                    src={filteredImages[selectedIndex].imageUrl} 
-                    alt={filteredImages[selectedIndex].title || filteredImages[selectedIndex].caption || 'FutureCodeAI Event'}
-                    className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl"
-                  />
-                  
-                  {/* Caption & Metadata */}
-                  <div className="mt-6 text-center">
-                    <span className="inline-block px-3 py-1 bg-white/10 text-slate-300 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
-                      {filteredImages[selectedIndex].category}
-                    </span>
-                    <h2 className="text-2xl md:text-3xl font-extrabold text-white">
-                      {filteredImages[selectedIndex].title || filteredImages[selectedIndex].caption || 'FutureCodeAI Moment'}
-                    </h2>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
+              <img
+                src={filteredImages[selectedIndex].imageUrl}
+                alt={filteredImages[selectedIndex].title || 'Gallery Preview'}
+                className="max-h-[75vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+              />
+              {(filteredImages[selectedIndex].title || filteredImages[selectedIndex].caption) && (
+                <div className="mt-3 text-center text-white px-4">
+                  <p className="font-bold text-sm sm:text-base">
+                    {filteredImages[selectedIndex].title || filteredImages[selectedIndex].caption}
+                  </p>
+                  <span className="text-xs text-slate-400 font-mono mt-0.5 inline-block">
+                    {selectedIndex + 1} / {filteredImages.length}
+                  </span>
+                </div>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

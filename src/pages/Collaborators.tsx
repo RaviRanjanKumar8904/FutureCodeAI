@@ -40,8 +40,6 @@ interface Collaborator {
 
 const CATEGORIES = ["All", "Coaching Institutes", "Colleges"];
 
-
-
 const partnershipSchema = z.object({
   name: z.string().min(2, "Name is required"),
   instituteName: z.string().min(2, "Institute Name is required"),
@@ -130,7 +128,7 @@ export default function Collaborators() {
   };
 
   return (
-    <div className="pt-32 md:pt-40 pb-20 font-body min-h-screen relative bg-slate-50">
+    <div className="pt-24 sm:pt-32 md:pt-40 pb-16 sm:pb-20 font-body min-h-screen relative bg-slate-50 overflow-hidden">
       <SEO 
         title="Our Collaborators & Partners" 
         description="Discover the universities, colleges, and industry partners collaborating with FutureCodeAI to deliver top-tier education."
@@ -140,37 +138,40 @@ export default function Collaborators() {
       {/* Background decoration */}
       <div className="absolute top-0 inset-x-0 h-[500px] bg-gradient-to-b from-primary/5 via-indigo-500/5 to-transparent pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 relative z-10">
         
         {/* Hero Section */}
-        <div className="text-center max-w-4xl mx-auto mb-16">
+        <div className="text-center max-w-4xl mx-auto mb-10 sm:mb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-extrabold text-text-heading mb-6 tracking-tight leading-tight">
+            <span className="text-xs font-bold uppercase tracking-widest text-primary mb-2 block">
+              Authorized Network
+            </span>
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-heading font-extrabold text-text-heading mb-4 tracking-tight leading-tight">
               Trusted by Leading <br className="hidden sm:block"/>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600">
-                Institutes & Colleges
+                Institutes &amp; Colleges
               </span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-600 font-medium">
+            <p className="text-sm sm:text-lg md:text-xl text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed">
               We partner with forward-thinking educational institutions to bring industry-leading tech curriculum directly to their campuses.
             </p>
           </motion.div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap justify-center gap-3 mb-16">
+        {/* Filter Tabs (Horizontal Scrollable on Mobile) */}
+        <div className="flex items-center justify-center gap-2 overflow-x-auto pb-2 mb-10 sm:mb-16 scrollbar-none">
           {CATEGORIES.map((category) => (
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 ${
+              className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-bold text-xs sm:text-sm whitespace-nowrap transition-all duration-300 cursor-pointer active:scale-95 shrink-0 ${
                 activeCategory === category 
-                  ? 'bg-text-heading text-white shadow-lg scale-105' 
-                  : 'bg-white text-slate-500 hover:bg-slate-100 border border-gray-200'
+                  ? 'bg-slate-900 text-white shadow-md shadow-slate-900/20 scale-100' 
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-gray-200'
               }`}
             >
               {category}
@@ -186,65 +187,62 @@ export default function Collaborators() {
         ) : (
           <motion.div 
             layout
-            className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 mb-24"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-16 sm:mb-24"
           >
             <AnimatePresence>
               {filteredData.map((collab) => (
                 <motion.div
                   layout
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
                   key={collab.id}
                   className="group"
-                  style={{ perspective: 1000 }}
                 >
-                  <motion.div 
-                    whileHover={{ rotateX: 2, rotateY: -2, scale: 1.02 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  <div 
                     onClick={() => setSelectedCollab(collab)}
-                    className="bg-white rounded-[1.5rem] md:rounded-3xl p-4 md:p-8 shadow-sm border border-gray-100 cursor-pointer h-full flex flex-col hover:shadow-xl transition-shadow"
+                    className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-100 cursor-pointer h-full flex flex-col justify-between hover:shadow-xl transition-all duration-300"
                   >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 md:mb-6">
-                      <img 
-                        src={collab.logoUrl} 
-                        alt={collab.name} 
-                        className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl object-cover bg-slate-50 border border-gray-100 shadow-sm"
-                      />
-                      <span className="inline-flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 bg-slate-50 text-slate-600 text-[10px] md:text-xs font-bold rounded-lg border border-gray-100">
-                        {collab.type === 'College' ? <GraduationCap size={12} className="md:w-3.5 md:h-3.5" /> : <Building2 size={12} className="md:w-3.5 md:h-3.5" />}
-                        {collab.type}
-                      </span>
-                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <img 
+                          src={collab.logoUrl || '/logo.jpg'} 
+                          alt={collab.name} 
+                          className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover bg-slate-50 border border-gray-100 shadow-sm shrink-0"
+                        />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 text-slate-600 text-[11px] font-bold rounded-lg border border-gray-100">
+                          {collab.type === 'College' ? <GraduationCap size={13} /> : <Building2 size={13} />}
+                          {collab.type}
+                        </span>
+                      </div>
 
-                    <h3 className="text-base md:text-xl font-extrabold text-text-heading mb-1 md:mb-2 line-clamp-2 md:line-clamp-1 leading-tight">{collab.name}</h3>
-                    
-                    <div className="flex items-center gap-1.5 md:gap-2 text-slate-500 text-xs md:text-sm font-medium mb-3 md:mb-4">
-                      <MapPin size={14} className="text-primary md:w-4 md:h-4" />
-                      {collab.city}
-                    </div>
-                    
-                    <p className="text-slate-600 text-[11px] md:text-sm leading-relaxed mb-4 md:mb-6 flex-1 line-clamp-3">
-                      {collab.description}
-                    </p>
-
-                    <div className="pt-3 md:pt-4 border-t border-gray-100 flex items-center justify-between mt-auto gap-2">
-                      <div className="flex items-center gap-1.5 md:gap-2 text-indigo-600 font-bold text-[10px] md:text-sm bg-indigo-50 px-2 py-1 md:px-3 md:py-1.5 rounded-lg">
-                        <BookOpen size={12} className="md:w-4 md:h-4" />
-                        <span className="hidden sm:inline">Active Courses</span>
-                        <span className="sm:hidden">Courses</span>
+                      <h3 className="text-lg sm:text-xl font-extrabold text-text-heading mb-1.5 line-clamp-1 leading-snug">
+                        {collab.name}
+                      </h3>
+                      
+                      <div className="flex items-center gap-1.5 text-slate-500 text-xs font-medium mb-3">
+                        <MapPin size={13} className="text-primary shrink-0" />
+                        <span className="truncate">{collab.city}</span>
                       </div>
                       
-                      <Link 
-                        to={`/programs?institute=${collab.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-primary hover:text-white transition-colors"
-                      >
-                        <ArrowRight size={14} className="md:w-[18px] md:h-[18px]" />
-                      </Link>
+                      <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mb-4 line-clamp-2">
+                        {collab.description}
+                      </p>
                     </div>
-                  </motion.div>
+
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-indigo-600 font-bold text-xs bg-indigo-50 px-2.5 py-1 rounded-lg">
+                        <BookOpen size={13} />
+                        <span>Active Courses</span>
+                      </div>
+                      
+                      <span className="text-xs font-bold text-slate-500 group-hover:text-primary flex items-center gap-1 transition-colors">
+                        <span>Details</span>
+                        <ArrowRight size={14} />
+                      </span>
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -252,29 +250,28 @@ export default function Collaborators() {
         )}
 
         {filteredData.length === 0 && !loading && (
-          <div className="text-center py-20">
-            <Users size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500 font-bold text-xl">No collaborators found</p>
+          <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 p-8 mb-16 shadow-sm">
+            <Users size={40} className="mx-auto text-slate-300 mb-3" />
+            <p className="text-slate-700 font-bold text-lg">No collaborators found</p>
+            <p className="text-slate-500 text-xs mt-1">Try selecting a different category filter above.</p>
           </div>
         )}
 
         {/* CTA Section */}
-        <div className="max-w-4xl mx-auto bg-text-heading rounded-3xl p-8 md:p-12 text-center relative overflow-hidden shadow-2xl shadow-indigo-900/20">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-indigo-600/20 mix-blend-overlay" />
-          
-          <div className="relative z-10">
-            <h2 className="text-3xl md:text-4xl font-heading font-extrabold text-white mb-4">
-              Become a Collaborator
+        <div className="max-w-4xl mx-auto bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-10 md:p-12 text-center relative overflow-hidden shadow-2xl">
+          <div className="relative z-10 space-y-4">
+            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-white">
+              Become an Authorized Center
             </h2>
-            <p className="text-slate-300 text-lg md:text-xl font-medium mb-8 max-w-2xl mx-auto">
+            <p className="text-slate-300 text-xs sm:text-base font-medium max-w-xl mx-auto leading-relaxed">
               Join our network of prestigious educational institutions and empower your students with cutting-edge tech education.
             </p>
             <button 
               onClick={() => setIsFormOpen(true)}
-              className="bg-white text-text-heading px-8 py-4 rounded-xl font-bold hover:bg-primary hover:text-white transition-all shadow-xl hover:shadow-primary/30 flex items-center gap-2 mx-auto"
+              className="bg-white hover:bg-slate-100 text-slate-900 px-6 sm:px-8 py-3 sm:py-3.5 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-xl flex items-center gap-2 mx-auto active:scale-95 cursor-pointer"
             >
-              Partner With Us
-              <ArrowRight size={20} />
+              <span>Partner With Us</span>
+              <ArrowRight size={16} />
             </button>
           </div>
         </div>
@@ -289,101 +286,75 @@ export default function Collaborators() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedCollab(null)}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 md:p-8 flex items-center justify-center overflow-y-auto"
-            style={{ zIndex: 1000 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center overflow-y-auto z-[1000]"
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl relative my-auto max-h-full flex flex-col"
+              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative my-auto max-h-[90vh] flex flex-col"
             >
               <button 
                 onClick={() => setSelectedCollab(null)}
-                className="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors z-10"
+                className="absolute top-4 right-4 w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors z-10 cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
-              <div className="overflow-y-auto p-6 md:p-10 flex-1">
-                <div className="flex flex-col md:flex-row gap-8 items-start mb-10">
+              <div className="overflow-y-auto p-5 sm:p-8 flex-1 space-y-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
                   <img 
-                    src={selectedCollab.logoUrl} 
+                    src={selectedCollab.logoUrl || '/logo.jpg'} 
                     alt={selectedCollab.name} 
-                    className="w-24 h-24 md:w-32 md:h-32 rounded-3xl object-cover bg-slate-50 border border-gray-100 shadow-sm shrink-0"
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover bg-slate-50 border border-gray-100 shadow-sm shrink-0"
                   />
                   <div>
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-600 text-sm font-bold rounded-lg border border-gray-100 mb-4">
-                      {selectedCollab.type === 'College' ? <GraduationCap size={16} /> : <Building2 size={16} />}
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-50 text-slate-600 text-xs font-bold rounded-lg border border-gray-100 mb-2">
+                      {selectedCollab.type === 'College' ? <GraduationCap size={13} /> : <Building2 size={13} />}
                       {selectedCollab.type}
                     </span>
-                    <h2 className="text-3xl md:text-4xl font-extrabold text-text-heading mb-3">{selectedCollab.name}</h2>
-                    <p className="text-lg text-slate-600 font-medium leading-relaxed">{selectedCollab.description}</p>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-text-heading mb-1.5">{selectedCollab.name}</h2>
+                    <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">{selectedCollab.description}</p>
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8 mb-10">
-                  <div className="space-y-6">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Location</h4>
-                      <div className="flex items-start gap-3 bg-slate-50 p-4 rounded-xl border border-gray-100">
-                        <MapPin className="text-primary shrink-0 mt-0.5" size={20} />
-                        <p className="text-slate-700 font-medium">{selectedCollab.address}</p>
-                      </div>
-                    </div>
-                    {selectedCollab.contactPerson && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Contact</h4>
-                        <div className="bg-slate-50 p-4 rounded-xl border border-gray-100 space-y-3">
-                          <p className="text-slate-700 font-bold">{selectedCollab.contactPerson}</p>
-                          {selectedCollab.phone && (
-                            <p className="flex items-center gap-2 text-slate-600 text-sm"><Phone size={16}/> {selectedCollab.phone}</p>
-                          )}
-                          {selectedCollab.email && (
-                            <p className="flex items-center gap-2 text-slate-600 text-sm"><Mail size={16}/> {selectedCollab.email}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="h-48 md:h-full bg-slate-100 rounded-xl overflow-hidden border border-gray-200">
-                    <iframe 
-                      src={`https://www.google.com/maps?q=${encodeURIComponent(selectedCollab.address)}&output=embed`}
-                      width="100%" 
-                      height="100%" 
-                      style={{ border: 0 }} 
-                      allowFullScreen={false} 
-                      loading="lazy"
-                    ></iframe>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Address &amp; Location</h4>
+                  <div className="flex items-start gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-gray-100 text-xs sm:text-sm text-slate-700 font-medium">
+                    <MapPin className="text-primary shrink-0 mt-0.5" size={17} />
+                    <span>{selectedCollab.address}</span>
                   </div>
                 </div>
 
-                {selectedCollab.galleryUrls && selectedCollab.galleryUrls.length > 0 && (
-                  <div>
-                    <h4 className="text-xl font-extrabold text-text-heading mb-4 flex items-center gap-2">
-                      Campus Photos
-                    </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {selectedCollab.galleryUrls.map((url, i) => (
-                        <div key={i} className="aspect-video rounded-xl overflow-hidden bg-slate-100 border border-gray-100">
-                          <img src={url} alt="Campus" className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
-                        </div>
-                      ))}
+                {selectedCollab.contactPerson && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Contact Person</h4>
+                    <div className="bg-slate-50 p-3.5 rounded-2xl border border-gray-100 space-y-2 text-xs sm:text-sm">
+                      <p className="text-slate-800 font-bold">{selectedCollab.contactPerson}</p>
+                      {selectedCollab.phone && (
+                        <a href={`tel:${selectedCollab.phone}`} className="flex items-center gap-2 text-primary font-semibold hover:underline">
+                          <Phone size={14}/> {selectedCollab.phone}
+                        </a>
+                      )}
+                      {selectedCollab.email && (
+                        <a href={`mailto:${selectedCollab.email}`} className="flex items-center gap-2 text-slate-600 hover:text-primary">
+                          <Mail size={14}/> {selectedCollab.email}
+                        </a>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
               
-              <div className="p-6 md:p-8 border-t border-gray-100 bg-slate-50 flex items-center justify-between shrink-0">
-                <span className="text-slate-500 font-medium text-sm">Want to study here?</span>
+              <div className="p-4 sm:p-5 border-t border-gray-100 bg-slate-50 flex items-center justify-between shrink-0">
+                <span className="text-slate-500 font-medium text-xs">Ready to join this center?</span>
                 <Link 
                   to={`/programs?institute=${selectedCollab.id}`}
-                  className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2"
+                  className="bg-primary text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-indigo-600 transition-colors shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
-                  View Active Courses
-                  <ArrowRight size={18} />
+                  <span>View Courses</span>
+                  <ArrowRight size={15} />
                 </Link>
               </div>
 
@@ -399,22 +370,21 @@ export default function Collaborators() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center overflow-y-auto"
-            style={{ zIndex: 1000 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center overflow-y-auto z-[1000]"
             onClick={() => !isSubmitting && setIsFormOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative my-auto p-6 md:p-10"
+              className="bg-white rounded-3xl w-full max-w-xl overflow-hidden shadow-2xl relative my-auto p-5 sm:p-8 max-h-[90vh] overflow-y-auto"
             >
               <button 
                 onClick={() => !isSubmitting && setIsFormOpen(false)}
-                className="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors z-10"
+                className="absolute top-4 right-4 w-9 h-9 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition-colors z-10 cursor-pointer"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
 
               <AnimatePresence>
@@ -423,77 +393,77 @@ export default function Collaborators() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center text-center p-8"
+                    className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center text-center p-6"
                   >
-                    <CheckCircle2 size={80} className="text-emerald-500 mb-6" />
-                    <h3 className="text-2xl font-extrabold text-text-heading mb-2">Request Submitted!</h3>
-                    <p className="text-slate-600 font-medium">Thank you for your interest. Our partnership team will contact you shortly.</p>
+                    <CheckCircle2 size={64} className="text-emerald-500 mb-4" />
+                    <h3 className="text-xl font-extrabold text-text-heading mb-2">Request Submitted!</h3>
+                    <p className="text-slate-600 font-medium text-xs sm:text-sm">Thank you for your interest. Our partnership team will contact you shortly.</p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <h2 className="text-2xl md:text-3xl font-extrabold text-text-heading mb-2">Partner with Us</h2>
-              <p className="text-slate-500 mb-8 font-medium">Fill out the details below and our team will get in touch.</p>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-text-heading mb-1">Partner with Us</h2>
+              <p className="text-slate-500 mb-6 font-medium text-xs sm:text-sm">Fill out the details below and our team will get in touch.</p>
 
-              <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-5">
-                <div className="grid md:grid-cols-2 gap-5">
+              <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4 text-xs sm:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Your Name</label>
-                    <input {...register("name")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium" />
+                    <label className="block font-bold text-slate-700 mb-1">Your Name</label>
+                    <input {...register("name")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
                     {errors.name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.name.message}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Institute / College Name</label>
-                    <input {...register("instituteName")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium" />
+                    <label className="block font-bold text-slate-700 mb-1">Institute / College Name</label>
+                    <input {...register("instituteName")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
                     {errors.instituteName && <p className="text-red-500 text-xs mt-1 font-medium">{errors.instituteName.message}</p>}
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Institution Type</label>
-                    <select {...register("type")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium">
+                    <label className="block font-bold text-slate-700 mb-1">Institution Type</label>
+                    <select {...register("type")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium bg-white">
                       <option value="Coaching Institute">Coaching Institute</option>
                       <option value="College">College</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
-                    <input {...register("city")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium" />
+                    <label className="block font-bold text-slate-700 mb-1">City</label>
+                    <input {...register("city")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
                     {errors.city && <p className="text-red-500 text-xs mt-1 font-medium">{errors.city.message}</p>}
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
-                    <input {...register("phone")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium" />
+                    <label className="block font-bold text-slate-700 mb-1">Phone Number</label>
+                    <input {...register("phone")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
                     {errors.phone && <p className="text-red-500 text-xs mt-1 font-medium">{errors.phone.message}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-                    <input {...register("email")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium" />
+                    <label className="block font-bold text-slate-700 mb-1">Email Address</label>
+                    <input {...register("email")} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium" />
                     {errors.email && <p className="text-red-500 text-xs mt-1 font-medium">{errors.email.message}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Message / Enquiry Details</label>
-                  <textarea {...register("message")} rows={4} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-heading font-medium resize-none" />
+                  <label className="block font-bold text-slate-700 mb-1">Message / Enquiry Details</label>
+                  <textarea {...register("message")} rows={3} className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium resize-none" />
                   {errors.message && <p className="text-red-500 text-xs mt-1 font-medium">{errors.message.message}</p>}
                 </div>
 
                 <button 
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-primary text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 mt-4"
+                  className="w-full bg-primary text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-600 transition-colors shadow-lg shadow-primary/20 disabled:opacity-70 mt-2 active:scale-95 cursor-pointer text-sm"
                 >
                   {isSubmitting ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      Submit Partnership Request
-                      <Send size={18} />
+                      <span>Submit Partnership Request</span>
+                      <Send size={16} />
                     </>
                   )}
                 </button>
