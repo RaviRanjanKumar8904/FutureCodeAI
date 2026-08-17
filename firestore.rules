@@ -19,14 +19,19 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() 
-             && getRole() == 'admin' 
-             && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isAuthenticated() && (
+        request.auth.token.email in ['raviranjan8904@gmail.com', 'futurecodeai@gmail.com', 'killerravi8904@gmail.com'] ||
+        getRole() == 'admin' || 
+        getRole() == 'super_admin' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
 
     function isSuperAdmin() {
-      return isAdmin() 
-             && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin';
+      return isAuthenticated() && (
+        request.auth.token.email in ['raviranjan8904@gmail.com', 'futurecodeai@gmail.com', 'killerravi8904@gmail.com'] ||
+        (isAdmin() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin')
+      );
     }
 
     function isInstitute() {
@@ -41,8 +46,8 @@ service cloud.firestore {
     // USERS COLLECTION
     // ----------------------------------------------------------------------
     match /users/{userId} {
-      // Anyone can create their own user document during the OAuth signup process
-      allow create: if isOwner(userId);
+      // Users can create their own document, and admins can create student profiles
+      allow create: if isOwner(userId) || isAdmin();
       
       // Users can read their own profiles, admins can read all
       allow read: if isOwner(userId) || isAdmin();

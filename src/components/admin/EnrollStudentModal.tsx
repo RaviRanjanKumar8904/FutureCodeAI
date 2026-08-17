@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebase/config';
-import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { X, UserPlus, Mail, Phone, BookOpen, Building2, User, Hash, School } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -58,15 +58,19 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
     const fetchData = async () => {
       try {
         const [coursesSnap, centersSnap] = await Promise.all([
-          getDocs(query(collection(db, 'courses'), orderBy('title'))),
-          getDocs(query(collection(db, 'collaborators'), orderBy('name'))),
+          getDocs(collection(db, 'courses')),
+          getDocs(collection(db, 'collaborators')),
         ]);
         const coursesData = coursesSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter((c: any) => c.isActive !== false);
+          .filter((c: any) => c.isActive !== false)
+          .sort((a: any, b: any) => ((a.title || a.courseName || '') > (b.title || b.courseName || '') ? 1 : -1));
+
         const centersData = centersSnap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter((c: any) => c.isApproved);
+          .filter((c: any) => c.isApproved !== false)
+          .sort((a: any, b: any) => ((a.name || '') > (b.name || '') ? 1 : -1));
+
         setCourses(coursesData);
         setCenters(centersData);
 
@@ -74,23 +78,32 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
         let matchedCourseId = '';
         let matchedCourseName = initialData?.courseName || '';
         if (matchedCourseName) {
-          const found = coursesData.find((c: any) => c.title?.toLowerCase() === matchedCourseName.toLowerCase());
+          const found = coursesData.find((c: any) => 
+            (c.title?.toLowerCase() === matchedCourseName.toLowerCase()) ||
+            (c.courseName?.toLowerCase() === matchedCourseName.toLowerCase()) ||
+            c.id === matchedCourseName
+          );
           if (found) {
             matchedCourseId = found.id;
-            matchedCourseName = (found as any).title;
+            matchedCourseName = (found as any).title || (found as any).courseName;
           }
         }
 
         let matchedCenterId = '';
         let matchedCenterName = initialData?.centerName || '';
         if (matchedCenterName) {
-          const found = centersData.find((c: any) => c.name?.toLowerCase().includes(matchedCenterName.toLowerCase()) || c.city?.toLowerCase().includes(matchedCenterName.toLowerCase()));
+          const found = centersData.find((c: any) => 
+            c.name?.toLowerCase().includes(matchedCenterName.toLowerCase()) || 
+            c.city?.toLowerCase().includes(matchedCenterName.toLowerCase()) ||
+            c.id === matchedCenterId
+          );
           if (found) {
             matchedCenterId = found.id;
             matchedCenterName = (found as any).name;
           }
         }
 
+        const defaultCourse = coursesData[0];
         setFormData({
           studentName: initialData?.studentName || '',
           email: initialData?.email || '',
@@ -98,10 +111,10 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
           gender: initialData?.gender || 'Male',
           collegeName: initialData?.collegeName || '',
           rollNo: initialData?.rollNo || '',
-          courseId: matchedCourseId || (coursesData[0]?.id || ''),
-          courseName: matchedCourseName || (coursesData[0] ? (coursesData[0] as any).title : ''),
+          courseId: matchedCourseId || (defaultCourse?.id || ''),
+          courseName: matchedCourseName || (defaultCourse ? ((defaultCourse as any).title || (defaultCourse as any).courseName) : ''),
           centerId: matchedCenterId,
-          centerName: matchedCenterName,
+          centerName: matchedCenterName || 'FutureCode AI (Online)',
           batch: batchOptions[0] || '',
         });
       } catch (err) {
@@ -125,7 +138,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
     setFormData(prev => ({
       ...prev,
       centerId,
-      centerName: center?.name || '',
+      centerName: center?.name || 'FutureCode AI (Online)',
     }));
   };
 
@@ -143,75 +156,75 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
       const emailLower = formData.email.trim().toLowerCase();
       const matchedCourse = courses.find(c => c.id === formData.courseId);
       const selectedCenter = centers.find(c => c.id === formData.centerId);
+      const finalCourseName = formData.courseName || matchedCourse?.title || matchedCourse?.courseName || 'Tech Program';
+      const finalCenterName = formData.centerName || selectedCenter?.name || 'FutureCode AI (Online)';
 
       // Check if student user already exists by email
-      const userQ = query(collection(db, 'users'), where('email', '==', emailLower));
-      const userSnap = await getDocs(userQ);
-
       let studentUid = '';
-      let instituteId = formData.centerId || '';
+      try {
+        const userQ = query(collection(db, 'users'), where('email', '==', emailLower));
+        const userSnap = await getDocs(userQ);
 
-      if (!userSnap.empty) {
-        // User already exists, update their profile fields and append to enrolledCourses
-        const existingUserDoc = userSnap.docs[0];
-        const existingData = existingUserDoc.data();
-        studentUid = existingUserDoc.id;
-        
-        const newCourseTitle = formData.courseName || matchedCourse?.title || '';
-        const currentCourses: string[] = Array.isArray(existingData?.enrolledCourses)
-          ? existingData.enrolledCourses
-          : (existingData?.enrolledCourse ? [existingData.enrolledCourse] : []);
-        const updatedCourses = Array.from(new Set([...currentCourses, newCourseTitle])).filter(Boolean);
+        if (!userSnap.empty) {
+          const existingUserDoc = userSnap.docs[0];
+          const existingData = existingUserDoc.data();
+          studentUid = existingUserDoc.id;
+          
+          const currentCourses: string[] = Array.isArray(existingData?.enrolledCourses)
+            ? existingData.enrolledCourses
+            : (existingData?.enrolledCourse ? [existingData.enrolledCourse] : []);
+          const updatedCourses = Array.from(new Set([...currentCourses, finalCourseName])).filter(Boolean);
 
-        await updateDoc(doc(db, 'users', studentUid), {
-          displayName: formData.studentName.trim(),
-          phone: formData.phone.trim() || existingData?.phone || '',
-          gender: formData.gender,
-          school: formData.collegeName.trim() || existingData?.school || '',
-          collegeName: formData.collegeName.trim() || existingData?.collegeName || '',
-          rollNo: formData.rollNo.trim() || existingData?.rollNo || '',
-          enrolledCourse: newCourseTitle,
-          enrolledCourses: updatedCourses,
-          assignedCenter: formData.centerName || existingData?.assignedCenter || 'FutureCodeAI (Online)',
-          batch: formData.batch || existingData?.batch,
-        });
-      } else {
-        // Create user document placeholder for student
-        const newCourseTitle = formData.courseName || matchedCourse?.title || '';
-        const newUserRef = await addDoc(collection(db, 'users'), {
-          displayName: formData.studentName.trim(),
-          email: emailLower,
-          phone: formData.phone.trim(),
-          gender: formData.gender,
-          school: formData.collegeName.trim(),
-          collegeName: formData.collegeName.trim(),
-          rollNo: formData.rollNo.trim(),
-          enrolledCourse: newCourseTitle,
-          enrolledCourses: [newCourseTitle],
-          assignedCenter: formData.centerName || 'FutureCodeAI (Online)',
-          batch: formData.batch,
-          role: 'student',
-          status: 'active',
-          photoURL: '',
-          createdAt: serverTimestamp(),
-        });
-        studentUid = newUserRef.id;
+          await updateDoc(doc(db, 'users', studentUid), {
+            displayName: formData.studentName.trim(),
+            phone: formData.phone.trim() || existingData?.phone || '',
+            gender: formData.gender,
+            school: formData.collegeName.trim() || existingData?.school || '',
+            collegeName: formData.collegeName.trim() || existingData?.collegeName || '',
+            rollNo: formData.rollNo.trim() || existingData?.rollNo || '',
+            enrolledCourse: finalCourseName,
+            enrolledCourses: updatedCourses,
+            assignedCenter: finalCenterName,
+            batch: formData.batch || existingData?.batch,
+          });
+        } else {
+          const newUserRef = await addDoc(collection(db, 'users'), {
+            displayName: formData.studentName.trim(),
+            email: emailLower,
+            phone: formData.phone.trim(),
+            gender: formData.gender,
+            school: formData.collegeName.trim(),
+            collegeName: formData.collegeName.trim(),
+            rollNo: formData.rollNo.trim(),
+            enrolledCourse: finalCourseName,
+            enrolledCourses: [finalCourseName],
+            assignedCenter: finalCenterName,
+            batch: formData.batch,
+            role: 'student',
+            status: 'active',
+            photoURL: '',
+            createdAt: serverTimestamp(),
+          });
+          studentUid = newUserRef.id;
+        }
+      } catch (userErr) {
+        console.warn('Note on user doc creation/update:', userErr);
       }
 
       // Create enrollment document
       await addDoc(collection(db, 'enrollments'), {
-        studentId: studentUid,
+        studentId: studentUid || '',
         studentName: formData.studentName.trim(),
         studentEmail: emailLower,
         phone: formData.phone.trim(),
         gender: formData.gender,
         collegeName: formData.collegeName.trim(),
         rollNo: formData.rollNo.trim(),
-        courseName: formData.courseName || matchedCourse?.title || 'Tech Program',
+        courseName: finalCourseName,
         courseId: formData.courseId || matchedCourse?.id || '',
-        institute: formData.centerName || 'FutureCodeAI (Online)',
+        institute: finalCenterName,
         centerId: formData.centerId || '',
-        instituteId,
+        instituteId: formData.centerId || '',
         city: selectedCenter?.city || 'Online',
         batch: formData.batch,
         batchTiming: formData.batch,
@@ -221,12 +234,12 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
         createdAt: serverTimestamp(),
       });
 
-      toast.success('Student enrolled successfully!', { id: toastId });
+      toast.success(`Enrolled in ${finalCourseName} successfully!`, { id: toastId });
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Error enrolling student:', error);
-      toast.error('Failed to enroll student', { id: toastId });
+      toast.error('Failed to enroll student. Please check network/permissions.', { id: toastId });
     } finally {
       setLoading(false);
     }
