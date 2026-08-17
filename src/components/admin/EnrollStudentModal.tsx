@@ -211,28 +211,56 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
         console.warn('Note on user doc creation/update:', userErr);
       }
 
-      // Create enrollment document
-      await addDoc(collection(db, 'enrollments'), {
-        studentId: studentUid || '',
-        studentName: formData.studentName.trim(),
-        studentEmail: emailLower,
-        phone: formData.phone.trim(),
-        gender: formData.gender,
-        collegeName: formData.collegeName.trim(),
-        rollNo: formData.rollNo.trim(),
-        courseName: finalCourseName,
-        courseId: formData.courseId || matchedCourse?.id || '',
-        institute: finalCenterName,
-        centerId: formData.centerId || '',
-        instituteId: formData.centerId || '',
-        city: selectedCenter?.city || 'Online',
-        batch: formData.batch,
-        batchTiming: formData.batch,
-        status: 'Ongoing',
-        image: matchedCourse?.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
-        enrolledAt: serverTimestamp(),
-        createdAt: serverTimestamp(),
-      });
+      // Check if student is already enrolled in this exact course to prevent duplicates
+      const enrollQ = query(
+        collection(db, 'enrollments'),
+        where('studentEmail', '==', emailLower)
+      );
+      const existingEnrollSnap = await getDocs(enrollQ);
+      const matchingEnrollment = existingEnrollSnap.docs.find(d => 
+        (d.data().courseName || '').toLowerCase().trim() === finalCourseName.toLowerCase().trim()
+      );
+
+      if (matchingEnrollment) {
+        await updateDoc(matchingEnrollment.ref, {
+          studentId: studentUid || matchingEnrollment.data().studentId || '',
+          studentName: formData.studentName.trim(),
+          phone: formData.phone.trim(),
+          gender: formData.gender,
+          collegeName: formData.collegeName.trim(),
+          rollNo: formData.rollNo.trim(),
+          institute: finalCenterName,
+          centerId: formData.centerId || '',
+          instituteId: formData.centerId || '',
+          city: selectedCenter?.city || 'Online',
+          batch: formData.batch,
+          batchTiming: formData.batch,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        // Create enrollment document
+        await addDoc(collection(db, 'enrollments'), {
+          studentId: studentUid || '',
+          studentName: formData.studentName.trim(),
+          studentEmail: emailLower,
+          phone: formData.phone.trim(),
+          gender: formData.gender,
+          collegeName: formData.collegeName.trim(),
+          rollNo: formData.rollNo.trim(),
+          courseName: finalCourseName,
+          courseId: formData.courseId || matchedCourse?.id || '',
+          institute: finalCenterName,
+          centerId: formData.centerId || '',
+          instituteId: formData.centerId || '',
+          city: selectedCenter?.city || 'Online',
+          batch: formData.batch,
+          batchTiming: formData.batch,
+          status: 'Ongoing',
+          image: matchedCourse?.thumbnailUrl || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
+          enrolledAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+      }
 
       toast.success(`Enrolled in ${finalCourseName} successfully!`, { id: toastId });
       onSuccess();

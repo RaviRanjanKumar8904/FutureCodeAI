@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { db } from '../../firebase/config';
-import { collection, getDocs, deleteDoc, doc, query, where, writeBatch, addDoc, setDoc, getDoc, serverTimestamp, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, query, where, writeBatch, addDoc, setDoc, getDoc, serverTimestamp, orderBy, updateDoc } from 'firebase/firestore';
 import {
   Users, Search, Trash2, Mail, Eye, GraduationCap, Plus,
   Download, Upload, Award, CheckSquare, Square, Calendar, Filter, X,
@@ -21,6 +21,7 @@ import Papa from 'papaparse';
 
 interface Student {
   id: string;
+  docIds?: string[];
   email: string;
   displayName: string;
   photoURL?: string;
@@ -324,7 +325,44 @@ export default function ManageStudents() {
         } as Student;
       });
 
-      data.sort((a, b) => {
+      // Deduplicate students by normalized email + enrolled course to ensure same student with same course is never shown twice
+      const deduplicatedMap = new Map<string, Student>();
+
+      data.forEach(studentItem => {
+        const emailKey = (studentItem.email || '').toLowerCase().trim();
+        const courseKey = (studentItem.enrolledCourse || '').toLowerCase().trim();
+        const dedupKey = emailKey ? `${emailKey}___${courseKey}` : studentItem.id;
+
+        if (!deduplicatedMap.has(dedupKey)) {
+          deduplicatedMap.set(dedupKey, {
+            ...studentItem,
+            docIds: [studentItem.id],
+          });
+        } else {
+          const existing = deduplicatedMap.get(dedupKey)!;
+          // Merge non-empty fields and accumulate document IDs for clean deletion
+          const merged: Student = {
+            ...existing,
+            docIds: Array.from(new Set([...(existing.docIds || [existing.id]), studentItem.id])),
+            displayName: existing.displayName || studentItem.displayName,
+            photoURL: existing.photoURL || studentItem.photoURL,
+            gender: existing.gender || studentItem.gender,
+            school: existing.school || studentItem.school,
+            collegeName: existing.collegeName || studentItem.collegeName,
+            rollNo: existing.rollNo || studentItem.rollNo,
+            phone: existing.phone || studentItem.phone,
+            assignedCenter: existing.assignedCenter || studentItem.assignedCenter,
+            batch: existing.batch || studentItem.batch,
+            certificateId: existing.certificateId || studentItem.certificateId,
+            certificateData: existing.certificateData || studentItem.certificateData,
+          };
+          deduplicatedMap.set(dedupKey, merged);
+        }
+      });
+
+      const deduplicatedData = Array.from(deduplicatedMap.values());
+
+      deduplicatedData.sort((a, b) => {
         const getMs = (val: any) => {
           if (!val) return 0;
           if (typeof val.toMillis === 'function') return val.toMillis();
@@ -334,7 +372,7 @@ export default function ManageStudents() {
         return getMs(b.createdAt) - getMs(a.createdAt);
       });
 
-      setStudents(data);
+      setStudents(deduplicatedData);
       setCenters(centersSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((c: any) => c.isApproved));
     } catch (error) {
       console.error('Error fetching students & certificates:', error);
@@ -436,7 +474,7 @@ export default function ManageStudents() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = (id: string, name: string, docIds?: string[], email?: string, courseName?: string) => {
     setConfirmModal({
       isOpen: true,
       title: 'Delete Student Profile',
@@ -447,11 +485,37 @@ export default function ManageStudents() {
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
         const tid = toast.loading('Deleting student...');
         try {
-          await deleteDoc(doc(db, 'users', id));
+          const batch = writeBatch(db);
+          const allUserIds = Array.from(new Set([...(docIds || []), id]));
+          allUserIds.forEach(userId => {
+            batch.delete(doc(db, 'users', userId));
+          });
+          await batch.commit();
+
+          // Also clean up matching enrollments for this student and course
+          if (email) {
+            const enrollQ = query(
+              collection(db, 'enrollments'), 
+              where('studentEmail', '==', email.toLowerCase().trim())
+            );
+            const enrollSnap = await getDocs(enrollQ);
+            if (!enrollSnap.empty) {
+              const enrollBatch = writeBatch(db);
+              enrollSnap.docs.forEach(d => {
+                const dData = d.data();
+                if (!courseName || (dData.courseName || '').toLowerCase().trim() === courseName.toLowerCase().trim()) {
+                  enrollBatch.delete(d.ref);
+                }
+              });
+              await enrollBatch.commit();
+            }
+          }
+
           logAdminActivity(user?.email, 'DELETED', `Student Profile: ${name}`);
           toast.success('Student deleted', { id: tid });
           fetchAll();
-        } catch {
+        } catch (err) {
+          console.error('Error deleting student:', err);
           toast.error('Failed to delete', { id: tid });
         }
       }
@@ -472,8 +536,20 @@ export default function ManageStudents() {
         const tid = toast.loading(`Deleting ${selectedIds.size} students...`);
         try {
           const batch = writeBatch(db);
-          selectedIds.forEach(id => batch.delete(doc(db, 'users', id)));
+          const allUserIdsToDelete: string[] = [];
+          const selectedStudentObjs = students.filter(s => selectedIds.has(s.id));
+          
+          selectedStudentObjs.forEach(s => {
+            if (s.docIds && s.docIds.length > 0) {
+              allUserIdsToDelete.push(...s.docIds);
+            } else {
+              allUserIdsToDelete.push(s.id);
+            }
+          });
+
+          Array.from(new Set(allUserIdsToDelete)).forEach(id => batch.delete(doc(db, 'users', id)));
           await batch.commit();
+
           logAdminActivity(user?.email, 'BULK_DELETED', `${selectedIds.size} students`);
           toast.success(`${selectedIds.size} students deleted`, { id: tid });
           setSelectedIds(new Set());
@@ -689,36 +765,113 @@ export default function ManageStudents() {
             try {
               let count = 0;
               for (const row of rows) {
-                if (!row.Email && !row.email) continue;
-                const email = row.Email || row.email;
-                const name = row.Name || row.name || row.StudentName || 'Imported Student';
-                const userRef = await addDoc(collection(db, 'users'), {
-                  email, displayName: name,
-                  phone: row.Phone || row.phone || '',
-                  gender: row.Gender || row.gender || 'Male',
-                  collegeName: row.College || row.college || row.School || '',
-                  rollNo: row.RollNo || row.rollNo || row.Roll || '',
-                  photoURL: '', role: 'student', status: 'active',
-                  enrolledByAdmin: true, createdAt: serverTimestamp(),
-                });
-                if (row.Course || row.course) {
-                  await addDoc(collection(db, 'enrollments'), {
-                    studentId: userRef.id, studentEmail: email, studentName: name,
-                    gender: row.Gender || row.gender || 'Male',
-                    collegeName: row.College || row.college || '',
-                    rollNo: row.RollNo || row.rollNo || '',
-                    courseName: row.Course || row.course,
-                    institute: row.Center || row.center || 'FutureCodeAI (Online)',
-                    batch: row.Batch || row.batch || batchOptions[0],
-                    batchTiming: row.Batch || row.batch || batchOptions[0],
-                    status: 'Ongoing', image: '', enrolledAt: serverTimestamp(),
+                const rawEmail = (row.Email || row.email || '').trim();
+                if (!rawEmail) continue;
+                const emailLower = rawEmail.toLowerCase();
+                const name = (row.Name || row.name || row.StudentName || 'Imported Student').trim();
+                const courseName = (row.Course || row.course || '').trim();
+                const centerName = (row.Center || row.center || 'FutureCodeAI (Online)').trim();
+                const batchVal = (row.Batch || row.batch || batchOptions[0]).trim();
+                const phone = (row.Phone || row.phone || '').trim();
+                const gender = (row.Gender || row.gender || 'Male').trim();
+                const college = (row.College || row.college || row.School || '').trim();
+                const rollNo = (row.RollNo || row.rollNo || row.Roll || '').trim();
+
+                // Check existing user doc
+                let studentUid = '';
+                const userQ = query(collection(db, 'users'), where('email', '==', emailLower));
+                const userSnap = await getDocs(userQ);
+
+                if (!userSnap.empty) {
+                  const existingDoc = userSnap.docs[0];
+                  studentUid = existingDoc.id;
+                  const existingData = existingDoc.data();
+                  const currentCourses: string[] = Array.isArray(existingData?.enrolledCourses)
+                    ? existingData.enrolledCourses
+                    : (existingData?.enrolledCourse ? [existingData.enrolledCourse] : []);
+                  const updatedCourses = Array.from(new Set([...currentCourses, courseName])).filter(Boolean);
+
+                  await updateDoc(doc(db, 'users', studentUid), {
+                    displayName: name || existingData?.displayName || 'Student',
+                    phone: phone || existingData?.phone || '',
+                    gender: gender || existingData?.gender || 'Male',
+                    collegeName: college || existingData?.collegeName || '',
+                    school: college || existingData?.school || '',
+                    rollNo: rollNo || existingData?.rollNo || '',
+                    enrolledCourse: courseName || existingData?.enrolledCourse || '',
+                    enrolledCourses: updatedCourses,
+                    assignedCenter: centerName || existingData?.assignedCenter || '',
+                    batch: batchVal || existingData?.batch || '',
                   });
+                } else {
+                  const newUserRef = await addDoc(collection(db, 'users'), {
+                    email: emailLower,
+                    displayName: name,
+                    phone,
+                    gender,
+                    collegeName: college,
+                    school: college,
+                    rollNo,
+                    photoURL: '',
+                    role: 'student',
+                    status: 'active',
+                    enrolledCourse: courseName,
+                    enrolledCourses: courseName ? [courseName] : [],
+                    assignedCenter: centerName,
+                    batch: batchVal,
+                    enrolledByAdmin: true,
+                    createdAt: serverTimestamp(),
+                  });
+                  studentUid = newUserRef.id;
+                }
+
+                if (courseName) {
+                  // Check existing enrollment for this student and course
+                  const enrollQ = query(
+                    collection(db, 'enrollments'),
+                    where('studentEmail', '==', emailLower)
+                  );
+                  const existingEnrollSnap = await getDocs(enrollQ);
+                  const matchingEnrollment = existingEnrollSnap.docs.find(d => 
+                    (d.data().courseName || '').toLowerCase().trim() === courseName.toLowerCase().trim()
+                  );
+
+                  if (matchingEnrollment) {
+                    await updateDoc(matchingEnrollment.ref, {
+                      studentName: name,
+                      gender,
+                      collegeName: college,
+                      rollNo,
+                      institute: centerName,
+                      batch: batchVal,
+                      batchTiming: batchVal,
+                      updatedAt: serverTimestamp(),
+                    });
+                  } else {
+                    await addDoc(collection(db, 'enrollments'), {
+                      studentId: studentUid,
+                      studentEmail: emailLower,
+                      studentName: name,
+                      gender,
+                      collegeName: college,
+                      rollNo,
+                      courseName,
+                      institute: centerName,
+                      batch: batchVal,
+                      batchTiming: batchVal,
+                      status: 'Ongoing',
+                      image: '',
+                      enrolledAt: serverTimestamp(),
+                      createdAt: serverTimestamp(),
+                    });
+                  }
                 }
                 count++;
               }
-              toast.success(`${count} students imported!`, { id: tid });
+              toast.success(`${count} students processed!`, { id: tid });
               fetchAll();
-            } catch {
+            } catch (err) {
+              console.error('Import error:', err);
               toast.error('Import failed', { id: tid });
             }
             if (csvRef.current) csvRef.current.value = '';
@@ -1230,7 +1383,7 @@ export default function ManageStudents() {
 
                           {/* Delete Student */}
                           <button
-                            onClick={() => handleDelete(student.id, student.displayName || 'student')}
+                            onClick={() => handleDelete(student.id, student.displayName || 'student', student.docIds, student.email, student.enrolledCourse)}
                             className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                             title="Delete Student Record"
                           >
