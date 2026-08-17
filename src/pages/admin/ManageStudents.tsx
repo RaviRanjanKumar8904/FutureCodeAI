@@ -12,6 +12,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import StudentProfileModal from '../../components/admin/StudentProfileModal';
 import EnrollStudentModal from '../../components/admin/EnrollStudentModal';
 import EditStudentModal from '../../components/admin/EditStudentModal';
+import ConfirmModal from '../../components/admin/ConfirmModal';
 import CertificateModal from '../../components/certificate/CertificateModal';
 import type { CertificateData } from '../../components/certificate/CourseCertificate';
 import { logAdminActivity } from '../../utils/adminLogger';
@@ -126,6 +127,21 @@ export default function ManageStudents() {
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Styled Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: 'danger' | 'primary' | 'warning';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Certificate Modal Preview State
   const [previewCert, setPreviewCert] = useState<CertificateData | null>(null);
@@ -419,31 +435,53 @@ export default function ManageStudents() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Delete student profile for ${name}?`)) return;
-    const tid = toast.loading('Deleting student...');
-    try {
-      await deleteDoc(doc(db, 'users', id));
-      logAdminActivity(user?.email, 'DELETED', `Student Profile: ${name}`);
-      toast.success('Student deleted', { id: tid });
-      fetchAll();
-    } catch { toast.error('Failed to delete', { id: tid }); }
+  const handleDelete = (id: string, name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Student Profile',
+      message: `Are you sure you want to permanently delete the profile for "${name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete Student',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const tid = toast.loading('Deleting student...');
+        try {
+          await deleteDoc(doc(db, 'users', id));
+          logAdminActivity(user?.email, 'DELETED', `Student Profile: ${name}`);
+          toast.success('Student deleted', { id: tid });
+          fetchAll();
+        } catch {
+          toast.error('Failed to delete', { id: tid });
+        }
+      }
+    });
   };
 
   // Bulk delete
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} student(s)? This cannot be undone.`)) return;
-    const tid = toast.loading(`Deleting ${selectedIds.size} students...`);
-    try {
-      const batch = writeBatch(db);
-      selectedIds.forEach(id => batch.delete(doc(db, 'users', id)));
-      await batch.commit();
-      logAdminActivity(user?.email, 'BULK_DELETED', `${selectedIds.size} students`);
-      toast.success(`${selectedIds.size} students deleted`, { id: tid });
-      setSelectedIds(new Set());
-      fetchAll();
-    } catch { toast.error('Failed to bulk delete', { id: tid }); }
+    setConfirmModal({
+      isOpen: true,
+      title: `Delete ${selectedIds.size} Students`,
+      message: `Are you sure you want to delete ${selectedIds.size} selected student profiles? This will permanently remove them from the database.`,
+      confirmLabel: `Delete ${selectedIds.size} Students`,
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const tid = toast.loading(`Deleting ${selectedIds.size} students...`);
+        try {
+          const batch = writeBatch(db);
+          selectedIds.forEach(id => batch.delete(doc(db, 'users', id)));
+          await batch.commit();
+          logAdminActivity(user?.email, 'BULK_DELETED', `${selectedIds.size} students`);
+          toast.success(`${selectedIds.size} students deleted`, { id: tid });
+          setSelectedIds(new Set());
+          fetchAll();
+        } catch {
+          toast.error('Failed to bulk delete', { id: tid });
+        }
+      }
+    });
   };
 
   // Bulk certificate issue (checks duration completion)
@@ -462,41 +500,53 @@ export default function ManageStudents() {
       return;
     }
 
-    if (!window.confirm(`Issue certificates for ${eligible.length} course-completed student(s)?`)) return;
-    
-    const tid = toast.loading(`Issuing ${eligible.length} certificates...`);
-    try {
-      const batch = writeBatch(db);
-      const year = new Date().getFullYear();
-      for (const s of eligible) {
-        const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const certId = `FC-${year}-${rand}`;
-        const certRef = doc(db, 'certificates', certId);
-        const startDate = s.enrolledAtDate || new Date().toISOString().split('T')[0];
-        const completionDate = s.completionDate || computeCompletionDate(startDate, s.courseDuration);
+    setConfirmModal({
+      isOpen: true,
+      title: `Issue ${eligible.length} Certificates`,
+      message: `Ready to issue verified certificates for ${eligible.length} course-completed student(s)? Issue dates and completion dates will be synchronized automatically.`,
+      confirmLabel: `Issue ${eligible.length} Certificates`,
+      variant: 'primary',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const tid = toast.loading(`Issuing ${eligible.length} certificates...`);
+        try {
+          const batch = writeBatch(db);
+          const year = new Date().getFullYear();
+          for (const s of eligible) {
+            const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const certId = `FC-${year}-${rand}`;
+            const certRef = doc(db, 'certificates', certId);
+            const startDate = s.enrolledAtDate || new Date().toISOString().split('T')[0];
+            const completionDate = s.completionDate || computeCompletionDate(startDate, s.courseDuration);
 
-        batch.set(certRef, {
-          certificateId: certId,
-          studentName: s.displayName || s.email,
-          studentEmail: s.email || '',
-          courseName: s.enrolledCourse || 'Full Stack Web Development',
-          domain: s.enrolledCourse || 'Full Stack Web Development',
-          gender: s.gender || 'Male',
-          startDate,
-          endDate: completionDate,
-          issueDate: completionDate,
-          grade: 'A',
-          marksPercentage: '92',
-          issuedBy: `Admin (${user?.email || 'Bulk'})`,
-          createdAt: serverTimestamp(),
-        });
+            batch.set(certRef, {
+              certificateId: certId,
+              studentName: s.displayName || s.email,
+              studentEmail: s.email,
+              gender: s.gender || 'Male',
+              courseName: s.enrolledCourse || 'Course Certificate',
+              domain: s.enrolledCourse || 'General Program',
+              startDate: startDate,
+              endDate: completionDate,
+              issueDate: completionDate,
+              grade: 'A',
+              marksPercentage: '85',
+              issuedBy: user?.email || 'Admin',
+              revoked: false,
+              createdAt: serverTimestamp(),
+            });
+          }
+          await batch.commit();
+          logAdminActivity(user?.email, 'BULK_ISSUED', `${eligible.length} certificates`);
+          toast.success(`Issued ${eligible.length} certificates successfully!`, { id: tid });
+          setSelectedIds(new Set());
+          fetchAll();
+        } catch (error) {
+          console.error('Error bulk issuing certificates:', error);
+          toast.error('Failed to issue certificates', { id: tid });
+        }
       }
-      await batch.commit();
-      logAdminActivity(user?.email, 'BULK_ISSUED', `${eligible.length} certificates`);
-      toast.success(`Successfully issued ${eligible.length} certificates!`, { id: tid });
-      setSelectedIds(new Set());
-      fetchAll();
-    } catch { toast.error('Failed to issue certificates', { id: tid }); }
+    });
   };
 
   // Bulk batch change
@@ -610,42 +660,53 @@ export default function ManageStudents() {
       complete: async (results) => {
         const rows = results.data as any[];
         if (rows.length === 0) { toast.error('Empty CSV'); return; }
-        if (!window.confirm(`Import ${rows.length} student(s)?`)) return;
-        const tid = toast.loading(`Importing ${rows.length} students...`);
-        try {
-          let count = 0;
-          for (const row of rows) {
-            if (!row.Email && !row.email) continue;
-            const email = row.Email || row.email;
-            const name = row.Name || row.name || row.StudentName || 'Imported Student';
-            const userRef = await addDoc(collection(db, 'users'), {
-              email, displayName: name,
-              phone: row.Phone || row.phone || '',
-              gender: row.Gender || row.gender || 'Male',
-              collegeName: row.College || row.college || row.School || '',
-              rollNo: row.RollNo || row.rollNo || row.Roll || '',
-              photoURL: '', role: 'student', status: 'active',
-              enrolledByAdmin: true, createdAt: serverTimestamp(),
-            });
-            if (row.Course || row.course) {
-              await addDoc(collection(db, 'enrollments'), {
-                studentId: userRef.id, studentEmail: email, studentName: name,
-                gender: row.Gender || row.gender || 'Male',
-                collegeName: row.College || row.college || '',
-                rollNo: row.RollNo || row.rollNo || '',
-                courseName: row.Course || row.course,
-                institute: row.Center || row.center || 'FutureCodeAI (Online)',
-                batch: row.Batch || row.batch || batchOptions[0],
-                batchTiming: row.Batch || row.batch || batchOptions[0],
-                status: 'Ongoing', image: '', enrolledAt: serverTimestamp(),
-              });
+        setConfirmModal({
+          isOpen: true,
+          title: `Import ${rows.length} Students`,
+          message: `Are you sure you want to import ${rows.length} student record(s) from this CSV file?`,
+          confirmLabel: `Import ${rows.length} Students`,
+          variant: 'primary',
+          onConfirm: async () => {
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            const tid = toast.loading(`Importing ${rows.length} students...`);
+            try {
+              let count = 0;
+              for (const row of rows) {
+                if (!row.Email && !row.email) continue;
+                const email = row.Email || row.email;
+                const name = row.Name || row.name || row.StudentName || 'Imported Student';
+                const userRef = await addDoc(collection(db, 'users'), {
+                  email, displayName: name,
+                  phone: row.Phone || row.phone || '',
+                  gender: row.Gender || row.gender || 'Male',
+                  collegeName: row.College || row.college || row.School || '',
+                  rollNo: row.RollNo || row.rollNo || row.Roll || '',
+                  photoURL: '', role: 'student', status: 'active',
+                  enrolledByAdmin: true, createdAt: serverTimestamp(),
+                });
+                if (row.Course || row.course) {
+                  await addDoc(collection(db, 'enrollments'), {
+                    studentId: userRef.id, studentEmail: email, studentName: name,
+                    gender: row.Gender || row.gender || 'Male',
+                    collegeName: row.College || row.college || '',
+                    rollNo: row.RollNo || row.rollNo || '',
+                    courseName: row.Course || row.course,
+                    institute: row.Center || row.center || 'FutureCodeAI (Online)',
+                    batch: row.Batch || row.batch || batchOptions[0],
+                    batchTiming: row.Batch || row.batch || batchOptions[0],
+                    status: 'Ongoing', image: '', enrolledAt: serverTimestamp(),
+                  });
+                }
+                count++;
+              }
+              toast.success(`${count} students imported!`, { id: tid });
+              fetchAll();
+            } catch {
+              toast.error('Import failed', { id: tid });
             }
-            count++;
+            if (csvRef.current) csvRef.current.value = '';
           }
-          toast.success(`${count} students imported!`, { id: tid });
-          fetchAll();
-        } catch { toast.error('Import failed', { id: tid }); }
-        if (csvRef.current) csvRef.current.value = '';
+        });
       },
     });
   };
@@ -1539,6 +1600,17 @@ export default function ManageStudents() {
           logAdminActivity(user?.email, 'CREATED', 'Student Enrollment');
         }}
         initialData={enrollInitialData}
+      />
+
+      {/* Styled Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
       />
 
       {/* Edit Student Modal */}

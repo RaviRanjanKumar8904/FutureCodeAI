@@ -7,29 +7,13 @@ import VerifyHero from '../components/verify/VerifyHero';
 import ResultCard from '../components/verify/ResultCard';
 import ExplainerSection from '../components/verify/ExplainerSection';
 import SEO from '../components/SEO';
-
-// Note on Security & Rate Limiting:
-// 1. Rate Limiting: We implement a basic client-side rate limit using sessionStorage.
-//    In a production scenario, you would also use Firebase App Check and Cloud Functions
-//    for strict server-side rate limiting to prevent abuse/scraping.
-// 2. Security Rules: Ensure your Firestore rules only allow public reads for exact matches,
-//    and restrict writes to admins.
-/*
-match /certificates/{certId} {
-  allow read: if true;
-  allow write, delete: if request.auth != null && request.auth.token.admin == true;
-}
-*/
-
-
+import toast from 'react-hot-toast';
 
 export default function VerifyCertificate() {
   const [searchParams] = useSearchParams();
   const [certificateId, setCertificateId] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'revoked'>('idle');
   const [data, setData] = useState<any | null>(null);
-
-
 
   const checkRateLimit = () => {
     const now = Date.now();
@@ -53,14 +37,12 @@ export default function VerifyCertificate() {
     if (!id.trim()) return;
 
     if (!checkRateLimit()) {
-      alert("You have exceeded the maximum number of verification attempts. Please try again in a minute.");
+      toast.error("You have exceeded the maximum number of verification attempts. Please try again in a minute.");
       return;
     }
 
     setStatus('loading');
     setData(null);
-
-
 
     try {
       // Artificial delay to mitigate rapid enumeration
@@ -94,16 +76,15 @@ export default function VerifyCertificate() {
       }
     } catch (error) {
       console.error("Error fetching certificate:", error);
-      // In dev mode without keys, this will fail. Show error state.
       setStatus('error');
     }
   }, [certificateId]);
 
   useEffect(() => {
-    const idFromUrl = searchParams.get('id');
-    if (idFromUrl) {
-      setCertificateId(idFromUrl);
-      handleVerify(idFromUrl);
+    const urlId = searchParams.get('id');
+    if (urlId) {
+      setCertificateId(urlId);
+      handleVerify(urlId);
     }
   }, [searchParams, handleVerify]);
 
@@ -111,20 +92,18 @@ export default function VerifyCertificate() {
     <div className="w-full relative bg-background min-h-screen">
       <SEO 
         title="Verify Certificate" 
-        description="Verify the authenticity of FutureCodeAI certificates securely using our digital verification portal."
+        description="Verify the authenticity of FutureCodeAI issued certificates using our secure online verification system."
       />
       <BackgroundBlobs />
       
       <main className="w-full relative z-10">
         <VerifyHero 
-          certificateId={certificateId} 
+          certificateId={certificateId}
           setCertificateId={setCertificateId}
-          onVerify={handleVerify}
+          onVerify={() => handleVerify()}
           isLoading={status === 'loading'}
         />
-        
         <ResultCard status={status} data={data} />
-        
         <ExplainerSection />
       </main>
     </div>
