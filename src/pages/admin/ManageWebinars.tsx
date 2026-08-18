@@ -89,6 +89,8 @@ export default function ManageWebinars() {
     time: '05:00 PM - 06:30 PM',
     meetingLink: '',
     formLink: '',
+    assignedStaff: '',
+    location: '',
     status: 'Upcoming' as 'Upcoming' | 'Live' | 'Completed',
   });
   const [isSavingWebinar, setIsSavingWebinar] = useState(false);
@@ -162,6 +164,8 @@ export default function ManageWebinars() {
           time: data.time || '',
           meetingLink: data.meetingLink || '',
           formLink: data.formLink || '',
+          assignedStaff: data.assignedStaff || '',
+          location: data.location || '',
           status: data.status || 'Upcoming',
           postponedDates: data.postponedDates || [],
           postponements: data.postponements || {},
@@ -1065,6 +1069,8 @@ export default function ManageWebinars() {
         time: webinarFormData.time.trim(),
         meetingLink: webinarFormData.meetingLink.trim(),
         formLink: webinarFormData.formLink.trim(),
+        assignedStaff: webinarFormData.assignedStaff.trim(),
+        location: webinarFormData.location.trim(),
         status: webinarFormData.status,
         updatedAt: serverTimestamp(),
       };
@@ -1107,6 +1113,8 @@ export default function ManageWebinars() {
       time: '05:00 PM - 06:30 PM',
       meetingLink: '',
       formLink: '',
+      assignedStaff: '',
+      location: '',
       status: 'Upcoming',
     });
     setShowWebinarModal(true);
@@ -1125,6 +1133,8 @@ export default function ManageWebinars() {
       time: webinar.time || '05:00 PM - 06:30 PM',
       meetingLink: webinar.meetingLink || '',
       formLink: webinar.formLink || '',
+      assignedStaff: webinar.assignedStaff || '',
+      location: webinar.location || '',
       status: webinar.status,
     });
     setShowWebinarModal(true);

@@ -4,71 +4,7 @@ import { CalendarDays, ClipboardList, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardShell from '../components/layout/DashboardShell';
 import StaffAttendance from '../components/staff/StaffAttendance';
-
-const scheduledClasses = [
-  {
-    id: 'sc1',
-    title: 'AI Classroom Essentials',
-    date: 'Aug 5, 2026',
-    time: '10:00 AM - 12:00 PM',
-    location: 'Purnea Batch Room',
-    instructor: 'Ravi Ranjan',
-  },
-  {
-    id: 'sc2',
-    title: 'Machine Learning Lab',
-    date: 'Aug 7, 2026',
-    time: '2:00 PM - 4:00 PM',
-    location: 'Offline Campus',
-    instructor: 'Anjali Sharma',
-  },
-];
-
-function StaffSchedule() {
-  return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-extrabold text-text-heading">Scheduled Classes</h2>
-            <p className="text-sm text-slate-500 mt-2">View and manage your upcoming class schedule.</p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 text-primary px-4 py-2 text-sm font-semibold">
-            <CalendarDays size={18} /> Updated hourly
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {scheduledClasses.map((session) => (
-            <div key={session.id} className="rounded-3xl border border-gray-200 bg-slate-50 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">{session.title}</h3>
-                  <p className="text-sm text-slate-500 mt-1">{session.instructor}</p>
-                </div>
-                <span className="rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1">Upcoming</span>
-              </div>
-              <div className="mt-5 grid gap-3 text-sm text-slate-600">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Date</span>
-                  <span>{session.date}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Time</span>
-                  <span>{session.time}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Location</span>
-                  <span>{session.location}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+import StaffSchedule from '../components/staff/StaffSchedule';
 
 function StaffProfile() {
   const { user } = useAuth();
@@ -100,6 +36,12 @@ function StaffProfile() {
             <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-[0.24em]">Status</h3>
             <p className="mt-3 text-lg font-semibold text-emerald-600">Active</p>
           </div>
+          {user?.assignedCenter && (
+            <div className="rounded-3xl bg-slate-50 p-5 sm:col-span-2">
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-[0.24em]">Assigned Center</h3>
+              <p className="mt-3 text-lg font-semibold text-slate-900">{user.assignedCenter}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

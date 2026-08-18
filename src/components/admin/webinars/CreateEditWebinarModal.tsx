@@ -16,6 +16,8 @@ export interface CreateEditWebinarModalProps {
     time: string;
     meetingLink: string;
     formLink: string;
+    assignedStaff?: string;
+    location?: string;
     status: 'Upcoming' | 'Live' | 'Completed';
   };
   setFormData: React.Dispatch<React.SetStateAction<any>>;
@@ -175,6 +177,29 @@ export default function CreateEditWebinarModal({
                   value={formData.meetingLink}
                   onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
                   placeholder="https://meet.google.com/xyz-abcd-efg"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Assigned Staff / Instructor (Email or Name)</label>
+                <input
+                  type="text"
+                  value={formData.assignedStaff || ''}
+                  onChange={(e) => setFormData({ ...formData, assignedStaff: e.target.value })}
+                  placeholder="e.g. instructor@futurecode.ai"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Campus Location / Room</label>
+                <input
+                  type="text"
+                  value={formData.location || ''}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="e.g. AI Lab Room 204 or Online"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
                 />
               </div>

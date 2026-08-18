@@ -10,6 +10,10 @@ export interface WebinarItem {
   time?: string;
   meetingLink?: string;
   formLink?: string;
+  assignedStaff?: string;
+  assignedStaffEmail?: string;
+  assignedCenter?: string;
+  location?: string;
   status: 'Upcoming' | 'Live' | 'Completed';
   postponedDates?: string[];
   postponements?: Record<string, { reason?: string; postponedAt?: any }>;
