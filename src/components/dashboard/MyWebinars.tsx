@@ -26,6 +26,7 @@ import {
   query, 
   where,
   orderBy, 
+  onSnapshot,
   serverTimestamp 
 } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
@@ -92,67 +93,68 @@ export default function MyWebinars() {
     attendee: WebinarAttendee;
   } | null>(null);
 
-  // Fetch webinars & student's attendance records
-  const fetchData = useCallback(async () => {
+  // Live real-time listeners for webinars & student's attendance records
+  useEffect(() => {
     if (!user) {
       setLoading(false);
       return;
     }
     setLoading(true);
 
-    try {
-      // 1. Fetch All Webinars
-      const webinarsSnap = await getDocs(query(collection(db, 'webinars'), orderBy('createdAt', 'desc')));
-      const webinarsList = webinarsSnap.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          title: data.title || '',
-          topic: data.topic || '',
-          speaker: data.speaker || '',
-          startDate: data.startDate || data.date || new Date().toISOString().split('T')[0],
-          endDate: data.endDate || '',
-          totalDays: data.totalDays || 15,
-          maxSeats: data.maxSeats || 100,
-          time: data.time || '',
-          meetingLink: data.meetingLink || '',
-          formLink: data.formLink || '',
-          status: data.status || 'Upcoming',
-          postponedDates: data.postponedDates || [],
-          postponements: data.postponements || {},
-          createdAt: data.createdAt,
-        } as WebinarItem;
-      });
-      setWebinars(webinarsList);
+    const userEmailClean = (user.email || '').toLowerCase().trim();
 
-      // 2. Fetch Attendee records matching student email/uid
-      const userEmailClean = (user.email || '').toLowerCase().trim();
-      const [attendeesSnap, attendeesUidSnap] = await Promise.all([
-        getDocs(query(collection(db, 'webinar_attendees'), where('email', '==', userEmailClean))),
-        user.uid ? getDocs(query(collection(db, 'webinar_attendees'), where('studentId', '==', user.uid))) : Promise.resolve({ docs: [] } as any),
-      ]);
+    // 1. Live listener for webinars catalog & status changes
+    const unsubWebinars = onSnapshot(
+      query(collection(db, 'webinars'), orderBy('createdAt', 'desc')),
+      (snapshot) => {
+        const webinarsList = snapshot.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            title: data.title || '',
+            topic: data.topic || '',
+            speaker: data.speaker || '',
+            startDate: data.startDate || data.date || new Date().toISOString().split('T')[0],
+            endDate: data.endDate || '',
+            totalDays: data.totalDays || 15,
+            maxSeats: data.maxSeats || 100,
+            time: data.time || '',
+            meetingLink: data.meetingLink || '',
+            formLink: data.formLink || '',
+            status: data.status || 'Upcoming',
+            postponedDates: data.postponedDates || [],
+            postponements: data.postponements || {},
+            createdAt: data.createdAt,
+          } as WebinarItem;
+        });
+        setWebinars(webinarsList);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error listening to webinars:', err);
+        setLoading(false);
+      }
+    );
 
-      const attendeeMap = new Map<string, WebinarAttendee>();
-      [...attendeesSnap.docs, ...attendeesUidSnap.docs].forEach(d => {
-        attendeeMap.set(d.id, { id: d.id, ...d.data() } as WebinarAttendee);
-      });
+    // 2. Live listener for student's attendance & waitlist records
+    const unsubAttendeesEmail = onSnapshot(
+      query(collection(db, 'webinar_attendees'), where('email', '==', userEmailClean)),
+      (snapshot) => {
+        const records = snapshot.docs
+          .map(d => ({ id: d.id, ...d.data() }) as WebinarAttendee)
+          .filter(a => matchesUser(user, a.email, a.studentName, (a as any).studentId));
+        setAttendeeRecords(records);
+      },
+      (err) => {
+        console.error('Error listening to webinar attendees:', err);
+      }
+    );
 
-      const myRecords = Array.from(attendeeMap.values()).filter(a => 
-        matchesUser(user, a.email, a.studentName, (a as any).studentId)
-      );
-
-      setAttendeeRecords(myRecords);
-    } catch (err) {
-      console.error('Error loading student webinars:', err);
-      toast.error('Could not load webinars. Please check your connection.');
-    } finally {
-      setLoading(false);
-    }
+    return () => {
+      unsubWebinars();
+      unsubAttendeesEmail();
+    };
   }, [user]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Compute student stats for a specific webinar
   const getStudentWebinarData = useCallback((webinar: WebinarItem) => {

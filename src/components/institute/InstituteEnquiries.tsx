@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Phone, Clock, Search, Filter } from 'lucide-react';
 import { db } from '../../firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 
 interface Enquiry {
@@ -55,15 +55,20 @@ export default function InstituteEnquiries() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchEnquiries = async () => {
-      if (!user) return;
-      
-      try {
-        const q = query(
-          collection(db, 'enquiries'), 
-          where('instituteId', '==', user.uid)
-        );
-        const snapshot = await getDocs(q);
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    const q = query(
+      collection(db, 'enquiries'), 
+      where('instituteId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
         const fetchedData = snapshot.docs.map(doc => {
           const data = doc.data();
           const rawStatus = (data.status || 'New').toString();
@@ -79,16 +84,19 @@ export default function InstituteEnquiries() {
             ...data
           };
         }) as Enquiry[];
-        
+
         setEnquiries(fetchedData);
-      } catch (error) {
-        console.error("Error fetching enquiries:", error);
-      } finally {
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error listening to institute enquiries:", error);
         setLoading(false);
       }
-    };
+    );
 
-    fetchEnquiries();
+    return () => {
+      unsubscribe();
+    };
   }, [user]);
 
   const filteredEnquiries = enquiries.filter(enq => 

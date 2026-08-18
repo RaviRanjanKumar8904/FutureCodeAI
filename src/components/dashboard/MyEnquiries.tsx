@@ -4,7 +4,7 @@ import { MessageSquare, ArrowRight, CalendarDays } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 interface Enquiry {
   id: string;
@@ -20,11 +20,18 @@ export default function MyEnquiries() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchEnquiries = async () => {
-      if (!user || !user.email) return;
-      try {
-        const q = query(collection(db, 'enquiries'), where('email', '==', user.email));
-        const snapshot = await getDocs(q);
+    if (!user || !user.email) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+
+    const userEmailClean = user.email.toLowerCase().trim();
+    const q = query(collection(db, 'enquiries'), where('email', '==', userEmailClean));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
         const data = snapshot.docs.map(doc => {
           const docData = doc.data();
           let createdAtStr = 'Unknown';
@@ -40,13 +47,17 @@ export default function MyEnquiries() {
           };
         }) as Enquiry[];
         setEnquiries(data);
-      } catch (error) {
-        console.error("Error fetching enquiries:", error);
-      } finally {
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error listening to enquiries:", error);
         setLoading(false);
       }
+    );
+
+    return () => {
+      unsubscribe();
     };
-    fetchEnquiries();
   }, [user]);
 
   if (loading) {

@@ -4,7 +4,7 @@ import { Award, Eye, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import CertificateModal from '../certificate/CertificateModal';
 import type { CertificateData } from '../certificate/CourseCertificate';
 
@@ -34,52 +34,39 @@ export default function MyCertificates() {
   const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
-    const fetchCertificates = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const userEmailClean = (user.email || '').toLowerCase().trim();
-        const promises = [
-          getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean))),
-        ];
-        if (user.email && user.email !== userEmailClean) {
-          promises.push(getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', user.email))));
-        }
-        if (user.uid) {
-          promises.push(getDocs(query(collection(db, 'certificates'), where('studentId', '==', user.uid))));
-        }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
 
-        const snapshots = await Promise.all(promises);
-        const docsMap = new Map<string, Certificate & { studentId?: string }>();
-        snapshots.forEach(snap => {
-          snap.docs.forEach(doc => {
-            if (!docsMap.has(doc.id)) {
-              docsMap.set(doc.id, { id: doc.id, ...doc.data() } as any);
-            }
-          });
-        });
+    const userEmailClean = (user.email || '').toLowerCase().trim();
 
-        const matched = Array.from(docsMap.values()).filter(cert => {
-          if (cert.revoked) return false;
-          return matchesUser(user, cert.studentEmail, cert.studentName, cert.studentId);
-        });
+    const unsubCertificates = onSnapshot(
+      query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean)),
+      (snapshot) => {
+        const certs = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Certificate & { studentId?: string }))
+          .filter(cert => !cert.revoked && matchesUser(user, cert.studentEmail, cert.studentName, cert.studentId));
 
-        matched.sort((a, b) => {
+        certs.sort((a, b) => {
           const d1 = new Date(b.issueDate || b.endDate || 0).getTime();
           const d2 = new Date(a.issueDate || a.endDate || 0).getTime();
           return d1 - d2;
         });
 
-        setCertificates(matched);
-      } catch (error) {
-        console.error("Error fetching certificates:", error);
-      } finally {
+        setCertificates(certs);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error listening to certificates:", error);
         setLoading(false);
       }
+    );
+
+    return () => {
+      unsubCertificates();
     };
-    fetchCertificates();
   }, [user]);
 
   const handlePreview = (cert: Certificate) => {
