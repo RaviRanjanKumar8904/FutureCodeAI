@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, Image as ImageIcon, Copy, CheckCircle2, ShieldCheck, Award, Sparkles } from 'lucide-react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
 import CourseCertificate from './CourseCertificate';
 import type { CertificateData } from './CourseCertificate';
@@ -66,6 +64,7 @@ export default function CertificateModal({ isOpen, onClose, certificate }: Certi
     setDownloading('png');
     const toastId = toast.loading('Generating high-res certificate image…');
     try {
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(node, {
         scale: 2.5,
         useCORS: true,
@@ -92,6 +91,8 @@ export default function CertificateModal({ isOpen, onClose, certificate }: Certi
     setDownloading('pdf');
     const toastId = toast.loading('Generating official PDF certificate…');
     try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
       const canvas = await html2canvas(node, {
         scale: 2.5,
         useCORS: true,

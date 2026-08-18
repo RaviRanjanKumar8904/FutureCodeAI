@@ -24,24 +24,7 @@ interface Certificate {
   revoked?: boolean;
 }
 
-function matchesUser(user: any, targetEmail?: string, targetName?: string, targetId?: string): boolean {
-  if (!user) return false;
-  const uEmail = (user.email || '').toLowerCase().trim();
-  const uName = (user.displayName || '').toLowerCase().trim();
-  const uUid = user.uid || '';
-
-  const tEmail = (targetEmail || '').toLowerCase().trim();
-  const tName = (targetName || '').toLowerCase().trim();
-  const tId = targetId || '';
-
-  if (tId && uUid && tId === uUid) return true;
-  if (tEmail && uEmail && tEmail === uEmail) return true;
-  if (tName && uName) {
-    if (tName === uName) return true;
-    if (tName.includes(uName) || uName.includes(tName)) return true;
-  }
-  return false;
-}
+import { matchesUser } from '../../utils/userMatcher';
 
 export default function MyCertificates() {
   const { user } = useAuth();

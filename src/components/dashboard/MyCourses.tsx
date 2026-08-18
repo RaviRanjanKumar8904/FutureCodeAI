@@ -22,30 +22,7 @@ interface Enrollment {
   image: string;
 }
 
-function matchesUser(user: any, targetEmail?: string, targetName?: string, targetId?: string): boolean {
-  if (!user) return false;
-  const uEmail = (user.email || '').toLowerCase().trim();
-  const uName = (user.displayName || '').toLowerCase().trim();
-  const uUid = user.uid || '';
-
-  const tEmail = (targetEmail || '').toLowerCase().trim();
-  const tName = (targetName || '').toLowerCase().trim();
-  const tId = targetId || '';
-
-  // 1. Direct UID match
-  if (tId && uUid && tId === uUid) return true;
-
-  // 2. Exact email match (case-insensitive)
-  if (tEmail && uEmail && tEmail === uEmail) return true;
-
-  // 3. Name match (exact or sub-name, e.g. "Ravi" vs "Ravi Ranjan Kumar")
-  if (tName && uName) {
-    if (tName === uName) return true;
-    if (tName.includes(uName) || uName.includes(tName)) return true;
-  }
-
-  return false;
-}
+import { matchesUser } from '../../utils/userMatcher';
 
 export default function MyCourses() {
   const { user } = useAuth();

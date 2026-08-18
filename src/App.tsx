@@ -1,11 +1,22 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import SmoothScroll from './components/SmoothScroll';
 import ScrollToTop from './components/ScrollToTop';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import GlobalLoader from './components/GlobalLoader';
+import { useAuth } from './hooks/useAuth';
+
+function DashboardRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return <GlobalLoader fullScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'admin') return <Navigate to="/admin" replace />;
+  if (user.role === 'institute') return <Navigate to="/dashboard/institute" replace />;
+  if (user.role === 'staff') return <Navigate to="/dashboard/staff" replace />;
+  return <Navigate to="/dashboard/student" replace />;
+}
 
 const Home = lazy(() => import('./pages/Home'));
 const Login = lazy(() => import('./pages/Login'));
@@ -66,6 +77,9 @@ function App() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />
             
+            {/* Dashboard Root Redirection */}
+            <Route path="/dashboard" element={<DashboardRedirect />} />
+
             {/* Protected Routes */}
             <Route 
               path="/dashboard/student/*" 

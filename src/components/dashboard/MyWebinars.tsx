@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
+import { matchesUser } from '../../utils/userMatcher';
 import { 
   collection, 
   getDocs, 
@@ -119,22 +120,10 @@ export default function MyWebinars() {
 
       // 2. Fetch Attendee records matching student email/uid/name
       const attendeesSnap = await getDocs(collection(db, 'webinar_attendees'));
-      const uEmail = (user.email || '').toLowerCase().trim();
-      const uName = (user.displayName || '').toLowerCase().trim();
-      const uUid = user.uid || '';
 
       const myRecords = attendeesSnap.docs
         .map(d => ({ id: d.id, ...d.data() }) as WebinarAttendee)
-        .filter(a => {
-          const aEmail = (a.email || '').toLowerCase().trim();
-          const aName = (a.studentName || '').toLowerCase().trim();
-          const aId = (a as any).studentId || '';
-
-          if (aEmail && uEmail && aEmail === uEmail) return true;
-          if (aId && uUid && aId === uUid) return true;
-          if (aName && uName && (aName === uName || aName.includes(uName) || uName.includes(aName))) return true;
-          return false;
-        });
+        .filter(a => matchesUser(user, a.email, a.studentName, (a as any).studentId));
 
       setAttendeeRecords(myRecords);
     } catch (err) {
