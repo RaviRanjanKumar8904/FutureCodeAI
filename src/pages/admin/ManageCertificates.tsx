@@ -4,7 +4,9 @@ import { collection, setDoc, updateDoc, deleteDoc, getDocs, getDoc, doc, query, 
 import { Award, Plus, Trash2, Search, Copy, CheckCircle2, X, Upload, RotateCcw, Ban, Eye, HelpCircle, Download, FileSpreadsheet } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
-import Papa from 'papaparse';
+import { downloadTemplateCSV, parseCSV, resolveHeaderValue } from '../../utils/csv';
+import { sendNotification } from '../../utils/notificationService';
+import { logAdminActivity } from '../../utils/adminLogger';
 import CertificateModal from '../../components/certificate/CertificateModal';
 import type { CertificateData } from '../../components/certificate/CourseCertificate';
 
@@ -118,6 +120,23 @@ export default function ManageCertificates() {
       const cleanData = Object.fromEntries(Object.entries(certData).filter(([, v]) => v !== ''));
       await setDoc(doc(db, 'certificates', certId), cleanData);
 
+      if (formData.studentEmail) {
+        await sendNotification({
+          userEmail: formData.studentEmail,
+          title: 'Official Certificate Issued! 🎓',
+          message: `Congratulations! Your verified certificate for "${formData.courseName}" (${certId}) is now available.`,
+          type: 'certificate',
+          link: '/dashboard/student/certificates'
+        });
+      }
+
+      await logAdminActivity(
+        user?.email,
+        'ISSUED',
+        `Certificate: ${certId}`,
+        `Issued to ${formData.studentName} for course "${formData.courseName}"`
+      );
+
       toast.success(`Certificate ${certId} issued!`, { id: toastId });
       setShowModal(false);
       setFormData({
@@ -202,17 +221,7 @@ export default function ManageCertificates() {
       ["Priya Sharma", "AI & Machine Learning Track", "2026-08-17", "Distinction"],
       ["Amit Verma", "Data Science & Python", "2026-08-17", "A"]
     ];
-
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      [headers.join(","), ...rows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "bulk_certificates_sample.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadTemplateCSV("bulk_certificates_sample", headers, rows);
   };
 
   const copyVerificationLink = (certId: string) => {
@@ -227,38 +236,30 @@ export default function ManageCertificates() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows = results.data as any[];
-        const parsed = rows
-          .map(row => {
-            const name = (row.studentName || row['Student Name'] || row.name || row.Name || '').trim();
-            const course = (row.courseName || row['Course Name'] || row.course || row.Course || '').trim();
-            const issueDate = (row.issueDate || row['Issue Date'] || row.date || row.Date || new Date().toISOString().split('T')[0]).trim();
-            const grade = (row.grade || row['Grade'] || '').trim();
+    parseCSV(file, (rows: any[]) => {
+      const parsed = rows
+        .map(row => {
+          const name = resolveHeaderValue(row, ['studentName', 'Student Name', 'name', 'Name', 'Student']);
+          const course = resolveHeaderValue(row, ['courseName', 'Course Name', 'course', 'Course']);
+          const issueDate = resolveHeaderValue(row, ['issueDate', 'Issue Date', 'date', 'Date'], new Date().toISOString().split('T')[0]);
+          const grade = resolveHeaderValue(row, ['grade', 'Grade'], 'A');
 
-            return {
-              studentName: name,
-              courseName: course,
-              issueDate: issueDate,
-              grade: grade,
-            };
-          })
-          .filter(r => r.studentName && r.courseName);
+          return {
+            studentName: name,
+            courseName: course,
+            issueDate: issueDate,
+            grade: grade,
+          };
+        })
+        .filter(r => r.studentName && r.courseName);
 
-        if (parsed.length === 0) {
-          toast.error('CSV contains no valid rows. Ensure columns: studentName, courseName, issueDate, grade');
-          return;
-        }
-
-        setBulkData(parsed);
-        setShowBulkModal(true);
-      },
-      error: () => {
-        toast.error('Failed to parse CSV file');
+      if (parsed.length === 0) {
+        toast.error('CSV contains no valid rows. Ensure columns: studentName, courseName, issueDate, grade');
+        return;
       }
+
+      setBulkData(parsed);
+      setShowBulkModal(true);
     });
 
     if (csvInputRef.current) csvInputRef.current.value = '';

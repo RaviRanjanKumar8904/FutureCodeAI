@@ -18,11 +18,13 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
 import { matchesUser } from '../../utils/userMatcher';
+import { sendNotification } from '../../utils/notificationService';
 import { 
   collection, 
   getDocs, 
   addDoc, 
   query, 
+  where,
   orderBy, 
   serverTimestamp 
 } from 'firebase/firestore';
@@ -43,6 +45,7 @@ export interface WebinarItem {
   startDate: string;
   endDate?: string;
   totalDays: number;
+  maxSeats?: number;
   time?: string;
   meetingLink?: string;
   formLink?: string;
@@ -66,6 +69,9 @@ export interface WebinarAttendee {
   certificateIssued: boolean;
   certificateId?: string;
   certificateIssuedAt?: any;
+  status?: 'Confirmed' | 'Waitlisted';
+  waitlistPosition?: number;
+  promotedAt?: any;
 }
 
 export default function MyWebinars() {
@@ -107,6 +113,7 @@ export default function MyWebinars() {
           startDate: data.startDate || data.date || new Date().toISOString().split('T')[0],
           endDate: data.endDate || '',
           totalDays: data.totalDays || 15,
+          maxSeats: data.maxSeats || 100,
           time: data.time || '',
           meetingLink: data.meetingLink || '',
           formLink: data.formLink || '',
@@ -189,6 +196,18 @@ export default function MyWebinars() {
     const toastId = toast.loading(`Registering for ${webinar.title}...`);
 
     try {
+      const maxSeats = webinar.maxSeats || 100;
+      const allAttendeesSnap = await getDocs(
+        query(collection(db, 'webinar_attendees'), where('webinarId', '==', webinar.id))
+      );
+
+      const confirmedDocs = allAttendeesSnap.docs.filter(d => d.data().status !== 'Waitlisted');
+      const waitlistedDocs = allAttendeesSnap.docs.filter(d => d.data().status === 'Waitlisted');
+
+      const isFull = confirmedDocs.length >= maxSeats;
+      const status: 'Confirmed' | 'Waitlisted' = isFull ? 'Waitlisted' : 'Confirmed';
+      const waitlistPosition = isFull ? waitlistedDocs.length + 1 : undefined;
+
       const newAttendee: WebinarAttendee = {
         id: '',
         webinarId: webinar.id,
@@ -201,6 +220,8 @@ export default function MyWebinars() {
         yearOfStudy: user.yearOfStudy || 'N/A',
         dailyAttendance: {},
         certificateIssued: false,
+        status,
+        waitlistPosition,
       };
 
       const docRef = await addDoc(collection(db, 'webinar_attendees'), {
@@ -211,7 +232,31 @@ export default function MyWebinars() {
 
       newAttendee.id = docRef.id;
       setAttendeeRecords(prev => [newAttendee, ...prev]);
-      toast.success(`Successfully enrolled in ${webinar.title}!`, { id: toastId });
+
+      if (isFull) {
+        toast.success(`Registered! You are on the Waitlist (#${waitlistPosition}). We'll notify you if a seat opens!`, { id: toastId, duration: 6000 });
+        if (user.email) {
+          sendNotification({
+            userEmail: user.email,
+            title: 'Waitlisted for Bootcamp ⏳',
+            message: `You have joined the waitlist (Position #${waitlistPosition}) for "${webinar.title}". We'll notify you when a seat confirms!`,
+            type: 'webinar',
+            link: '/dashboard/student/webinars'
+          });
+        }
+      } else {
+        toast.success(`Successfully enrolled in ${webinar.title}! Seat confirmed.`, { id: toastId });
+        if (user.email) {
+          sendNotification({
+            userEmail: user.email,
+            title: 'Enrolled in Bootcamp! 🚀',
+            message: `Your seat in "${webinar.title}" is confirmed! Check your webinar schedule and join daily sessions.`,
+            type: 'webinar',
+            link: '/dashboard/student/webinars'
+          });
+        }
+      }
+
       setActiveTab('enrolled');
     } catch (err) {
       console.error('Error self-enrolling:', err);
@@ -377,10 +422,16 @@ export default function MyWebinars() {
                           }`}>
                             {webinar.status === 'Live' ? '● Live Now' : webinar.status}
                           </span>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                            <Check size={12} />
-                            <span>Enrolled</span>
-                          </span>
+                          {attendee?.status === 'Waitlisted' ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <span>⏳ Waitlist #{attendee.waitlistPosition || 1}</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                              <Check size={12} />
+                              <span>Enrolled</span>
+                            </span>
+                          )}
                           {hasPostponedDays && (
                             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                               <span>⏸️ {postponedDates.length} Postponed ({totalDays + postponedDates.length} Days Timeline)</span>
@@ -598,7 +649,7 @@ export default function MyWebinars() {
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
               {webinars.map((webinar, idx) => {
-                const { isEnrolled, percentage, presentDays, totalDays, isEligible, computedEndDate, hasPostponedDays } = getStudentWebinarData(webinar);
+                const { attendee, isEnrolled, percentage, presentDays, totalDays, isEligible, computedEndDate, hasPostponedDays } = getStudentWebinarData(webinar);
 
                 return (
                   <motion.div
@@ -629,10 +680,16 @@ export default function MyWebinars() {
                         </div>
 
                         {isEnrolled && (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                            <CheckCircle2 size={13} className="text-emerald-700" />
-                            <span>Enrolled</span>
-                          </span>
+                          attendee?.status === 'Waitlisted' ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <span>⏳ Waitlist #{attendee.waitlistPosition || 1}</span>
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                              <CheckCircle2 size={13} className="text-emerald-700" />
+                              <span>Enrolled</span>
+                            </span>
+                          )
                         )}
                       </div>
 

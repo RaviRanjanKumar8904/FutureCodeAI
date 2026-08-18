@@ -23,7 +23,8 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAdminActivity } from '../../utils/adminLogger';
-import Papa from 'papaparse';
+import { exportCSV } from '../../utils/csv';
+import { sendNotification } from '../../utils/notificationService';
 
 interface NormalizedEnquiry {
   id: string;
@@ -161,6 +162,17 @@ export default function ManageEnquiries() {
         `Enquiry (${item.type}): ${item.name}`,
         `Updated status to ${newStatus}`
       );
+
+      if (item.email) {
+        await sendNotification({
+          userEmail: item.email,
+          title: `Application Status: ${newStatus}`,
+          message: `Your ${item.type.toLowerCase()} application/enquiry for "${item.targetTitle || item.name}" is now marked as "${newStatus}".`,
+          type: 'enquiry',
+          link: '/dashboard/student'
+        });
+      }
+
       fetchEnquiries();
     } catch (error) {
       console.error('Error updating status:', error);
@@ -208,16 +220,7 @@ export default function ManageEnquiries() {
       Date: e.createdAt?.toDate ? e.createdAt.toDate().toLocaleString() : ''
     }));
 
-    const csv = Papa.unparse(csvRows);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `enquiries_export_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Exported ${filteredData.length} records to CSV`);
+    exportCSV(`enquiries_export_${new Date().toISOString().split('T')[0]}`, csvRows);
   };
 
   const filteredData = enquiries.filter(item => {

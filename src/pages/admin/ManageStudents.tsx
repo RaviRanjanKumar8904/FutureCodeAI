@@ -17,7 +17,8 @@ import CertificateModal from '../../components/certificate/CertificateModal';
 import type { CertificateData } from '../../components/certificate/CourseCertificate';
 import { logAdminActivity } from '../../utils/adminLogger';
 import { useAuth } from '../../hooks/useAuth';
-import Papa from 'papaparse';
+import { exportCSV, downloadTemplateCSV, parseCSV, resolveHeaderValue } from '../../utils/csv';
+import { sendNotification } from '../../utils/notificationService';
 
 interface Student {
   id: string;
@@ -612,6 +613,16 @@ export default function ManageStudents() {
               revoked: false,
               createdAt: serverTimestamp(),
             });
+
+            if (s.email) {
+              sendNotification({
+                userEmail: s.email,
+                title: 'Official Certificate Issued! 🎓',
+                message: `Congratulations! Your certificate for "${s.enrolledCourse || 'Course'}" (${certId}) is ready.`,
+                type: 'certificate',
+                link: '/dashboard/student/certificates'
+              });
+            }
           }
           await batch.commit();
           logAdminActivity(user?.email, 'BULK_ISSUED', `${eligible.length} certificates`);
@@ -716,15 +727,8 @@ export default function ManageStudents() {
       CertificateStatus: s.certificateId ? `Issued (${s.certificateId})` : 'Pending',
       RegisteredAt: s.createdAt?.toDate ? s.createdAt.toDate().toLocaleDateString() : '',
     }));
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `students_${onlySelected ? 'selected' : 'all'}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`${targetList.length} student records exported!`);
+
+    exportCSV(`students_${onlySelected ? 'selected' : 'all'}_${new Date().toISOString().split('T')[0]}`, csvData);
   };
 
   const downloadSampleStudentCsv = () => {
@@ -733,49 +737,38 @@ export default function ManageStudents() {
       ["Rahul Kumar", "rahul.k@example.com", "9876543210", "Male", "MIT Muzaffarpur", "21CS045", "Full-Stack Web Development", "FutureCodeAI (Online)", "Oct 2026"],
       ["Priya Sharma", "priya.s@example.com", "9876543211", "Female", "Purnea College", "22BCA012", "AI & Machine Learning", "FutureCodeAI (Online)", "Oct 2026"]
     ];
-    const csv = Papa.unparse({ fields: headers, data: sampleRows });
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "students_import_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTemplateCSV("students_import_template", headers, sampleRows);
   };
 
   // Import CSV
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const rows = results.data as any[];
-        if (rows.length === 0) { toast.error('Empty CSV'); return; }
-        setConfirmModal({
-          isOpen: true,
-          title: `Import ${rows.length} Students`,
-          message: `Are you sure you want to import ${rows.length} student record(s) from this CSV file?`,
-          confirmLabel: `Import ${rows.length} Students`,
-          variant: 'primary',
-          onConfirm: async () => {
-            setConfirmModal(prev => ({ ...prev, isOpen: false }));
-            const tid = toast.loading(`Importing ${rows.length} students...`);
-            try {
-              let count = 0;
-              for (const row of rows) {
-                const rawEmail = (row.Email || row.email || '').trim();
-                if (!rawEmail) continue;
-                const emailLower = rawEmail.toLowerCase();
-                const name = (row.Name || row.name || row.StudentName || 'Imported Student').trim();
-                const courseName = (row.Course || row.course || '').trim();
-                const centerName = (row.Center || row.center || 'FutureCodeAI (Online)').trim();
-                const batchVal = (row.Batch || row.batch || batchOptions[0]).trim();
-                const phone = (row.Phone || row.phone || '').trim();
-                const gender = (row.Gender || row.gender || 'Male').trim();
-                const college = (row.College || row.college || row.School || '').trim();
-                const rollNo = (row.RollNo || row.rollNo || row.Roll || '').trim();
+
+    parseCSV(file, (rows: any[]) => {
+      setConfirmModal({
+        isOpen: true,
+        title: `Import ${rows.length} Students`,
+        message: `Are you sure you want to import ${rows.length} student record(s) from this CSV file?`,
+        confirmLabel: `Import ${rows.length} Students`,
+        variant: 'primary',
+        onConfirm: async () => {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          const tid = toast.loading(`Importing ${rows.length} students...`);
+          try {
+            let count = 0;
+            for (const row of rows) {
+              const rawEmail = resolveHeaderValue(row, ['Email', 'email', 'Email Address', 'studentEmail']);
+              if (!rawEmail) continue;
+              const emailLower = rawEmail.toLowerCase();
+              const name = resolveHeaderValue(row, ['Name', 'name', 'StudentName', 'Student Name', 'Full Name'], 'Imported Student');
+              const courseName = resolveHeaderValue(row, ['Course', 'course', 'Enrolled Course', 'enrolledCourse']);
+              const centerName = resolveHeaderValue(row, ['Center', 'center', 'Coaching Center', 'assignedCenter'], 'FutureCodeAI (Online)');
+              const batchVal = resolveHeaderValue(row, ['Batch', 'batch'], batchOptions[0]);
+              const phone = resolveHeaderValue(row, ['Phone', 'phone', 'Mobile', 'WhatsApp']);
+              const gender = resolveHeaderValue(row, ['Gender', 'gender'], 'Male');
+              const college = resolveHeaderValue(row, ['College', 'college', 'School', 'College / Institute', 'College Name']);
+              const rollNo = resolveHeaderValue(row, ['RollNo', 'rollNo', 'Roll', 'Roll No']);
 
                 // Check existing user doc
                 let studentUid = '';
@@ -877,9 +870,8 @@ export default function ManageStudents() {
             if (csvRef.current) csvRef.current.value = '';
           }
         });
-      },
-    });
-  };
+      });
+    };
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {

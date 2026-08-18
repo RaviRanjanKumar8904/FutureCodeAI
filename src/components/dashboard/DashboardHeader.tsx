@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import UserAvatar from '../UserAvatar';
+import NotificationCenter from './NotificationCenter';
 
 export default function DashboardHeader() {
   const { user } = useAuth();
@@ -50,12 +51,15 @@ export default function DashboardHeader() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-text-heading mb-1">
             Welcome back, {firstName}! 👋
           </h1>
-          <Link
-            to="/dashboard/student/settings"
-            className="text-xs font-bold text-primary hover:text-indigo-700 sm:self-center transition-colors"
-          >
-            Edit Profile →
-          </Link>
+          <div className="flex items-center justify-center sm:justify-end gap-3">
+            <NotificationCenter />
+            <Link
+              to="/dashboard/student/settings"
+              className="text-xs font-bold text-primary hover:text-indigo-700 sm:self-center transition-colors"
+            >
+              Edit Profile →
+            </Link>
+          </div>
         </div>
         <p className="text-xs sm:text-sm text-slate-500 font-medium mb-4 sm:mb-5">
           Ready to continue your learning journey and projects?

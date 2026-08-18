@@ -51,6 +51,8 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
 import { logAdminActivity } from '../../utils/adminLogger';
+import { exportCSV, downloadTemplateCSV, parseCSV, resolveHeaderValue } from '../../utils/csv';
+import { sendNotification } from '../../utils/notificationService';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import { 
   generateWebinarSchedule, 
@@ -66,6 +68,7 @@ export interface WebinarItem {
   startDate: string;
   endDate?: string;
   totalDays: number;
+  maxSeats?: number;
   time?: string;
   meetingLink?: string;
   formLink?: string;
@@ -90,67 +93,12 @@ export interface WebinarAttendee {
   certificateIssued: boolean;
   certificateId?: string;
   certificateIssuedAt?: any;
-  source: 'google_form_csv' | 'manual';
+  status?: 'Confirmed' | 'Waitlisted';
+  waitlistPosition?: number;
+  promotedAt?: any;
+  source: 'google_form_csv' | 'manual' | 'student_self_enroll';
   importedAt?: any;
   createdAt?: any;
-}
-
-// Robust CSV Parser
-function parseCSV(text: string): string[][] {
-  const rows: string[][] = [];
-  let currentRow: string[] = [];
-  let currentCell = '';
-  let insideQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const nextChar = text[i + 1];
-
-    if (char === '"') {
-      if (insideQuotes && nextChar === '"') {
-        currentCell += '"';
-        i++;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-    } else if (char === ',' && !insideQuotes) {
-      currentRow.push(currentCell.trim());
-      currentCell = '';
-    } else if ((char === '\r' || char === '\n') && !insideQuotes) {
-      if (char === '\r' && nextChar === '\n') i++;
-      currentRow.push(currentCell.trim());
-      if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
-      currentRow = [];
-      currentCell = '';
-    } else {
-      currentCell += char;
-    }
-  }
-
-  if (currentCell.length > 0 || currentRow.length > 0) {
-    currentRow.push(currentCell.trim());
-    if (currentRow.some(c => c.length > 0)) rows.push(currentRow);
-  }
-
-  return rows;
-}
-
-// Fuzzy Header Matching for Google Forms
-function mapCSVHeaders(headers: string[]) {
-  const normalized = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
-  const findIndex = (keywords: string[]) => normalized.findIndex(h => keywords.some(k => h.includes(k)));
-
-  return {
-    timestamp: findIndex(['timestamp', 'submittedat', 'date', 'time']),
-    name: findIndex(['name', 'studentname', 'fullname', 'yourname', 'participantname']),
-    email: findIndex(['email', 'mail', 'emailaddress', 'studentemail']),
-    phone: findIndex(['phone', 'whatsapp', 'mobile', 'contact', 'phonenumber']),
-    college: findIndex(['college', 'institute', 'university', 'school', 'collegename']),
-    branch: findIndex(['branch', 'department', 'stream', 'course', 'specialization']),
-    year: findIndex(['year', 'semester', 'sem', 'yearofstudy', 'batch', 'class']),
-    topic: findIndex(['webinar', 'topic', 'event', 'session', 'workshop', 'title']),
-    attendance: findIndex(['attendance', 'status', 'attended', 'present']),
-  };
 }
 
 export default function ManageWebinars() {
@@ -169,7 +117,7 @@ export default function ManageWebinars() {
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
-  const [attendanceEligibilityFilter, setAttendanceEligibilityFilter] = useState<'All' | 'Eligible' | 'Ineligible' | 'CertIssued' | 'CertPending'>('All');
+  const [attendanceEligibilityFilter, setAttendanceEligibilityFilter] = useState<'All' | 'Confirmed' | 'Waitlisted' | 'Eligible' | 'Ineligible' | 'CertIssued' | 'CertPending'>('All');
   const [selectedCollege, setSelectedCollege] = useState('All');
   const [webinarStatusFilter, setWebinarStatusFilter] = useState<'All' | 'Upcoming' | 'Live' | 'Completed'>('All');
 
@@ -191,6 +139,7 @@ export default function ManageWebinars() {
     speaker: '',
     startDate: new Date().toISOString().split('T')[0],
     totalDays: 15,
+    maxSeats: 100,
     time: '05:00 PM - 06:30 PM',
     meetingLink: '',
     formLink: '',
@@ -544,7 +493,11 @@ export default function ManageWebinars() {
       const { isEligible } = computeAttendeeStats(a, totalDays);
 
       let matchesEligibility = true;
-      if (attendanceEligibilityFilter === 'Eligible') {
+      if (attendanceEligibilityFilter === 'Confirmed') {
+        matchesEligibility = a.status !== 'Waitlisted';
+      } else if (attendanceEligibilityFilter === 'Waitlisted') {
+        matchesEligibility = a.status === 'Waitlisted';
+      } else if (attendanceEligibilityFilter === 'Eligible') {
         matchesEligibility = isEligible;
       } else if (attendanceEligibilityFilter === 'Ineligible') {
         matchesEligibility = !isEligible;
@@ -595,6 +548,7 @@ export default function ManageWebinars() {
       speaker: '',
       startDate: new Date().toISOString().split('T')[0],
       totalDays: 15,
+      maxSeats: 100,
       time: '05:00 PM - 06:30 PM',
       meetingLink: '',
       formLink: '',
@@ -612,6 +566,7 @@ export default function ManageWebinars() {
       speaker: webinar.speaker || '',
       startDate: webinar.startDate || new Date().toISOString().split('T')[0],
       totalDays: webinar.totalDays || 15,
+      maxSeats: webinar.maxSeats || 100,
       time: webinar.time || '',
       meetingLink: webinar.meetingLink || '',
       formLink: webinar.formLink || '',
@@ -648,6 +603,7 @@ export default function ManageWebinars() {
           startDate: webinarFormData.startDate,
           endDate,
           totalDays: Number(webinarFormData.totalDays) || 15,
+          maxSeats: Number(webinarFormData.maxSeats) || 100,
           time: webinarFormData.time.trim(),
           meetingLink: webinarFormData.meetingLink.trim(),
           formLink: webinarFormData.formLink.trim(),
@@ -659,11 +615,12 @@ export default function ManageWebinars() {
           ...w, 
           ...webinarFormData, 
           endDate, 
-          totalDays: Number(webinarFormData.totalDays) 
+          totalDays: Number(webinarFormData.totalDays),
+          maxSeats: Number(webinarFormData.maxSeats) || 100,
         } : w));
         
         if (selectedWebinar?.id === editingWebinar.id) {
-          setSelectedWebinar({ ...selectedWebinar, ...webinarFormData, endDate, totalDays: Number(webinarFormData.totalDays) });
+          setSelectedWebinar({ ...selectedWebinar, ...webinarFormData, endDate, totalDays: Number(webinarFormData.totalDays), maxSeats: Number(webinarFormData.maxSeats) || 100 });
         }
         await logAdminActivity(user?.email, 'UPDATED', `Webinar: ${webinarFormData.title}`);
         toast.success('Webinar updated successfully!', { id: toastId });
@@ -675,6 +632,7 @@ export default function ManageWebinars() {
           startDate: webinarFormData.startDate,
           endDate,
           totalDays: Number(webinarFormData.totalDays) || 15,
+          maxSeats: Number(webinarFormData.maxSeats) || 100,
           time: webinarFormData.time.trim(),
           meetingLink: webinarFormData.meetingLink.trim(),
           formLink: webinarFormData.formLink.trim(),
@@ -687,6 +645,7 @@ export default function ManageWebinars() {
           ...webinarFormData,
           endDate,
           totalDays: Number(webinarFormData.totalDays) || 15,
+          maxSeats: Number(webinarFormData.maxSeats) || 100,
         };
         setWebinars(prev => [createdItem, ...prev]);
         await logAdminActivity(user?.email, 'CREATED', `Webinar: ${webinarFormData.title}`);
@@ -728,7 +687,7 @@ export default function ManageWebinars() {
   };
 
   // -------------------------------------------------------------
-  // DAILY ATTENDANCE ACTIONS
+  // DAILY ATTENDANCE TOGGLE (1-Click)
   // -------------------------------------------------------------
   const handleToggleDailyAttendance = async (attendee: WebinarAttendee, targetDate: string) => {
     const currentVal = attendee.dailyAttendance?.[targetDate];
@@ -749,10 +708,56 @@ export default function ManageWebinars() {
       if (detailStudent?.id === attendee.id) {
         setDetailStudent({ ...detailStudent, dailyAttendance: updatedMap });
       }
+
+      if (attendee.email && nextVal === 'Present') {
+        sendNotification({
+          userEmail: attendee.email,
+          title: 'Attendance Marked Present ✅',
+          message: `Your attendance for Day on ${formatDateShort(targetDate)} of "${attendee.webinarTitle}" was marked Present.`,
+          type: 'attendance',
+          link: '/dashboard/student/webinars'
+        });
+      }
+
       toast.success(`${attendee.studentName} marked ${nextVal} on ${formatDateShort(targetDate)}`);
     } catch (err) {
       console.error('Error updating attendance:', err);
       toast.error('Failed to update daily attendance');
+    }
+  };
+
+  const handlePromoteAttendee = async (attendee: WebinarAttendee) => {
+    const toastId = toast.loading(`Promoting ${attendee.studentName} to Confirmed...`);
+    try {
+      await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
+        status: 'Confirmed',
+        promotedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, status: 'Confirmed' } : a));
+
+      if (attendee.email) {
+        sendNotification({
+          userEmail: attendee.email,
+          title: 'Bootcamp Seat Confirmed! 🎉',
+          message: `Great news! You have been promoted from the waitlist to a confirmed seat in "${attendee.webinarTitle}".`,
+          type: 'webinar',
+          link: '/dashboard/student/webinars'
+        });
+      }
+
+      await logAdminActivity(
+        user?.email,
+        'STATUS_CHANGE',
+        `Webinar: ${attendee.webinarTitle}`,
+        `Promoted ${attendee.studentName} (${attendee.email}) from Waitlist to Confirmed`
+      );
+
+      toast.success(`${attendee.studentName} is now Confirmed!`, { id: toastId });
+    } catch (err) {
+      console.error('Error promoting attendee:', err);
+      toast.error('Failed to promote attendee', { id: toastId });
     }
   };
 
@@ -867,6 +872,16 @@ export default function ManageWebinars() {
         certificateId: certId 
       } : a));
 
+      if (attendee.email) {
+        sendNotification({
+          userEmail: attendee.email,
+          title: 'Bootcamp Certificate Issued! 🎓',
+          message: `Congratulations! Your certificate for "${attendee.webinarTitle}" (${certId}) is ready.`,
+          type: 'certificate',
+          link: '/dashboard/student/certificates'
+        });
+      }
+
       await logAdminActivity(user?.email, 'ISSUED', `Certificate: ${certId}`, attendee.studentName);
       toast.success(`Certificate ${certId} issued to ${attendee.studentName} (${percentage}%)!`, { id: toastId });
     } catch (err) {
@@ -961,32 +976,16 @@ export default function ManageWebinars() {
       const file = e.target.files[0];
       setCsvFileName(file.name);
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
-        if (!text) return;
-
-        const rows = parseCSV(text);
-        if (rows.length < 2) {
-          toast.error('The uploaded CSV is empty or missing headers.');
-          return;
-        }
-
-        const headers = rows[0];
-        const headerMap = mapCSVHeaders(headers);
-
+      parseCSV(file, (rows: any[]) => {
         const parsed: any[] = [];
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || row.length === 0 || row.every(c => !c)) continue;
-
-          const studentName = headerMap.name !== -1 ? (row[headerMap.name] || 'Participant') : (row[0] || 'Participant');
-          const email = headerMap.email !== -1 ? (row[headerMap.email] || '') : (row[1] || '');
-          const phone = headerMap.phone !== -1 ? row[headerMap.phone] : '';
-          const college = headerMap.college !== -1 ? row[headerMap.college] : '';
-          const branch = headerMap.branch !== -1 ? row[headerMap.branch] : '';
-          const year = headerMap.year !== -1 ? row[headerMap.year] : '';
-          const timestamp = headerMap.timestamp !== -1 ? row[headerMap.timestamp] : '';
+        for (const row of rows) {
+          const studentName = resolveHeaderValue(row, ['name', 'studentname', 'fullname', 'yourname', 'participantname', 'Student Name', 'Full Name'], 'Participant');
+          const email = resolveHeaderValue(row, ['email', 'mail', 'emailaddress', 'studentemail', 'Email Address', 'Email']);
+          const phone = resolveHeaderValue(row, ['phone', 'whatsapp', 'mobile', 'contact', 'phonenumber', 'Phone', 'WhatsApp']);
+          const college = resolveHeaderValue(row, ['college', 'institute', 'university', 'school', 'collegename', 'College', 'Institute']);
+          const branch = resolveHeaderValue(row, ['branch', 'department', 'stream', 'course', 'specialization', 'Branch']);
+          const year = resolveHeaderValue(row, ['year', 'semester', 'sem', 'yearofstudy', 'batch', 'class', 'Year']);
+          const timestamp = resolveHeaderValue(row, ['timestamp', 'submittedat', 'date', 'time', 'Timestamp'], new Date().toISOString());
 
           if (studentName || email) {
             parsed.push({
@@ -996,15 +995,19 @@ export default function ManageWebinars() {
               collegeName: college.trim() || 'N/A',
               branch: branch.trim() || 'N/A',
               yearOfStudy: year.trim() || 'N/A',
-              timestamp: timestamp.trim() || new Date().toISOString(),
+              timestamp: timestamp.trim(),
             });
           }
         }
 
+        if (parsed.length === 0) {
+          toast.error('The uploaded CSV is empty or missing required data.');
+          return;
+        }
+
         setParsedRows(parsed);
         setShowImportModal(true);
-      };
-      reader.readAsText(file);
+      });
     }
   };
 
@@ -1043,6 +1046,7 @@ export default function ManageWebinars() {
             timestamp: item.timestamp,
             dailyAttendance: initialDaily,
             certificateIssued: false,
+            status: 'Confirmed',
             source: 'google_form_csv',
             importedAt: serverTimestamp(),
             createdAt: serverTimestamp(),
@@ -1080,17 +1084,7 @@ export default function ManageWebinars() {
       ["2026/08/17 10:18:22 AM", "Priya Kumari", "priya.k@example.com", "9876543211", "Purnea College", "BCA", "2nd Year", "15-Day AI & Full-Stack Bootcamp"],
       ["2026/08/17 10:24:45 AM", "Amit Verma", "amit.verma@example.com", "9876543212", "BCE Bhagalpur", "ECE", "4th Year", "15-Day AI & Full-Stack Bootcamp"]
     ];
-
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      [headers.join(","), ...sampleRows.map(r => r.map(c => `"${c}"`).join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "google_form_webinar_sample.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadTemplateCSV("google_form_webinar_sample", headers, sampleRows);
   };
 
   const exportAttendeesCSV = () => {
@@ -1103,44 +1097,32 @@ export default function ManageWebinars() {
     const totalDays = selectedWebinar?.totalDays || 15;
     const dates = activeSessionDates.length > 0 ? activeSessionDates : ['Total Attendance'];
 
-    const headers = [
-      "Student Name", "Email", "Phone", "College", "Branch", "Year",
-      "Total Days", "Present Days", "Attendance %", "Eligible (>=75%)", "Certificate Issued",
-      ...dates.map((d, i) => `Day ${i + 1} (${d})`)
-    ];
-
-    const rows = targetList.map(a => {
+    const data = targetList.map(a => {
       const { presentDays, percentage, isEligible } = computeAttendeeStats(a, totalDays);
-      const dayStatuses = dates.map(d => a.dailyAttendance?.[d] || 'Absent');
+      const row: Record<string, any> = {
+        "Student Name": a.studentName,
+        "Email": a.email,
+        "Phone": a.phone || '',
+        "Status": a.status || 'Confirmed',
+        "College": a.collegeName || '',
+        "Branch": a.branch || '',
+        "Year": a.yearOfStudy || '',
+        "Total Days": totalDays,
+        "Present Days": presentDays,
+        "Attendance %": `${percentage}%`,
+        "Eligible (>=75%)": isEligible ? "Yes" : "No",
+        "Certificate Issued": a.certificateIssued ? "Yes" : "No",
+      };
 
-      return [
-        a.studentName,
-        a.email,
-        a.phone || '',
-        a.collegeName || '',
-        a.branch || '',
-        a.yearOfStudy || '',
-        totalDays,
-        presentDays,
-        `${percentage}%`,
-        isEligible ? "Yes" : "No",
-        a.certificateIssued ? "Yes" : "No",
-        ...dayStatuses
-      ];
+      dates.forEach((d, i) => {
+        row[`Day ${i + 1} (${d})`] = a.dailyAttendance?.[d] || 'Absent';
+      });
+
+      return row;
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      [headers.join(","), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
     const prefix = selectedWebinar ? selectedWebinar.title.replace(/[^a-z0-9]/gi, '_') : 'all_webinars';
-    link.setAttribute("download", `webinar_attendance_${prefix}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Exported ${targetList.length} attendance records to CSV`);
+    exportCSV(`webinar_attendance_${prefix}`, data);
   };
 
   // -------------------------------------------------------------
@@ -2003,6 +1985,8 @@ export default function ManageWebinars() {
                     className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full text-xs"
                   >
                     <option value="All">All Students ({attendeesForSelectedWebinar.length})</option>
+                    <option value="Confirmed">Confirmed Seats</option>
+                    <option value="Waitlisted">Waitlisted Students</option>
                     <option value="Eligible">Eligible (&ge; 75% Attendance)</option>
                     <option value="Ineligible">Ineligible (&lt; 75% Attendance)</option>
                     <option value="CertIssued">Certificates Issued</option>
@@ -2135,6 +2119,24 @@ export default function ManageWebinars() {
                                     <School size={12} className="text-indigo-500 shrink-0" />
                                     <span>{attendee.collegeName}</span>
                                   </div>
+                                  {attendee.status === 'Waitlisted' ? (
+                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                        ⏳ Waitlisted {attendee.waitlistPosition ? `#${attendee.waitlistPosition}` : ''}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handlePromoteAttendee(attendee)}
+                                        className="text-[10px] font-extrabold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200 cursor-pointer transition-colors"
+                                      >
+                                        Promote to Confirmed
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-emerald-700 mt-0.5">
+                                      ✓ Confirmed
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </td>
@@ -2517,7 +2519,7 @@ export default function ManageWebinars() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">
                       Start Date <span className="text-rose-500">*</span>
@@ -2549,6 +2551,19 @@ export default function ManageWebinars() {
                       <option value="30">30 Days (1 Month)</option>
                       <option value="45">45 Days</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Capacity / Max Seats <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={webinarFormData.maxSeats}
+                      onChange={(e) => setWebinarFormData({ ...webinarFormData, maxSeats: Number(e.target.value) || 100 })}
+                      placeholder="e.g. 100"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                    />
                   </div>
                 </div>
 

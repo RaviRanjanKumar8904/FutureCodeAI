@@ -225,6 +225,19 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // ----------------------------------------------------------------------
+    // IN-APP NOTIFICATIONS
+    // ----------------------------------------------------------------------
+    match /notifications/{notifId} {
+      // Users can read and mark their own notifications as read
+      allow read, update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.userEmail == request.auth.token.email
+      );
+      // Admins and system can create, manage, and delete notifications
+      allow create, delete: if isAdmin() || isAuthenticated();
+    }
   }
 }
 
