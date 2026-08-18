@@ -22,13 +22,15 @@ interface Enrollment {
   image: string;
 }
 
-import { matchesUser } from '../../utils/userMatcher';
+import { matchesUser } from '../../utils/matchesUser';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 export default function MyCourses() {
   const { user } = useAuth();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [previewCert, setPreviewCert] = useState<CertificateData | null>(null);
   const [showCertPreview, setShowCertPreview] = useState(false);
 
@@ -198,8 +200,10 @@ export default function MyCourses() {
         });
 
         setEnrollments(formatted);
-      } catch (error) {
-        console.error("Error fetching student courses:", error);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching student courses:", err);
+        setError("Failed to load your enrolled courses. Please check your connection and try again.");
       } finally {
         setLoading(false);
       }
@@ -229,10 +233,36 @@ export default function MyCourses() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-64 gap-3">
-        <div className="animate-spin rounded-full h-10 w-10 border-3 border-indigo-600 border-t-transparent" />
-        <span className="text-sm font-semibold text-slate-500">Loading your courses...</span>
+      <div className="space-y-6">
+        <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse mb-6" />
+        <DashboardSkeleton type="cards" count={3} />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError 
+        title="Unable to load courses"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+          // Triggers useEffect
+          if (user) {
+            const userEmailClean = (user.email || '').toLowerCase().trim();
+            Promise.all([
+              getDocs(query(collection(db, 'enrollments'), where('studentEmail', '==', userEmailClean))),
+              user.uid ? getDocs(query(collection(db, 'enrollments'), where('studentId', '==', user.uid))) : Promise.resolve(null),
+              getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean))),
+              user.uid ? getDocs(query(collection(db, 'certificates'), where('studentId', '==', user.uid))) : Promise.resolve(null),
+              getDocs(collection(db, 'courses')),
+              getDocs(query(collection(db, 'users'), where('email', '==', userEmailClean))),
+              getDocs(query(collection(db, 'enquiries'), where('email', '==', userEmailClean))),
+            ]).then(() => setLoading(false)).catch(() => { setError('Failed to load courses'); setLoading(false); });
+          }
+        }}
+      />
     );
   }
 

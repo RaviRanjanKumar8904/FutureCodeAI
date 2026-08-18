@@ -40,6 +40,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { logAdminActivity } from '../../utils/adminLogger';
 import { useAuth } from '../../hooks/useAuth';
+import { DashboardError } from '../../components/layout/DashboardState';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -63,6 +64,7 @@ export default function AdminDashboard() {
   const [recentEnquiries, setRecentEnquiries] = useState<any[]>([]);
   const [chartData, setChartData] = useState<Array<{ name: string; enquiries: number; students: number }>>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchDashboardData = async () => {
@@ -190,9 +192,10 @@ export default function AdminDashboard() {
           students: trendsMap[m].students
         }))
       );
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load metrics from the database.');
       toast.error('Failed to load dashboard metrics');
     } finally {
       setLoading(false);
@@ -311,7 +314,7 @@ export default function AdminDashboard() {
           <button 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw size={16} className={refreshing ? 'animate-spin text-indigo-600' : 'text-slate-500'} />
             <span>Refresh</span>
@@ -326,6 +329,14 @@ export default function AdminDashboard() {
           </Link>
         </div>
       </div>
+
+      {error && (
+        <DashboardError
+          title="Metrics Fetch Warning"
+          message={error}
+          onRetry={handleRefresh}
+        />
+      )}
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

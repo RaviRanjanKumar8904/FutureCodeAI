@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 interface Enquiry {
   id: string;
@@ -18,6 +19,7 @@ export default function MyEnquiries() {
   const { user } = useAuth();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !user.email) {
@@ -47,10 +49,12 @@ export default function MyEnquiries() {
           };
         }) as Enquiry[];
         setEnquiries(data);
+        setError(null);
         setLoading(false);
       },
-      (error) => {
-        console.error("Error listening to enquiries:", error);
+      (err) => {
+        console.error("Error listening to enquiries:", err);
+        setError("Failed to retrieve your enquiries.");
         setLoading(false);
       }
     );
@@ -62,9 +66,23 @@ export default function MyEnquiries() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+      <div className="space-y-6">
+        <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse mb-6" />
+        <DashboardSkeleton type="list" count={3} />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load enquiries"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+        }}
+      />
     );
   }
 

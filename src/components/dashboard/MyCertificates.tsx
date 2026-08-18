@@ -24,12 +24,14 @@ interface Certificate {
   revoked?: boolean;
 }
 
-import { matchesUser } from '../../utils/userMatcher';
+import { matchesUser } from '../../utils/matchesUser';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 export default function MyCertificates() {
   const { user } = useAuth();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [previewCert, setPreviewCert] = useState<CertificateData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -56,10 +58,12 @@ export default function MyCertificates() {
         });
 
         setCertificates(certs);
+        setError(null);
         setLoading(false);
       },
-      (error) => {
-        console.error("Error listening to certificates:", error);
+      (err) => {
+        console.error("Error listening to certificates:", err);
+        setError("Failed to retrieve your certificates from the verified database.");
         setLoading(false);
       }
     );
@@ -101,10 +105,23 @@ export default function MyCertificates() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-64 gap-3">
-        <div className="animate-spin rounded-full h-10 w-10 border-3 border-amber-500 border-t-transparent" />
-        <span className="text-sm font-semibold text-slate-500">Loading your verified certificates...</span>
+      <div className="space-y-6">
+        <div className="h-8 bg-slate-200 rounded-xl w-56 animate-pulse mb-6" />
+        <DashboardSkeleton type="cards" count={3} />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load certificates"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+        }}
+      />
     );
   }
 

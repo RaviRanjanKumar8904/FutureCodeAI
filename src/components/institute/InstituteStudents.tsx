@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, ShieldAlert } from 'lucide-react';
 import { db } from '../../firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 interface EnrolledStudent {
   id: string;
@@ -55,41 +56,48 @@ export default function InstituteStudents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [students, setStudents] = useState<EnrolledStudent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStudents = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    
+    try {
+      const q = query(
+        collection(db, 'enrollments'), 
+        where('instituteId', '==', user.uid)
+      );
+      const snapshot = await getDocs(q);
+      const fetchedData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          studentName: data.studentName || data.name || 'Unknown Student',
+          courseName: data.courseName || data.course || 'N/A',
+          batch: data.batch || data.batchTiming || 'N/A',
+          enrolledAt: data.enrolledAt,
+          date: formatEnrolledDate(data.enrolledAt, data.date),
+          status: data.status || 'Active',
+          ...data
+        };
+      }) as EnrolledStudent[];
+      
+      setStudents(fetchedData);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+      setError("Failed to load registered student roster. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const fetchStudents = async () => {
-      if (!user) return;
-      
-      try {
-        const q = query(
-          collection(db, 'enrollments'), 
-          where('instituteId', '==', user.uid)
-        );
-        const snapshot = await getDocs(q);
-        const fetchedData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            studentName: data.studentName || data.name || 'Unknown Student',
-            courseName: data.courseName || data.course || 'N/A',
-            batch: data.batch || data.batchTiming || 'N/A',
-            enrolledAt: data.enrolledAt,
-            date: formatEnrolledDate(data.enrolledAt, data.date),
-            status: data.status || 'Active',
-            ...data
-          };
-        }) as EnrolledStudent[];
-        
-        setStudents(fetchedData);
-      } catch (error) {
-        console.error("Error fetching students:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStudents();
-  }, [user]);
+  }, [fetchStudents]);
 
   const filteredStudents = students.filter(s => {
     const name = (s.studentName || s.name || '').toLowerCase();
@@ -97,6 +105,28 @@ export default function InstituteStudents() {
     const search = searchTerm.toLowerCase();
     return name.includes(search) || course.includes(search);
   });
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-extrabold text-text-heading">Enrolled Students</h2>
+          <p className="text-slate-500 font-medium text-sm mt-1">Loading registered students...</p>
+        </div>
+        <DashboardSkeleton type="table" count={5} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load students"
+        message={error}
+        onRetry={fetchStudents}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

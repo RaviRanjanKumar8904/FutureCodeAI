@@ -16,12 +16,14 @@ interface InternshipApplication {
   certificateId?: string;
 }
 
-import { matchesUser } from '../../utils/userMatcher';
+import { matchesUser } from '../../utils/matchesUser';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 export default function MyInternships() {
   const { user } = useAuth();
   const [internships, setInternships] = useState<InternshipApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchInternships = async () => {
@@ -141,8 +143,10 @@ export default function MyInternships() {
         });
 
         setInternships(combined);
-      } catch (error) {
-        console.error("Error fetching internships:", error);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching internships:", err);
+        setError("Failed to load your internship applications. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -152,9 +156,23 @@ export default function MyInternships() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+      <div className="space-y-6">
+        <div className="h-8 bg-slate-200 rounded-xl w-48 animate-pulse mb-6" />
+        <DashboardSkeleton type="cards" count={3} />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load internships"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+        }}
+      />
     );
   }
 

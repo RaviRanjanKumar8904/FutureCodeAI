@@ -4,6 +4,7 @@ import { Mail, Phone, Clock, Search, Filter } from 'lucide-react';
 import { db } from '../../firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 interface Enquiry {
   id: string;
@@ -53,6 +54,7 @@ export default function InstituteEnquiries() {
   const [searchTerm, setSearchTerm] = useState('');
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -86,10 +88,12 @@ export default function InstituteEnquiries() {
         }) as Enquiry[];
 
         setEnquiries(fetchedData);
+        setError(null);
         setLoading(false);
       },
-      (error) => {
-        console.error("Error listening to institute enquiries:", error);
+      (err) => {
+        console.error("Error listening to institute enquiries:", err);
+        setError("Failed to stream student leads for your institute.");
         setLoading(false);
       }
     );
@@ -103,6 +107,31 @@ export default function InstituteEnquiries() {
     (enq.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (enq.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-extrabold text-text-heading">Lead Enquiries</h2>
+          <p className="text-slate-500 font-medium text-sm mt-1">Loading assigned student leads...</p>
+        </div>
+        <DashboardSkeleton type="table" count={5} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load leads"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+        }}
+      />
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

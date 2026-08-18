@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Users, Clock, CalendarDays } from 'lucide-react';
 import { db } from '../../firebase/config';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 
 interface Batch {
   id: string;
@@ -20,55 +21,80 @@ export default function InstituteCourses() {
   const { user } = useAuth();
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCourses = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    
+    try {
+      const q = query(
+        collection(db, 'courses'), 
+        where('instituteId', '==', user.uid)
+      );
+      const snapshot = await getDocs(q);
+      const fetchedData = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          courseName: data.courseName || data.title || 'Unnamed Course',
+          batchId: data.batchId || (data.title ? `${data.title.substring(0, 3).toUpperCase()}-101` : 'BATCH-101'),
+          timing: data.timing || data.batchTimings || 'Flexible',
+          startDate: data.startDate || 'Immediate',
+          capacity: data.capacity || data.totalSeats || 50,
+          filled: data.filled || data.filledSeats || data.studentsCount || 0,
+          status: data.status || (data.isActive !== false ? 'Active' : 'Upcoming'),
+          ...data
+        };
+      }) as Batch[];
+      
+      setBatches(fetchedData);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+      setError("Failed to load institute courses & batches. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const fetchCourses = async () => {
-      if (!user) return;
-      
-      try {
-        const q = query(
-          collection(db, 'courses'), 
-          where('instituteId', '==', user.uid)
-        );
-        const snapshot = await getDocs(q);
-        const fetchedData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            courseName: data.courseName || data.title || 'Unnamed Course',
-            batchId: data.batchId || (data.title ? `${data.title.substring(0, 3).toUpperCase()}-101` : 'BATCH-101'),
-            timing: data.timing || data.batchTimings || 'Flexible',
-            startDate: data.startDate || 'Immediate',
-            capacity: data.capacity || data.totalSeats || 50,
-            filled: data.filled || data.filledSeats || data.studentsCount || 0,
-            status: data.status || (data.isActive !== false ? 'Active' : 'Upcoming'),
-            ...data
-          };
-        }) as Batch[];
-        
-        setBatches(fetchedData);
-      } catch (error) {
-        console.error("Error fetching courses:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCourses();
-  }, [user]);
+  }, [fetchCourses]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-extrabold text-text-heading">Courses &amp; Batches</h2>
+          <p className="text-slate-500 font-medium text-sm mt-1">Loading assigned course batches...</p>
+        </div>
+        <DashboardSkeleton type="cards" count={3} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load batches"
+        message={error}
+        onRetry={fetchCourses}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-extrabold text-text-heading">Courses & Batches</h2>
+        <h2 className="text-2xl font-extrabold text-text-heading">Courses &amp; Batches</h2>
         <p className="text-slate-500 font-medium text-sm mt-1">Track seat capacities and timings for your institute's active batches.</p>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center py-20 text-slate-500 font-medium gap-3">
-          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          Loading courses...
-        </div>
-      ) : batches.length === 0 ? (
+      {batches.length === 0 ? (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center text-slate-500 font-medium">
           No courses have been assigned to this institute yet.
         </div>

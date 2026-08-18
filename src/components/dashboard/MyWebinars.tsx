@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { matchesUser } from '../../utils/userMatcher';
+import { matchesUser } from '../../utils/matchesUser';
+import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 import { sendNotification } from '../../utils/notificationService';
 import { 
   collection, 
@@ -80,6 +81,7 @@ export default function MyWebinars() {
   const [webinars, setWebinars] = useState<WebinarItem[]>([]);
   const [attendeeRecords, setAttendeeRecords] = useState<WebinarAttendee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'enrolled' | 'all'>('enrolled');
   const [enrollingId, setEnrollingId] = useState<string | null>(null);
 
@@ -128,10 +130,12 @@ export default function MyWebinars() {
           } as WebinarItem;
         });
         setWebinars(webinarsList);
+        setError(null);
         setLoading(false);
       },
       (err) => {
         console.error('Error listening to webinars:', err);
+        setError('Failed to load active webinars from server.');
         setLoading(false);
       }
     );
@@ -306,10 +310,23 @@ export default function MyWebinars() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl border border-gray-100 p-8 shadow-xs">
-        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs font-bold text-slate-500">Loading your webinars &amp; attendance...</p>
+      <div className="space-y-6">
+        <div className="h-32 bg-slate-200 rounded-3xl animate-pulse w-full" />
+        <DashboardSkeleton type="cards" count={2} />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardError
+        title="Unable to load webinars"
+        message={error}
+        onRetry={() => {
+          setLoading(true);
+          setError(null);
+        }}
+      />
     );
   }
 
