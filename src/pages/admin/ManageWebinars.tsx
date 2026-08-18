@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { db } from '../../firebase/config';
 import { 
   collection, 
@@ -16,37 +16,14 @@ import {
   Video, 
   Upload, 
   Download, 
-  Search, 
   Plus, 
-  Trash2, 
-  CheckCircle2, 
-  XCircle, 
   HelpCircle, 
   Award, 
   School, 
   Users, 
-  Calendar, 
-  Filter, 
-  X, 
-  UserCheck, 
-  FileSpreadsheet, 
-  RefreshCw, 
-  Lock, 
+  CheckCircle2, 
   ArrowLeft, 
-  Edit, 
-  Clock, 
-  User, 
-  Check, 
-  AlertCircle, 
-  TrendingUp, 
-  SlidersHorizontal, 
-  History, 
-  Mail, 
-  Phone, 
-  ChevronLeft, 
-  ChevronRight,
-  ExternalLink,
-  Sparkles
+  TrendingUp
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
@@ -59,47 +36,16 @@ import {
   formatDateShort, 
   formatDateFull 
 } from '../../utils/webinarSchedule';
-
-export interface WebinarItem {
-  id: string;
-  title: string;
-  topic?: string;
-  speaker?: string;
-  startDate: string;
-  endDate?: string;
-  totalDays: number;
-  maxSeats?: number;
-  time?: string;
-  meetingLink?: string;
-  formLink?: string;
-  status: 'Upcoming' | 'Live' | 'Completed';
-  postponedDates?: string[];
-  postponements?: Record<string, { reason?: string; postponedAt?: any }>;
-  createdAt?: any;
-}
-
-export interface WebinarAttendee {
-  id: string;
-  webinarId?: string;
-  webinarTitle: string;
-  studentName: string;
-  email: string;
-  phone?: string;
-  collegeName?: string;
-  branch?: string;
-  yearOfStudy?: string;
-  timestamp?: string;
-  dailyAttendance: Record<string, 'Present' | 'Absent'>;
-  certificateIssued: boolean;
-  certificateId?: string;
-  certificateIssuedAt?: any;
-  status?: 'Confirmed' | 'Waitlisted';
-  waitlistPosition?: number;
-  promotedAt?: any;
-  source: 'google_form_csv' | 'manual' | 'student_self_enroll';
-  importedAt?: any;
-  createdAt?: any;
-}
+import type { WebinarItem, WebinarAttendee } from '../../components/admin/webinars/types';
+import WebinarCatalog from '../../components/admin/webinars/WebinarCatalog';
+import WebinarAttendanceFilters from '../../components/admin/webinars/WebinarAttendanceFilters';
+import WebinarAttendanceTable from '../../components/admin/webinars/WebinarAttendanceTable';
+import CreateEditWebinarModal from '../../components/admin/webinars/CreateEditWebinarModal';
+import WebinarCsvImportModal from '../../components/admin/webinars/WebinarCsvImportModal';
+import WebinarCsvGuideModal from '../../components/admin/webinars/WebinarCsvGuideModal';
+import AddAttendeeModal from '../../components/admin/webinars/AddAttendeeModal';
+import AttendeeDetailModal from '../../components/admin/webinars/AttendeeDetailModal';
+import PostponeDayModal from '../../components/admin/webinars/PostponeDayModal';
 
 export default function ManageWebinars() {
   const { user } = useAuth();
@@ -172,6 +118,12 @@ export default function ManageWebinars() {
   });
   const [isAdding, setIsAdding] = useState(false);
 
+  // Postpone Modal State
+  const [showPostponeModal, setShowPostponeModal] = useState(false);
+  const [postponeDateTarget, setPostponeDateTarget] = useState<string>('');
+  const [postponeReason, setPostponeReason] = useState<string>('Instructor Unavailable');
+  const [isPostponing, setIsPostponing] = useState(false);
+
   // Confirm Modal state
   const [confirmModalState, setConfirmModalState] = useState<{
     isOpen: boolean;
@@ -191,8 +143,11 @@ export default function ManageWebinars() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch Webinars
-      const webinarsSnap = await getDocs(query(collection(db, 'webinars'), orderBy('createdAt', 'desc')));
+      const [webinarsSnap, attendeesSnap] = await Promise.all([
+        getDocs(query(collection(db, 'webinars'), orderBy('createdAt', 'desc'))),
+        getDocs(query(collection(db, 'webinar_attendees'), orderBy('createdAt', 'desc'))),
+      ]);
+
       const webinarsList = webinarsSnap.docs.map(d => {
         const data = d.data();
         return {
@@ -203,6 +158,7 @@ export default function ManageWebinars() {
           startDate: data.startDate || data.date || new Date().toISOString().split('T')[0],
           endDate: data.endDate || '',
           totalDays: data.totalDays || 15,
+          maxSeats: data.maxSeats || 100,
           time: data.time || '',
           meetingLink: data.meetingLink || '',
           formLink: data.formLink || '',
@@ -214,14 +170,11 @@ export default function ManageWebinars() {
       });
       setWebinars(webinarsList);
 
-      // If a webinar was selected, keep it updated
       setSelectedWebinar(prev => {
         if (!prev) return null;
         return webinarsList.find(w => w.id === prev.id) || prev;
       });
 
-      // 2. Fetch Attendees
-      const attendeesSnap = await getDocs(query(collection(db, 'webinar_attendees'), orderBy('createdAt', 'desc')));
       const attendeesList = attendeesSnap.docs.map(d => {
         const data = d.data();
         return {
@@ -239,6 +192,9 @@ export default function ManageWebinars() {
           certificateIssued: data.certificateIssued || false,
           certificateId: data.certificateId || '',
           certificateIssuedAt: data.certificateIssuedAt,
+          status: data.status || 'Confirmed',
+          waitlistPosition: data.waitlistPosition,
+          promotedAt: data.promotedAt,
           source: data.source || 'manual',
           createdAt: data.createdAt,
         } as WebinarAttendee;
@@ -269,120 +225,6 @@ export default function ManageWebinars() {
 
   const activeScheduleList = activeSessionSchedule.schedule;
   const activeSessionDates = useMemo(() => activeScheduleList.map(s => s.date), [activeScheduleList]);
-
-  // Postpone Modal State
-  const [showPostponeModal, setShowPostponeModal] = useState(false);
-  const [postponeDateTarget, setPostponeDateTarget] = useState<string>('');
-  const [postponeReason, setPostponeReason] = useState<string>('Instructor Unavailable');
-  const [isPostponing, setIsPostponing] = useState(false);
-
-  // Handle Postpone / Resume Day
-  const handleTogglePostponeDay = async (dateStr: string, currentIsPostponed: boolean) => {
-    if (!selectedWebinar) return;
-
-    if (currentIsPostponed) {
-      // Resume / Un-postpone Day
-      setConfirmModalState({
-        isOpen: true,
-        title: 'Resume Postponed Day?',
-        message: `Do you want to reactivate ${formatDateFull(dateStr)} as an active teaching day? The bootcamp schedule will contract back by 1 day.`,
-        variant: 'primary',
-        onConfirm: async () => {
-          const toastId = toast.loading('Resuming day...');
-          try {
-            const updatedPostponedDates = (selectedWebinar.postponedDates || []).filter(d => d !== dateStr);
-            const updatedPostponements = { ...(selectedWebinar.postponements || {}) };
-            delete updatedPostponements[dateStr];
-
-            const { endDate } = generateWebinarSchedule(
-              selectedWebinar.startDate,
-              selectedWebinar.totalDays || 15,
-              updatedPostponedDates,
-              updatedPostponements
-            );
-
-            await updateDoc(doc(db, 'webinars', selectedWebinar.id), {
-              postponedDates: updatedPostponedDates,
-              postponements: updatedPostponements,
-              endDate,
-              updatedAt: serverTimestamp(),
-            });
-
-            const updatedWebinar: WebinarItem = {
-              ...selectedWebinar,
-              postponedDates: updatedPostponedDates,
-              postponements: updatedPostponements,
-              endDate,
-            };
-
-            setSelectedWebinar(updatedWebinar);
-            setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
-            await logAdminActivity(user?.email, 'UPDATED', `Resumed day ${dateStr} for ${selectedWebinar.title}`);
-            toast.success(`Session on ${formatDateShort(dateStr)} resumed!`, { id: toastId });
-          } catch (err) {
-            console.error('Error resuming day:', err);
-            toast.error('Failed to resume day', { id: toastId });
-          } finally {
-            setConfirmModalState(prev => ({ ...prev, isOpen: false }));
-          }
-        }
-      });
-    } else {
-      // Open modal to choose reason
-      setPostponeDateTarget(dateStr);
-      setPostponeReason('Instructor Unavailable');
-      setShowPostponeModal(true);
-    }
-  };
-
-  const handleConfirmPostpone = async () => {
-    if (!selectedWebinar || !postponeDateTarget) return;
-    setIsPostponing(true);
-    const toastId = toast.loading(`Postponing ${formatDateShort(postponeDateTarget)}...`);
-
-    try {
-      const updatedPostponedDates = Array.from(new Set([...(selectedWebinar.postponedDates || []), postponeDateTarget]));
-      const updatedPostponements = {
-        ...(selectedWebinar.postponements || {}),
-        [postponeDateTarget]: {
-          reason: postponeReason.trim() || 'Instructor Unavailable',
-          postponedAt: new Date().toISOString(),
-        }
-      };
-
-      const { endDate } = generateWebinarSchedule(
-        selectedWebinar.startDate,
-        selectedWebinar.totalDays || 15,
-        updatedPostponedDates,
-        updatedPostponements
-      );
-
-      await updateDoc(doc(db, 'webinars', selectedWebinar.id), {
-        postponedDates: updatedPostponedDates,
-        postponements: updatedPostponements,
-        endDate,
-        updatedAt: serverTimestamp(),
-      });
-
-      const updatedWebinar: WebinarItem = {
-        ...selectedWebinar,
-        postponedDates: updatedPostponedDates,
-        postponements: updatedPostponements,
-        endDate,
-      };
-
-      setSelectedWebinar(updatedWebinar);
-      setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
-      await logAdminActivity(user?.email, 'UPDATED', `Postponed day ${postponeDateTarget} (${postponeReason}) for ${selectedWebinar.title}`);
-      toast.success(`Session on ${formatDateShort(postponeDateTarget)} postponed. Schedule extended to ${formatDateFull(endDate)}!`, { id: toastId });
-      setShowPostponeModal(false);
-    } catch (err) {
-      console.error('Error postponing day:', err);
-      toast.error('Failed to postpone day', { id: toastId });
-    } finally {
-      setIsPostponing(false);
-    }
-  };
 
   // Keep activeDate within the selected webinar's date range
   useEffect(() => {
@@ -456,90 +298,770 @@ export default function ManageWebinars() {
     return { totalWebinars, totalStudents, totalEligible, totalCerts };
   }, [webinars, attendees]);
 
-  // Filtered Attendees for Selected Webinar
+  // Selected Webinar Attendees
   const attendeesForSelectedWebinar = useMemo(() => {
-    if (!selectedWebinar) return attendees;
-    return attendees.filter(a => {
-      if (a.webinarId && a.webinarId === selectedWebinar.id) return true;
-      if (a.webinarTitle && a.webinarTitle.toLowerCase() === selectedWebinar.title.toLowerCase()) return true;
-      return false;
-    });
+    if (!selectedWebinar) return [];
+    return attendees.filter(a => 
+      a.webinarId === selectedWebinar.id || 
+      (a.webinarTitle && a.webinarTitle.toLowerCase() === selectedWebinar.title.toLowerCase())
+    );
   }, [attendees, selectedWebinar]);
 
-  // Unique colleges for current view
+  // Unique Colleges in selected webinar
   const uniqueColleges = useMemo(() => {
-    const list = selectedWebinar ? attendeesForSelectedWebinar : attendees;
     const set = new Set<string>();
-    list.forEach(a => {
-      if (a.collegeName && a.collegeName !== 'N/A') set.add(a.collegeName);
+    attendeesForSelectedWebinar.forEach(a => {
+      if (a.collegeName && a.collegeName.trim() && a.collegeName !== 'N/A') {
+        set.add(a.collegeName.trim());
+      }
     });
     return Array.from(set).sort();
-  }, [selectedWebinar, attendeesForSelectedWebinar, attendees]);
+  }, [attendeesForSelectedWebinar]);
 
-  // Displayed Attendees based on search and eligibility filter
+  // Filtered Attendees for Table View
   const displayedAttendees = useMemo(() => {
-    const baseList = selectedWebinar ? attendeesForSelectedWebinar : attendees;
-    const totalDays = selectedWebinar?.totalDays || 15;
+    if (!selectedWebinar) return [];
+    const totalDays = selectedWebinar.totalDays || 15;
 
-    return baseList.filter(a => {
-      const matchesSearch = 
-        !searchTerm ||
-        a.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.phone?.includes(searchTerm) ||
-        a.collegeName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        a.webinarTitle?.toLowerCase().includes(searchTerm.toLowerCase());
+    return attendeesForSelectedWebinar.filter(a => {
+      const q = searchTerm.toLowerCase().trim();
+      const matchSearch = !q || 
+        a.studentName.toLowerCase().includes(q) ||
+        a.email.toLowerCase().includes(q) ||
+        (a.phone && a.phone.toLowerCase().includes(q)) ||
+        (a.collegeName && a.collegeName.toLowerCase().includes(q));
+
+      const matchCollege = selectedCollege === 'All' || a.collegeName === selectedCollege;
 
       const { isEligible } = computeAttendeeStats(a, totalDays);
+      let matchEligibility = true;
 
-      let matchesEligibility = true;
       if (attendanceEligibilityFilter === 'Confirmed') {
-        matchesEligibility = a.status !== 'Waitlisted';
+        matchEligibility = a.status !== 'Waitlisted';
       } else if (attendanceEligibilityFilter === 'Waitlisted') {
-        matchesEligibility = a.status === 'Waitlisted';
+        matchEligibility = a.status === 'Waitlisted';
       } else if (attendanceEligibilityFilter === 'Eligible') {
-        matchesEligibility = isEligible;
+        matchEligibility = isEligible;
       } else if (attendanceEligibilityFilter === 'Ineligible') {
-        matchesEligibility = !isEligible;
+        matchEligibility = !isEligible;
       } else if (attendanceEligibilityFilter === 'CertIssued') {
-        matchesEligibility = a.certificateIssued;
+        matchEligibility = a.certificateIssued === true;
       } else if (attendanceEligibilityFilter === 'CertPending') {
-        matchesEligibility = !a.certificateIssued && isEligible;
+        matchEligibility = isEligible && !a.certificateIssued;
       }
 
-      const matchesCollege = selectedCollege === 'All' || a.collegeName === selectedCollege;
-
-      return matchesSearch && matchesEligibility && matchesCollege;
+      return matchSearch && matchCollege && matchEligibility;
     });
-  }, [selectedWebinar, attendeesForSelectedWebinar, attendees, searchTerm, attendanceEligibilityFilter, selectedCollege]);
+  }, [attendeesForSelectedWebinar, selectedWebinar, searchTerm, selectedCollege, attendanceEligibilityFilter]);
 
-  // Filtered Webinars for Dashboard
+  // Filtered webinars list for catalog view
   const filteredWebinars = useMemo(() => {
     return webinars.filter(w => {
-      const matchesSearch = 
-        !searchTerm ||
-        w.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.speaker?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStatus = webinarStatusFilter === 'All' || w.status === webinarStatusFilter;
-      return matchesSearch && matchesStatus;
+      const q = searchTerm.toLowerCase().trim();
+      const matchSearch = !q || 
+        w.title.toLowerCase().includes(q) ||
+        (w.topic && w.topic.toLowerCase().includes(q)) ||
+        (w.speaker && w.speaker.toLowerCase().includes(q));
+      
+      const matchStatus = webinarStatusFilter === 'All' || w.status === webinarStatusFilter;
+      return matchSearch && matchStatus;
     });
   }, [webinars, searchTerm, webinarStatusFilter]);
 
-  // Metrics for active selected webinar
+  // Stats for the active selected webinar
   const selectedWebinarStats = useMemo(() => {
     if (!selectedWebinar) return null;
     const metrics = webinarMetrics.get(selectedWebinar.id) || { total: 0, eligibleCount: 0, certCount: 0, colleges: new Set() };
-    const eligibleRate = metrics.total > 0 ? Math.round((metrics.eligibleCount / metrics.total) * 100) : 0;
     const presentOnActiveDate = attendeesForSelectedWebinar.filter(a => a.dailyAttendance?.[activeDate] === 'Present').length;
+    const eligibleRate = metrics.total > 0 ? Math.round((metrics.eligibleCount / metrics.total) * 100) : 0;
 
-    return { ...metrics, eligibleRate, presentOnActiveDate };
+    return {
+      ...metrics,
+      presentOnActiveDate,
+      eligibleRate,
+    };
   }, [selectedWebinar, webinarMetrics, attendeesForSelectedWebinar, activeDate]);
 
-  // -------------------------------------------------------------
-  // WEBINAR CRUD
-  // -------------------------------------------------------------
+  // Postpone Handlers
+  const handleTogglePostponeDay = (dateStr: string, currentIsPostponed: boolean) => {
+    if (!selectedWebinar) return;
+
+    if (currentIsPostponed) {
+      setConfirmModalState({
+        isOpen: true,
+        title: 'Resume Postponed Day?',
+        message: `Do you want to reactivate ${formatDateFull(dateStr)} as an active teaching day? The bootcamp schedule will contract back by 1 day.`,
+        variant: 'primary',
+        onConfirm: async () => {
+          const toastId = toast.loading('Resuming day...');
+          try {
+            const updatedPostponedDates = (selectedWebinar.postponedDates || []).filter(d => d !== dateStr);
+            const updatedPostponements = { ...(selectedWebinar.postponements || {}) };
+            delete updatedPostponements[dateStr];
+
+            const { endDate } = generateWebinarSchedule(
+              selectedWebinar.startDate,
+              selectedWebinar.totalDays || 15,
+              updatedPostponedDates,
+              updatedPostponements
+            );
+
+            await updateDoc(doc(db, 'webinars', selectedWebinar.id), {
+              postponedDates: updatedPostponedDates,
+              postponements: updatedPostponements,
+              endDate,
+              updatedAt: serverTimestamp(),
+            });
+
+            const updatedWebinar: WebinarItem = {
+              ...selectedWebinar,
+              postponedDates: updatedPostponedDates,
+              postponements: updatedPostponements,
+              endDate,
+            };
+
+            setSelectedWebinar(updatedWebinar);
+            setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
+            await logAdminActivity(user?.email, 'UPDATED', `Resumed day ${dateStr} for ${selectedWebinar.title}`);
+            toast.success(`Session on ${formatDateShort(dateStr)} resumed!`, { id: toastId });
+          } catch (err) {
+            console.error('Error resuming day:', err);
+            toast.error('Failed to resume day', { id: toastId });
+          } finally {
+            setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+          }
+        }
+      });
+    } else {
+      setPostponeDateTarget(dateStr);
+      setPostponeReason('Instructor Unavailable');
+      setShowPostponeModal(true);
+    }
+  };
+
+  const handleConfirmPostpone = async () => {
+    if (!selectedWebinar || !postponeDateTarget) return;
+    setIsPostponing(true);
+    const toastId = toast.loading(`Postponing ${formatDateShort(postponeDateTarget)}...`);
+
+    try {
+      const updatedPostponedDates = Array.from(new Set([...(selectedWebinar.postponedDates || []), postponeDateTarget]));
+      const updatedPostponements = {
+        ...(selectedWebinar.postponements || {}),
+        [postponeDateTarget]: {
+          reason: postponeReason.trim() || 'Instructor Unavailable',
+          postponedAt: new Date().toISOString(),
+        }
+      };
+
+      const { endDate } = generateWebinarSchedule(
+        selectedWebinar.startDate,
+        selectedWebinar.totalDays || 15,
+        updatedPostponedDates,
+        updatedPostponements
+      );
+
+      await updateDoc(doc(db, 'webinars', selectedWebinar.id), {
+        postponedDates: updatedPostponedDates,
+        postponements: updatedPostponements,
+        endDate,
+        updatedAt: serverTimestamp(),
+      });
+
+      const updatedWebinar: WebinarItem = {
+        ...selectedWebinar,
+        postponedDates: updatedPostponedDates,
+        postponements: updatedPostponements,
+        endDate,
+      };
+
+      setSelectedWebinar(updatedWebinar);
+      setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
+      await logAdminActivity(user?.email, 'UPDATED', `Postponed day ${postponeDateTarget} (${postponeReason}) for ${selectedWebinar.title}`);
+      toast.success(`Session on ${formatDateShort(postponeDateTarget)} postponed. Schedule extended to ${formatDateFull(endDate)}!`, { id: toastId });
+      setShowPostponeModal(false);
+    } catch (err) {
+      console.error('Error postponing day:', err);
+      toast.error('Failed to postpone day', { id: toastId });
+    } finally {
+      setIsPostponing(false);
+    }
+  };
+
+  // Scroll ribbon helper
+  const scrollDayRibbon = (direction: 'left' | 'right') => {
+    if (dayRibbonRef.current) {
+      const offset = direction === 'left' ? -220 : 220;
+      dayRibbonRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
+
+  // Navigate prev / next day
+  const handleNavigateDay = (direction: 'prev' | 'next') => {
+    const currentIndex = activeSessionDates.indexOf(activeDate);
+    if (currentIndex === -1) return;
+    if (direction === 'prev' && currentIndex > 0) {
+      setActiveDate(activeSessionDates[currentIndex - 1]);
+    } else if (direction === 'next' && currentIndex < activeSessionDates.length - 1) {
+      setActiveDate(activeSessionDates[currentIndex + 1]);
+    }
+  };
+
+  // 1-Click Toggle Daily Attendance
+  const handleToggleDailyAttendance = async (attendee: WebinarAttendee, dateStr: string) => {
+    const currentStatus = attendee.dailyAttendance?.[dateStr];
+    const newStatus: 'Present' | 'Absent' = currentStatus === 'Present' ? 'Absent' : 'Present';
+    
+    const updatedDaily: Record<string, 'Present' | 'Absent'> = {
+      ...(attendee.dailyAttendance || {}),
+      [dateStr]: newStatus,
+    };
+
+    setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, dailyAttendance: updatedDaily } : a));
+
+    try {
+      await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
+        dailyAttendance: updatedDaily,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Error updating attendance:', err);
+      toast.error('Failed to save attendance toggle');
+      setAttendees(prev => prev.map(a => a.id === attendee.id ? attendee : a));
+    }
+  };
+
+  // Mark all filtered attendees Present on activeDate
+  const handleMarkAllPresentOnActiveDate = async () => {
+    if (!selectedWebinar || displayedAttendees.length === 0) return;
+
+    setConfirmModalState({
+      isOpen: true,
+      title: `Mark All ${displayedAttendees.length} Present?`,
+      message: `Mark all ${displayedAttendees.length} visible student(s) as Present on ${formatDateFull(activeDate)}?`,
+      variant: 'primary',
+      onConfirm: async () => {
+        const toastId = toast.loading(`Marking ${displayedAttendees.length} present...`);
+        try {
+          const batch = writeBatch(db);
+          displayedAttendees.forEach(a => {
+            const updated = { ...(a.dailyAttendance || {}), [activeDate]: 'Present' };
+            batch.update(doc(db, 'webinar_attendees', a.id), {
+              dailyAttendance: updated,
+              updatedAt: serverTimestamp(),
+            });
+          });
+
+          await batch.commit();
+          toast.success(`Marked ${displayedAttendees.length} students Present on ${formatDateShort(activeDate)}!`, { id: toastId });
+          await logAdminActivity(user?.email, 'BULK_ACTION', `Marked ${displayedAttendees.length} present on ${activeDate} for ${selectedWebinar.title}`);
+          fetchData();
+        } catch (err) {
+          console.error('Error in bulk present:', err);
+          toast.error('Failed to mark all present', { id: toastId });
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // Bulk mark selected attendees present on active date
+  const handleBulkMarkAttendedActiveDate = async () => {
+    if (selectedIds.length === 0) return;
+    const toastId = toast.loading(`Marking ${selectedIds.length} present...`);
+
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+        const target = attendees.find(a => a.id === id);
+        if (target) {
+          const updated = { ...(target.dailyAttendance || {}), [activeDate]: 'Present' };
+          batch.update(doc(db, 'webinar_attendees', id), {
+            dailyAttendance: updated,
+            updatedAt: serverTimestamp(),
+          });
+        }
+      });
+
+      await batch.commit();
+      toast.success(`Marked ${selectedIds.length} students present for ${formatDateShort(activeDate)}!`, { id: toastId });
+      fetchData();
+      setSelectedIds([]);
+    } catch (err) {
+      console.error('Error in bulk mark present:', err);
+      toast.error('Failed to update attendance', { id: toastId });
+    }
+  };
+
+  // Issue single Certificate
+  const handleIssueCertificate = async (attendee: WebinarAttendee) => {
+    const webinarTitle = attendee.webinarTitle || selectedWebinar?.title || '15-Day Masterclass';
+    const totalDays = selectedWebinar?.totalDays || 15;
+    const { percentage } = computeAttendeeStats(attendee, totalDays);
+    const certCode = `FCAI-WEB-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    setConfirmModalState({
+      isOpen: true,
+      title: 'Issue Certificate?',
+      message: `Issue Course Completion Certificate to ${attendee.studentName} (${percentage}% attendance in ${webinarTitle})?`,
+      variant: 'primary',
+      onConfirm: async () => {
+        const toastId = toast.loading('Generating certificate...');
+        try {
+          await addDoc(collection(db, 'certificates'), {
+            certificateId: certCode,
+            studentName: attendee.studentName,
+            studentEmail: attendee.email.toLowerCase().trim(),
+            courseName: webinarTitle,
+            domain: selectedWebinar?.topic || 'Multi-Day Technical Masterclass',
+            type: 'webinar_bootcamp',
+            issueDate: new Date().toISOString().split('T')[0],
+            grade: percentage >= 90 ? 'A+' : 'A',
+            marksPercentage: `${percentage}% Attendance`,
+            status: 'issued',
+            collegeName: attendee.collegeName || '',
+            createdAt: serverTimestamp(),
+          });
+
+          await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
+            certificateIssued: true,
+            certificateId: certCode,
+            certificateIssuedAt: serverTimestamp(),
+          });
+
+          if (attendee.email) {
+            await sendNotification({
+              userId: attendee.id,
+              userEmail: attendee.email,
+              title: `🎓 Webinar Certificate Issued!`,
+              message: `Congratulations! Your certificate for ${webinarTitle} is ready.`,
+              type: 'certificate',
+              link: '/dashboard/student?tab=certificates',
+            });
+          }
+
+          toast.success(`Certificate ${certCode} issued to ${attendee.studentName}!`, { id: toastId });
+          await logAdminActivity(user?.email, 'ISSUED', `Webinar Cert for ${attendee.studentName}`, `ID: ${certCode}`);
+          fetchData();
+        } catch (err) {
+          console.error('Error issuing certificate:', err);
+          toast.error('Failed to issue certificate', { id: toastId });
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // Bulk Issue Certificates for all >= 75% attendees
+  const handleBulkIssueEligibleCertificates = async () => {
+    if (!selectedWebinar) return;
+    const totalDays = selectedWebinar.totalDays || 15;
+    const eligiblePending = attendeesForSelectedWebinar.filter(a => {
+      const { isEligible } = computeAttendeeStats(a, totalDays);
+      return isEligible && !a.certificateIssued;
+    });
+
+    if (eligiblePending.length === 0) {
+      toast('No students are currently eligible with pending certificates.', { icon: 'ℹ️' });
+      return;
+    }
+
+    setConfirmModalState({
+      isOpen: true,
+      title: `Issue ${eligiblePending.length} Certificates?`,
+      message: `Generate and issue official completion certificates to all ${eligiblePending.length} eligible students (>= 75% attendance) in ${selectedWebinar.title}?`,
+      variant: 'primary',
+      onConfirm: async () => {
+        const toastId = toast.loading(`Issuing ${eligiblePending.length} certificates...`);
+        try {
+          const batch = writeBatch(db);
+          for (const attendee of eligiblePending) {
+            const certCode = `FCAI-WEB-${Date.now().toString().slice(-5)}-${Math.floor(1000 + Math.random() * 9000)}`;
+            const certRef = doc(collection(db, 'certificates'));
+            const { percentage } = computeAttendeeStats(attendee, totalDays);
+
+            batch.set(certRef, {
+              certificateId: certCode,
+              studentName: attendee.studentName,
+              studentEmail: attendee.email.toLowerCase().trim(),
+              courseName: selectedWebinar.title,
+              domain: selectedWebinar.topic || 'Multi-Day Technical Masterclass',
+              type: 'webinar_bootcamp',
+              issueDate: new Date().toISOString().split('T')[0],
+              grade: percentage >= 90 ? 'A+' : 'A',
+              marksPercentage: `${percentage}% Attendance`,
+              status: 'issued',
+              collegeName: attendee.collegeName || '',
+              createdAt: serverTimestamp(),
+            });
+
+            batch.update(doc(db, 'webinar_attendees', attendee.id), {
+              certificateIssued: true,
+              certificateId: certCode,
+              certificateIssuedAt: serverTimestamp(),
+            });
+          }
+
+          await batch.commit();
+          toast.success(`Issued ${eligiblePending.length} certificates successfully!`, { id: toastId });
+          await logAdminActivity(user?.email, 'BULK_ISSUED', `${eligiblePending.length} Webinar Certs`, selectedWebinar.title);
+          fetchData();
+        } catch (err) {
+          console.error('Error bulk issuing certs:', err);
+          toast.error('Failed to issue certificates', { id: toastId });
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // Promote Waitlisted Attendee to Confirmed
+  const handlePromoteAttendee = async (attendee: WebinarAttendee) => {
+    setConfirmModalState({
+      isOpen: true,
+      title: 'Promote to Confirmed?',
+      message: `Promote ${attendee.studentName} from Waitlist to Confirmed seat?`,
+      variant: 'primary',
+      onConfirm: async () => {
+        const toastId = toast.loading('Promoting student...');
+        try {
+          await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
+            status: 'Confirmed',
+            promotedAt: serverTimestamp(),
+          });
+          toast.success(`${attendee.studentName} is now Confirmed!`, { id: toastId });
+          await logAdminActivity(user?.email, 'UPDATED', `Promoted waitlist attendee: ${attendee.studentName}`);
+          fetchData();
+        } catch (err) {
+          console.error('Error promoting:', err);
+          toast.error('Failed to promote attendee', { id: toastId });
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // Delete single attendee
+  const handleDeleteAttendee = (attendee: WebinarAttendee) => {
+    setConfirmModalState({
+      isOpen: true,
+      title: 'Delete Student Record?',
+      message: `Are you sure you want to remove ${attendee.studentName} from this webinar? All attendance logs for this student will be deleted.`,
+      variant: 'danger',
+      onConfirm: async () => {
+        const toastId = toast.loading('Deleting record...');
+        try {
+          await deleteDoc(doc(db, 'webinar_attendees', attendee.id));
+          toast.success('Attendee deleted successfully', { id: toastId });
+          await logAdminActivity(user?.email, 'DELETED', `Attendee: ${attendee.studentName}`, attendee.webinarTitle);
+          fetchData();
+        } catch (err) {
+          console.error('Error deleting:', err);
+          toast.error('Failed to delete student', { id: toastId });
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // Bulk Delete
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setConfirmModalState({
+      isOpen: true,
+      title: `Delete ${selectedIds.length} Students?`,
+      message: `Are you sure you want to delete ${selectedIds.length} selected attendee record(s)? This action cannot be undone.`,
+      variant: 'danger',
+      onConfirm: async () => {
+        const toastId = toast.loading(`Deleting ${selectedIds.length} records...`);
+        try {
+          const batch = writeBatch(db);
+          selectedIds.forEach(id => {
+            batch.delete(doc(db, 'webinar_attendees', id));
+          });
+          await batch.commit();
+          toast.success(`Deleted ${selectedIds.length} records successfully!`, { id: toastId });
+          await logAdminActivity(user?.email, 'BULK_DELETED', `${selectedIds.length} Webinar Attendees`);
+          fetchData();
+          setSelectedIds([]);
+        } catch (err) {
+          console.error('Error in bulk delete:', err);
+          toast.error('Failed to delete records', { id: toastId });
+        } finally {
+          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+
+  // Export Attendees & Multi-day attendance to CSV
+  const exportAttendeesCSV = () => {
+    if (!selectedWebinar) return;
+    const list = displayedAttendees;
+    if (list.length === 0) {
+      toast.error('No attendees available to export.');
+      return;
+    }
+
+    const data = list.map((a, idx) => {
+      const stats = computeAttendeeStats(a, selectedWebinar.totalDays || 15);
+      const rowObj: Record<string, any> = {
+        '#': idx + 1,
+        'Student Name': a.studentName,
+        'Email Address': a.email,
+        'Phone Number': a.phone || '',
+        'College / Institute': a.collegeName || '',
+        'Branch / Department': a.branch || '',
+        'Year of Study': a.yearOfStudy || '',
+        'Registration Status': a.status || 'Confirmed',
+        'Attendance %': `${stats.percentage}%`,
+        'Days Attended': `${stats.presentDays} / ${selectedWebinar.totalDays || 15}`,
+        'Certificate Status': a.certificateIssued ? 'Issued' : (stats.isEligible ? 'Eligible (Pending)' : 'Ineligible'),
+        'Certificate ID': a.certificateId || '',
+      };
+
+      activeSessionDates.forEach((dateStr, dIdx) => {
+        rowObj[`Day ${dIdx + 1} (${formatDateShort(dateStr)})`] = a.dailyAttendance?.[dateStr] || 'Absent';
+      });
+
+      return rowObj;
+    });
+
+    const safeTitle = selectedWebinar.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
+    exportCSV(`${safeTitle}_Attendance_${new Date().toISOString().split('T')[0]}.csv`, data);
+  };
+
+  // Download sample Google Form CSV template
+  const downloadSampleCSV = () => {
+    const headers = [
+      'Timestamp',
+      'Full Name',
+      'Email Address',
+      'WhatsApp Number',
+      'College Name',
+      'Department / Branch',
+      'Year of Study',
+    ];
+    const sampleRows = [
+      [
+        new Date().toISOString(),
+        'Rahul Sharma',
+        'rahul.sharma@example.com',
+        '9876543210',
+        'MIT Muzaffarpur',
+        'Computer Science',
+        '3rd Year',
+      ],
+      [
+        new Date().toISOString(),
+        'Priya Kumari',
+        'priya.k@example.com',
+        '9876543211',
+        'NIT Patna',
+        'Information Technology',
+        '2nd Year',
+      ],
+    ];
+    downloadTemplateCSV('Google_Forms_Webinar_Roster_Template.csv', headers, sampleRows);
+  };
+
+  // Trigger CSV upload dialog
+  const triggerCsvUploadForWebinar = (webinar?: WebinarItem) => {
+    if (webinar) {
+      setTargetWebinarId(webinar.id);
+      setTargetWebinarTitle(webinar.title);
+    } else if (webinars.length > 0) {
+      setTargetWebinarId(webinars[0].id);
+      setTargetWebinarTitle(webinars[0].title);
+    }
+    setImportAttendanceForDate(activeDate);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  // Parse CSV when file chosen
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setCsvFileName(file.name);
+    parseCSV(
+      file,
+      (rows: any[]) => {
+        const mapped = rows.map(r => ({
+          studentName: resolveHeaderValue(r, ['full name', 'student name', 'name', 'attendee name', 'name of the student', 'candidate name']),
+          email: resolveHeaderValue(r, ['email address', 'email', 'mail', 'student email', 'e-mail']),
+          phone: resolveHeaderValue(r, ['whatsapp number', 'phone', 'contact', 'mobile', 'mobile number', 'phone number', 'whatsapp']),
+          collegeName: resolveHeaderValue(r, ['college name', 'college', 'institute', 'institution', 'university', 'college / institute name']),
+          branch: resolveHeaderValue(r, ['department / branch', 'branch', 'department', 'stream', 'course']),
+          yearOfStudy: resolveHeaderValue(r, ['year of study', 'year', 'semester', 'academic year']),
+          timestamp: resolveHeaderValue(r, ['timestamp', 'date', 'time', 'submission time']),
+        })).filter(item => item.email && item.studentName);
+
+        if (mapped.length === 0) {
+          toast.error('No valid rows found. Please check CSV header column names.');
+          return;
+        }
+
+        setParsedRows(mapped);
+        setShowImportModal(true);
+      },
+      (err) => {
+        toast.error(`CSV Parsing error: ${err.message}`);
+      }
+    );
+  };
+
+  // Save imported rows to Firestore
+  const handleConfirmImport = async () => {
+    if (parsedRows.length === 0 || !targetWebinarId) return;
+    setImporting(true);
+    const toastId = toast.loading(`Importing ${parsedRows.length} attendees...`);
+
+    try {
+      const batch = writeBatch(db);
+      const targetW = webinars.find(w => w.id === targetWebinarId);
+      const webinarTitle = targetW ? targetW.title : targetWebinarTitle;
+
+      for (const row of parsedRows) {
+        const newRef = doc(collection(db, 'webinar_attendees'));
+        const initialAttendance = importAttendanceForDate ? { [importAttendanceForDate]: 'Present' } : {};
+
+        batch.set(newRef, {
+          webinarId: targetWebinarId,
+          webinarTitle,
+          studentName: row.studentName,
+          email: row.email.toLowerCase().trim(),
+          phone: row.phone || '',
+          collegeName: row.collegeName || 'N/A',
+          branch: row.branch || '',
+          yearOfStudy: row.yearOfStudy || '',
+          timestamp: row.timestamp || new Date().toISOString(),
+          dailyAttendance: initialAttendance,
+          certificateIssued: false,
+          source: 'google_form_csv',
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+      toast.success(`Imported ${parsedRows.length} students to ${webinarTitle}!`, { id: toastId });
+      await logAdminActivity(user?.email, 'CREATED', `CSV Imported ${parsedRows.length} Attendees`, webinarTitle);
+      
+      setShowImportModal(false);
+      setParsedRows([]);
+      fetchData();
+    } catch (err) {
+      console.error('Error importing attendees:', err);
+      toast.error('Failed to import attendees', { id: toastId });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // Manual Add Student Submit
+  const handleAddManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addFormData.studentName || !addFormData.email || !addFormData.webinarId) {
+      toast.error('Please fill required fields (Webinar, Name, Email)');
+      return;
+    }
+    setIsAdding(true);
+
+    try {
+      const initialAttendance = activeDate ? { [activeDate]: 'Present' } : {};
+      await addDoc(collection(db, 'webinar_attendees'), {
+        webinarId: addFormData.webinarId,
+        webinarTitle: addFormData.webinarTitle,
+        studentName: addFormData.studentName,
+        email: addFormData.email.toLowerCase().trim(),
+        phone: addFormData.phone || '',
+        collegeName: addFormData.collegeName || 'N/A',
+        branch: addFormData.branch || '',
+        yearOfStudy: addFormData.yearOfStudy || '',
+        dailyAttendance: initialAttendance,
+        certificateIssued: false,
+        source: 'manual',
+        createdAt: serverTimestamp(),
+      });
+
+      toast.success(`Added ${addFormData.studentName} to ${addFormData.webinarTitle}!`);
+      await logAdminActivity(user?.email, 'CREATED', `Attendee: ${addFormData.studentName}`, addFormData.webinarTitle);
+      setShowAddModal(false);
+      fetchData();
+    } catch (err) {
+      console.error('Error adding attendee:', err);
+      toast.error('Failed to add attendee');
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  // Create / Edit Webinar Submit
+  const handleSaveWebinar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!webinarFormData.title.trim()) {
+      toast.error('Webinar Title is required');
+      return;
+    }
+    setIsSavingWebinar(true);
+
+    try {
+      const { endDate } = generateWebinarSchedule(
+        webinarFormData.startDate,
+        webinarFormData.totalDays,
+        editingWebinar?.postponedDates || [],
+        editingWebinar?.postponements || {}
+      );
+
+      const payload = {
+        title: webinarFormData.title.trim(),
+        topic: webinarFormData.topic.trim(),
+        speaker: webinarFormData.speaker.trim(),
+        startDate: webinarFormData.startDate,
+        endDate,
+        totalDays: Number(webinarFormData.totalDays) || 15,
+        maxSeats: Number(webinarFormData.maxSeats) || 100,
+        time: webinarFormData.time.trim(),
+        meetingLink: webinarFormData.meetingLink.trim(),
+        formLink: webinarFormData.formLink.trim(),
+        status: webinarFormData.status,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (editingWebinar) {
+        await updateDoc(doc(db, 'webinars', editingWebinar.id), payload);
+        toast.success('Webinar updated successfully!');
+        await logAdminActivity(user?.email, 'UPDATED', `Webinar: ${payload.title}`);
+      } else {
+        await addDoc(collection(db, 'webinars'), {
+          ...payload,
+          postponedDates: [],
+          postponements: {},
+          createdAt: serverTimestamp(),
+        });
+        toast.success('New Multi-Day Webinar created!');
+        await logAdminActivity(user?.email, 'CREATED', `Webinar: ${payload.title}`);
+      }
+
+      setShowWebinarModal(false);
+      setEditingWebinar(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error saving webinar:', err);
+      toast.error('Failed to save webinar');
+    } finally {
+      setIsSavingWebinar(false);
+    }
+  };
+
   const handleOpenCreateWebinar = () => {
     setEditingWebinar(null);
     setWebinarFormData({
@@ -557,125 +1079,38 @@ export default function ManageWebinars() {
     setShowWebinarModal(true);
   };
 
-  const handleOpenEditWebinar = (webinar: WebinarItem, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  const handleOpenEditWebinar = (webinar: WebinarItem, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingWebinar(webinar);
     setWebinarFormData({
       title: webinar.title,
       topic: webinar.topic || '',
       speaker: webinar.speaker || '',
-      startDate: webinar.startDate || new Date().toISOString().split('T')[0],
+      startDate: webinar.startDate,
       totalDays: webinar.totalDays || 15,
       maxSeats: webinar.maxSeats || 100,
-      time: webinar.time || '',
+      time: webinar.time || '05:00 PM - 06:30 PM',
       meetingLink: webinar.meetingLink || '',
       formLink: webinar.formLink || '',
-      status: webinar.status || 'Upcoming',
+      status: webinar.status,
     });
     setShowWebinarModal(true);
   };
 
-  const handleSaveWebinar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!webinarFormData.title.trim() || !webinarFormData.startDate) {
-      toast.error('Please provide at least a Webinar Title and Start Date.');
-      return;
-    }
-
-    setIsSavingWebinar(true);
-    const toastId = toast.loading(editingWebinar ? 'Updating webinar...' : 'Creating webinar...');
-
-    try {
-      const postponedDates = editingWebinar?.postponedDates || [];
-      const postponements = editingWebinar?.postponements || {};
-      const { endDate } = generateWebinarSchedule(
-        webinarFormData.startDate, 
-        webinarFormData.totalDays || 15,
-        postponedDates,
-        postponements
-      );
-
-      if (editingWebinar) {
-        await updateDoc(doc(db, 'webinars', editingWebinar.id), {
-          title: webinarFormData.title.trim(),
-          topic: webinarFormData.topic.trim(),
-          speaker: webinarFormData.speaker.trim(),
-          startDate: webinarFormData.startDate,
-          endDate,
-          totalDays: Number(webinarFormData.totalDays) || 15,
-          maxSeats: Number(webinarFormData.maxSeats) || 100,
-          time: webinarFormData.time.trim(),
-          meetingLink: webinarFormData.meetingLink.trim(),
-          formLink: webinarFormData.formLink.trim(),
-          status: webinarFormData.status,
-          updatedAt: serverTimestamp(),
-        });
-
-        setWebinars(prev => prev.map(w => w.id === editingWebinar.id ? { 
-          ...w, 
-          ...webinarFormData, 
-          endDate, 
-          totalDays: Number(webinarFormData.totalDays),
-          maxSeats: Number(webinarFormData.maxSeats) || 100,
-        } : w));
-        
-        if (selectedWebinar?.id === editingWebinar.id) {
-          setSelectedWebinar({ ...selectedWebinar, ...webinarFormData, endDate, totalDays: Number(webinarFormData.totalDays), maxSeats: Number(webinarFormData.maxSeats) || 100 });
-        }
-        await logAdminActivity(user?.email, 'UPDATED', `Webinar: ${webinarFormData.title}`);
-        toast.success('Webinar updated successfully!', { id: toastId });
-      } else {
-        const newDoc = await addDoc(collection(db, 'webinars'), {
-          title: webinarFormData.title.trim(),
-          topic: webinarFormData.topic.trim(),
-          speaker: webinarFormData.speaker.trim(),
-          startDate: webinarFormData.startDate,
-          endDate,
-          totalDays: Number(webinarFormData.totalDays) || 15,
-          maxSeats: Number(webinarFormData.maxSeats) || 100,
-          time: webinarFormData.time.trim(),
-          meetingLink: webinarFormData.meetingLink.trim(),
-          formLink: webinarFormData.formLink.trim(),
-          status: webinarFormData.status,
-          createdAt: serverTimestamp(),
-        });
-
-        const createdItem: WebinarItem = {
-          id: newDoc.id,
-          ...webinarFormData,
-          endDate,
-          totalDays: Number(webinarFormData.totalDays) || 15,
-          maxSeats: Number(webinarFormData.maxSeats) || 100,
-        };
-        setWebinars(prev => [createdItem, ...prev]);
-        await logAdminActivity(user?.email, 'CREATED', `Webinar: ${webinarFormData.title}`);
-        toast.success('Webinar created successfully!', { id: toastId });
-      }
-      setShowWebinarModal(false);
-    } catch (err) {
-      console.error('Error saving webinar:', err);
-      toast.error('Failed to save webinar', { id: toastId });
-    } finally {
-      setIsSavingWebinar(false);
-    }
-  };
-
-  const handleDeleteWebinar = (webinar: WebinarItem, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  const handleDeleteWebinar = (webinar: WebinarItem, e: React.MouseEvent) => {
+    e.stopPropagation();
     setConfirmModalState({
       isOpen: true,
-      title: 'Delete Webinar',
-      message: `Are you sure you want to delete "${webinar.title}"?`,
+      title: 'Delete Webinar?',
+      message: `Are you sure you want to delete "${webinar.title}"? This will not delete attendee history unless explicitly cleared.`,
       variant: 'danger',
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, 'webinars', webinar.id));
-          setWebinars(prev => prev.filter(w => w.id !== webinar.id));
-          if (selectedWebinar?.id === webinar.id) {
-            setSelectedWebinar(null);
-          }
+          toast.success('Webinar deleted');
           await logAdminActivity(user?.email, 'DELETED', `Webinar: ${webinar.title}`);
-          toast.success('Webinar deleted successfully');
+          if (selectedWebinar?.id === webinar.id) setSelectedWebinar(null);
+          fetchData();
         } catch (err) {
           console.error('Error deleting webinar:', err);
           toast.error('Failed to delete webinar');
@@ -686,541 +1121,8 @@ export default function ManageWebinars() {
     });
   };
 
-  // -------------------------------------------------------------
-  // DAILY ATTENDANCE TOGGLE (1-Click)
-  // -------------------------------------------------------------
-  const handleToggleDailyAttendance = async (attendee: WebinarAttendee, targetDate: string) => {
-    const currentVal = attendee.dailyAttendance?.[targetDate];
-    const nextVal: 'Present' | 'Absent' = currentVal === 'Present' ? 'Absent' : 'Present';
-
-    const updatedMap = {
-      ...(attendee.dailyAttendance || {}),
-      [targetDate]: nextVal,
-    };
-
-    try {
-      await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
-        dailyAttendance: updatedMap,
-        updatedAt: serverTimestamp(),
-      });
-
-      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, dailyAttendance: updatedMap } : a));
-      if (detailStudent?.id === attendee.id) {
-        setDetailStudent({ ...detailStudent, dailyAttendance: updatedMap });
-      }
-
-      if (attendee.email && nextVal === 'Present') {
-        sendNotification({
-          userEmail: attendee.email,
-          title: 'Attendance Marked Present ✅',
-          message: `Your attendance for Day on ${formatDateShort(targetDate)} of "${attendee.webinarTitle}" was marked Present.`,
-          type: 'attendance',
-          link: '/dashboard/student/webinars'
-        });
-      }
-
-      toast.success(`${attendee.studentName} marked ${nextVal} on ${formatDateShort(targetDate)}`);
-    } catch (err) {
-      console.error('Error updating attendance:', err);
-      toast.error('Failed to update daily attendance');
-    }
-  };
-
-  const handlePromoteAttendee = async (attendee: WebinarAttendee) => {
-    const toastId = toast.loading(`Promoting ${attendee.studentName} to Confirmed...`);
-    try {
-      await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
-        status: 'Confirmed',
-        promotedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, status: 'Confirmed' } : a));
-
-      if (attendee.email) {
-        sendNotification({
-          userEmail: attendee.email,
-          title: 'Bootcamp Seat Confirmed! 🎉',
-          message: `Great news! You have been promoted from the waitlist to a confirmed seat in "${attendee.webinarTitle}".`,
-          type: 'webinar',
-          link: '/dashboard/student/webinars'
-        });
-      }
-
-      await logAdminActivity(
-        user?.email,
-        'STATUS_CHANGE',
-        `Webinar: ${attendee.webinarTitle}`,
-        `Promoted ${attendee.studentName} (${attendee.email}) from Waitlist to Confirmed`
-      );
-
-      toast.success(`${attendee.studentName} is now Confirmed!`, { id: toastId });
-    } catch (err) {
-      console.error('Error promoting attendee:', err);
-      toast.error('Failed to promote attendee', { id: toastId });
-    }
-  };
-
-  const handleMarkAllPresentOnActiveDate = async () => {
-    if (!displayedAttendees.length) return;
-    const toastId = toast.loading(`Marking ${displayedAttendees.length} students Present on ${formatDateShort(activeDate)}...`);
-
-    try {
-      const batch = writeBatch(db);
-      displayedAttendees.forEach(a => {
-        const updated = { ...(a.dailyAttendance || {}), [activeDate]: 'Present' };
-        batch.update(doc(db, 'webinar_attendees', a.id), {
-          dailyAttendance: updated,
-          updatedAt: serverTimestamp(),
-        });
-      });
-      await batch.commit();
-
-      setAttendees(prev => prev.map(a => {
-        if (displayedAttendees.some(da => da.id === a.id)) {
-          return { ...a, dailyAttendance: { ...(a.dailyAttendance || {}), [activeDate]: 'Present' } };
-        }
-        return a;
-      }));
-
-      toast.success(`All students marked Present on ${formatDateShort(activeDate)}!`, { id: toastId });
-    } catch (err) {
-      console.error('Error batch updating attendance:', err);
-      toast.error('Failed to update daily attendance', { id: toastId });
-    }
-  };
-
-  const handleNavigateDay = (direction: 'prev' | 'next') => {
-    if (!activeSessionDates.length) return;
-    const currentIndex = activeSessionDates.indexOf(activeDate);
-    if (direction === 'prev' && currentIndex > 0) {
-      setActiveDate(activeSessionDates[currentIndex - 1]);
-    } else if (direction === 'next' && currentIndex < activeSessionDates.length - 1) {
-      setActiveDate(activeSessionDates[currentIndex + 1]);
-    }
-  };
-
-  const scrollDayRibbon = (direction: 'left' | 'right') => {
-    if (dayRibbonRef.current) {
-      const scrollAmount = direction === 'left' ? -220 : 220;
-      dayRibbonRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-  };
-
-  // -------------------------------------------------------------
-  // 75% ATTENDANCE CERTIFICATE ISSUANCE
-  // -------------------------------------------------------------
-  const generateCertId = () => {
-    const year = new Date().getFullYear();
-    const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `FC-WEB-${year}-${randomStr}`;
-  };
-
-  const handleIssueCertificate = async (attendee: WebinarAttendee) => {
-    const totalDays = selectedWebinar?.totalDays || 15;
-    const { percentage, isEligible, presentDays } = computeAttendeeStats(attendee, totalDays);
-
-    if (!isEligible) {
-      toast.error(
-        `Cannot issue certificate: Attendance is ${percentage}% (${presentDays}/${totalDays} Days). Minimum 75% attendance is required.`,
-        { duration: 5000 }
-      );
-      return;
-    }
-
-    if (attendee.certificateIssued) {
-      try {
-        await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
-          certificateIssued: false,
-          updatedAt: serverTimestamp(),
-        });
-        setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, certificateIssued: false } : a));
-        toast.success(`Certificate for ${attendee.studentName} revoked.`);
-      } catch {
-        toast.error('Failed to revoke certificate');
-      }
-      return;
-    }
-
-    const toastId = toast.loading(`Generating certificate for ${attendee.studentName}...`);
-    try {
-      const certId = generateCertId();
-
-      await updateDoc(doc(db, 'webinar_attendees', attendee.id), {
-        certificateIssued: true,
-        certificateId: certId,
-        certificateIssuedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      await addDoc(collection(db, 'certificates'), {
-        certificateId: certId,
-        studentName: attendee.studentName,
-        studentEmail: attendee.email,
-        courseName: `${selectedWebinar?.title || attendee.webinarTitle} (${totalDays}-Day Bootcamp)`,
-        domain: 'Webinar & Bootcamp Track',
-        issueDate: new Date().toISOString().split('T')[0],
-        grade: percentage >= 90 ? 'A+ (Distinction)' : percentage >= 80 ? 'A' : 'B+',
-        marksPercentage: `${percentage}% Attendance`,
-        issuedBy: user?.email || 'Admin',
-        createdAt: serverTimestamp(),
-      });
-
-      setAttendees(prev => prev.map(a => a.id === attendee.id ? { 
-        ...a, 
-        certificateIssued: true, 
-        certificateId: certId 
-      } : a));
-
-      if (attendee.email) {
-        sendNotification({
-          userEmail: attendee.email,
-          title: 'Bootcamp Certificate Issued! 🎓',
-          message: `Congratulations! Your certificate for "${attendee.webinarTitle}" (${certId}) is ready.`,
-          type: 'certificate',
-          link: '/dashboard/student/certificates'
-        });
-      }
-
-      await logAdminActivity(user?.email, 'ISSUED', `Certificate: ${certId}`, attendee.studentName);
-      toast.success(`Certificate ${certId} issued to ${attendee.studentName} (${percentage}%)!`, { id: toastId });
-    } catch (err) {
-      console.error('Error issuing certificate:', err);
-      toast.error('Failed to issue certificate', { id: toastId });
-    }
-  };
-
-  const handleBulkIssueEligibleCertificates = () => {
-    const totalDays = selectedWebinar?.totalDays || 15;
-    const eligibleAttendees = displayedAttendees.filter(a => {
-      const { isEligible } = computeAttendeeStats(a, totalDays);
-      return isEligible && !a.certificateIssued;
-    });
-
-    if (eligibleAttendees.length === 0) {
-      toast.error('No uncertified students currently meet the >= 75% attendance criteria.');
-      return;
-    }
-
-    setConfirmModalState({
-      isOpen: true,
-      title: 'Issue Certificates to Eligible Students',
-      message: `Found ${eligibleAttendees.length} student(s) with >= 75% attendance. Are you sure you want to generate and issue digital credentials to all of them?`,
-      variant: 'primary',
-      onConfirm: async () => {
-        const toastId = toast.loading(`Issuing ${eligibleAttendees.length} certificates...`);
-        try {
-          const batch = writeBatch(db);
-
-          eligibleAttendees.forEach(a => {
-            const certId = generateCertId();
-            const { percentage } = computeAttendeeStats(a, totalDays);
-
-            batch.update(doc(db, 'webinar_attendees', a.id), {
-              certificateIssued: true,
-              certificateId: certId,
-              certificateIssuedAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
-
-            const certRef = doc(collection(db, 'certificates'));
-            batch.set(certRef, {
-              certificateId: certId,
-              studentName: a.studentName,
-              studentEmail: a.email,
-              courseName: `${selectedWebinar?.title || a.webinarTitle} (${totalDays}-Day Bootcamp)`,
-              domain: 'Webinar & Bootcamp Track',
-              issueDate: new Date().toISOString().split('T')[0],
-              grade: percentage >= 90 ? 'A+ (Distinction)' : 'A',
-              marksPercentage: `${percentage}% Attendance`,
-              issuedBy: user?.email || 'Admin',
-              createdAt: serverTimestamp(),
-            });
-          });
-
-          await batch.commit();
-
-          toast.success(`Successfully issued ${eligibleAttendees.length} certificates!`, { id: toastId });
-          fetchData();
-        } catch (err) {
-          console.error('Error bulk issuing certificates:', err);
-          toast.error('Failed to issue certificates', { id: toastId });
-        } finally {
-          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
-        }
-      }
-    });
-  };
-
-  // -------------------------------------------------------------
-  // CSV IMPORT LOGIC
-  // -------------------------------------------------------------
-  const triggerCsvUploadForWebinar = (webinar?: WebinarItem) => {
-    const target = webinar || selectedWebinar;
-    if (target) {
-      setTargetWebinarId(target.id);
-      setTargetWebinarTitle(target.title);
-    } else if (webinars.length > 0) {
-      setTargetWebinarId(webinars[0].id);
-      setTargetWebinarTitle(webinars[0].title);
-    } else {
-      setTargetWebinarId('');
-      setTargetWebinarTitle('AI & Full-Stack Bootcamp');
-    }
-    setImportAttendanceForDate(activeDate);
-    fileInputRef.current?.click();
-  };
-
-  const handleCSVFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setCsvFileName(file.name);
-
-      parseCSV(file, (rows: any[]) => {
-        const parsed: any[] = [];
-        for (const row of rows) {
-          const studentName = resolveHeaderValue(row, ['name', 'studentname', 'fullname', 'yourname', 'participantname', 'Student Name', 'Full Name'], 'Participant');
-          const email = resolveHeaderValue(row, ['email', 'mail', 'emailaddress', 'studentemail', 'Email Address', 'Email']);
-          const phone = resolveHeaderValue(row, ['phone', 'whatsapp', 'mobile', 'contact', 'phonenumber', 'Phone', 'WhatsApp']);
-          const college = resolveHeaderValue(row, ['college', 'institute', 'university', 'school', 'collegename', 'College', 'Institute']);
-          const branch = resolveHeaderValue(row, ['branch', 'department', 'stream', 'course', 'specialization', 'Branch']);
-          const year = resolveHeaderValue(row, ['year', 'semester', 'sem', 'yearofstudy', 'batch', 'class', 'Year']);
-          const timestamp = resolveHeaderValue(row, ['timestamp', 'submittedat', 'date', 'time', 'Timestamp'], new Date().toISOString());
-
-          if (studentName || email) {
-            parsed.push({
-              studentName: studentName.trim(),
-              email: email.trim().toLowerCase(),
-              phone: phone.trim(),
-              collegeName: college.trim() || 'N/A',
-              branch: branch.trim() || 'N/A',
-              yearOfStudy: year.trim() || 'N/A',
-              timestamp: timestamp.trim(),
-            });
-          }
-        }
-
-        if (parsed.length === 0) {
-          toast.error('The uploaded CSV is empty or missing required data.');
-          return;
-        }
-
-        setParsedRows(parsed);
-        setShowImportModal(true);
-      });
-    }
-  };
-
-  const handleConfirmImport = async () => {
-    if (!parsedRows.length) {
-      toast.error('No valid rows found to import.');
-      return;
-    }
-
-    const finalTitle = targetWebinarTitle.trim() || 'Bootcamp';
-    setImporting(true);
-    const toastId = toast.loading(`Importing ${parsedRows.length} students into "${finalTitle}"...`);
-
-    try {
-      const chunkSize = 400;
-      for (let i = 0; i < parsedRows.length; i += chunkSize) {
-        const chunk = parsedRows.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-
-        chunk.forEach(item => {
-          const docRef = doc(collection(db, 'webinar_attendees'));
-          const initialDaily: Record<string, 'Present'> = {};
-          if (importAttendanceForDate) {
-            initialDaily[importAttendanceForDate] = 'Present';
-          }
-
-          batch.set(docRef, {
-            webinarId: targetWebinarId || '',
-            webinarTitle: finalTitle,
-            studentName: item.studentName,
-            email: item.email,
-            phone: item.phone,
-            collegeName: item.collegeName,
-            branch: item.branch,
-            yearOfStudy: item.yearOfStudy,
-            timestamp: item.timestamp,
-            dailyAttendance: initialDaily,
-            certificateIssued: false,
-            status: 'Confirmed',
-            source: 'google_form_csv',
-            importedAt: serverTimestamp(),
-            createdAt: serverTimestamp(),
-          });
-        });
-
-        await batch.commit();
-      }
-
-      await logAdminActivity(
-        user?.email,
-        'BULK_ACTION',
-        `Webinar: ${finalTitle}`,
-        `Imported ${parsedRows.length} attendees via Google Form CSV (${csvFileName})`
-      );
-
-      toast.success(`Successfully imported ${parsedRows.length} attendees!`, { id: toastId });
-      setShowImportModal(false);
-      setParsedRows([]);
-      setCsvFileName('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      fetchData();
-    } catch (err) {
-      console.error('Error importing attendees:', err);
-      toast.error('Failed to import CSV records', { id: toastId });
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  const downloadSampleCSV = () => {
-    const headers = ["Timestamp", "Full Name", "Email Address", "WhatsApp / Phone", "College / Institute", "Branch / Stream", "Year / Semester", "Webinar Topic"];
-    const sampleRows = [
-      ["2026/08/17 10:15:00 AM", "Rahul Sharma", "rahul.sharma@example.com", "9876543210", "MIT Muzaffarpur", "CSE", "3rd Year", "15-Day AI & Full-Stack Bootcamp"],
-      ["2026/08/17 10:18:22 AM", "Priya Kumari", "priya.k@example.com", "9876543211", "Purnea College", "BCA", "2nd Year", "15-Day AI & Full-Stack Bootcamp"],
-      ["2026/08/17 10:24:45 AM", "Amit Verma", "amit.verma@example.com", "9876543212", "BCE Bhagalpur", "ECE", "4th Year", "15-Day AI & Full-Stack Bootcamp"]
-    ];
-    downloadTemplateCSV("google_form_webinar_sample", headers, sampleRows);
-  };
-
-  const exportAttendeesCSV = () => {
-    const targetList = displayedAttendees;
-    if (!targetList.length) {
-      toast.error('No attendee records to export');
-      return;
-    }
-
-    const totalDays = selectedWebinar?.totalDays || 15;
-    const dates = activeSessionDates.length > 0 ? activeSessionDates : ['Total Attendance'];
-
-    const data = targetList.map(a => {
-      const { presentDays, percentage, isEligible } = computeAttendeeStats(a, totalDays);
-      const row: Record<string, any> = {
-        "Student Name": a.studentName,
-        "Email": a.email,
-        "Phone": a.phone || '',
-        "Status": a.status || 'Confirmed',
-        "College": a.collegeName || '',
-        "Branch": a.branch || '',
-        "Year": a.yearOfStudy || '',
-        "Total Days": totalDays,
-        "Present Days": presentDays,
-        "Attendance %": `${percentage}%`,
-        "Eligible (>=75%)": isEligible ? "Yes" : "No",
-        "Certificate Issued": a.certificateIssued ? "Yes" : "No",
-      };
-
-      dates.forEach((d, i) => {
-        row[`Day ${i + 1} (${d})`] = a.dailyAttendance?.[d] || 'Absent';
-      });
-
-      return row;
-    });
-
-    const prefix = selectedWebinar ? selectedWebinar.title.replace(/[^a-z0-9]/gi, '_') : 'all_webinars';
-    exportCSV(`webinar_attendance_${prefix}`, data);
-  };
-
-  // -------------------------------------------------------------
-  // SINGLE ATTENDEE & BULK ACTIONS
-  // -------------------------------------------------------------
-  const handleDeleteAttendee = (attendee: WebinarAttendee) => {
-    setConfirmModalState({
-      isOpen: true,
-      title: 'Delete Webinar Attendee',
-      message: `Are you sure you want to remove ${attendee.studentName} (${attendee.email})?`,
-      variant: 'danger',
-      onConfirm: async () => {
-        try {
-          await deleteDoc(doc(db, 'webinar_attendees', attendee.id));
-          setAttendees(prev => prev.filter(a => a.id !== attendee.id));
-          setSelectedIds(prev => prev.filter(id => id !== attendee.id));
-          toast.success('Attendee removed successfully');
-        } catch {
-          toast.error('Failed to delete attendee');
-        } finally {
-          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
-        }
-      }
-    });
-  };
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(displayedAttendees.map(a => a.id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleToggleSelectId = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
-  };
-
-  const handleBulkMarkAttendedActiveDate = async () => {
-    if (!selectedIds.length) return;
-    const toastId = toast.loading(`Marking ${selectedIds.length} students Present on ${formatDateShort(activeDate)}...`);
-
-    try {
-      const batch = writeBatch(db);
-      selectedIds.forEach(id => {
-        const attendee = attendees.find(a => a.id === id);
-        const updated = { ...(attendee?.dailyAttendance || {}), [activeDate]: 'Present' };
-        batch.update(doc(db, 'webinar_attendees', id), {
-          dailyAttendance: updated,
-          updatedAt: serverTimestamp(),
-        });
-      });
-      await batch.commit();
-
-      setAttendees(prev => prev.map(a => {
-        if (selectedIds.includes(a.id)) {
-          return { ...a, dailyAttendance: { ...(a.dailyAttendance || {}), [activeDate]: 'Present' } };
-        }
-        return a;
-      }));
-
-      toast.success(`Marked ${selectedIds.length} students Present on ${formatDateShort(activeDate)}!`, { id: toastId });
-      setSelectedIds([]);
-    } catch {
-      toast.error('Failed to update records', { id: toastId });
-    }
-  };
-
-  const handleBulkDelete = () => {
-    if (!selectedIds.length) return;
-    setConfirmModalState({
-      isOpen: true,
-      title: 'Bulk Delete Students',
-      message: `Are you sure you want to delete ${selectedIds.length} student records?`,
-      variant: 'danger',
-      onConfirm: async () => {
-        const toastId = toast.loading(`Deleting ${selectedIds.length} records...`);
-        try {
-          const batch = writeBatch(db);
-          selectedIds.forEach(id => {
-            batch.delete(doc(db, 'webinar_attendees', id));
-          });
-          await batch.commit();
-
-          setAttendees(prev => prev.filter(a => !selectedIds.includes(a.id)));
-          setSelectedIds([]);
-          toast.success('Selected records deleted successfully', { id: toastId });
-        } catch {
-          toast.error('Failed to delete records', { id: toastId });
-        } finally {
-          setConfirmModalState(prev => ({ ...prev, isOpen: false }));
-        }
-      }
-    });
-  };
-
   const handleOpenAddStudent = (webinar?: WebinarItem) => {
-    const target = webinar || selectedWebinar;
+    const target = webinar || selectedWebinar || (webinars.length > 0 ? webinars[0] : null);
     setAddFormData({
       studentName: '',
       email: '',
@@ -1228,175 +1130,60 @@ export default function ManageWebinars() {
       collegeName: '',
       branch: '',
       yearOfStudy: '',
-      webinarId: target?.id || '',
-      webinarTitle: target?.title || (webinars[0]?.title || ''),
+      webinarId: target ? target.id : '',
+      webinarTitle: target ? target.title : '',
     });
     setShowAddModal(true);
   };
 
-  const handleAddManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!addFormData.studentName.trim() || !addFormData.email.trim() || !addFormData.webinarTitle.trim()) {
-      toast.error('Please provide Student Name, Email, and Webinar');
-      return;
-    }
-
-    setIsAdding(true);
-    const toastId = toast.loading('Adding student to webinar...');
-
-    try {
-      const newDoc = await addDoc(collection(db, 'webinar_attendees'), {
-        webinarId: addFormData.webinarId || '',
-        webinarTitle: addFormData.webinarTitle.trim(),
-        studentName: addFormData.studentName.trim(),
-        email: addFormData.email.trim().toLowerCase(),
-        phone: addFormData.phone.trim(),
-        collegeName: addFormData.collegeName.trim() || 'N/A',
-        branch: addFormData.branch.trim() || 'N/A',
-        yearOfStudy: addFormData.yearOfStudy.trim() || 'N/A',
-        timestamp: new Date().toISOString(),
-        dailyAttendance: {},
-        certificateIssued: false,
-        source: 'manual',
-        createdAt: serverTimestamp(),
-      });
-
-      const newAttendee: WebinarAttendee = {
-        id: newDoc.id,
-        webinarId: addFormData.webinarId,
-        webinarTitle: addFormData.webinarTitle.trim(),
-        studentName: addFormData.studentName.trim(),
-        email: addFormData.email.trim().toLowerCase(),
-        phone: addFormData.phone.trim(),
-        collegeName: addFormData.collegeName.trim() || 'N/A',
-        branch: addFormData.branch.trim() || 'N/A',
-        yearOfStudy: addFormData.yearOfStudy.trim() || 'N/A',
-        dailyAttendance: {},
-        certificateIssued: false,
-        source: 'manual',
-      };
-
-      setAttendees(prev => [newAttendee, ...prev]);
-      toast.success('Student added to webinar successfully!', { id: toastId });
-      setShowAddModal(false);
-    } catch {
-      toast.error('Failed to add student', { id: toastId });
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
-  // Helper for student initials
-  const getInitials = (name: string) => {
-    if (!name) return 'S';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return name.slice(0, 2).toUpperCase();
-  };
-
   return (
-    <div className="p-3 sm:p-5 md:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto overflow-x-hidden">
-      <Toaster position="top-right" />
+    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+      <Toaster position="top-center" />
 
-      {/* Hidden File Input for CSV */}
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleCSVFileChange} 
-        accept=".csv,text/csv" 
-        className="hidden" 
+      {/* Hidden file input for CSV */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".csv"
+        className="hidden"
       />
 
-      {/* ========================================================= */}
-      {/* 1. TOP HEADER & BREADCRUMB                                */}
-      {/* ========================================================= */}
+      {/* Top Header */}
       <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          {selectedWebinar ? (
-            <div className="space-y-2">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            {selectedWebinar ? (
               <button
                 onClick={() => { setSelectedWebinar(null); setSearchTerm(''); }}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer active:scale-95"
+                className="p-2.5 rounded-2xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors border border-purple-200 active:scale-95 cursor-pointer"
+                title="Back to all webinars catalog"
               >
-                <ArrowLeft size={14} />
-                <span>Back to All Webinars</span>
+                <ArrowLeft size={20} />
               </button>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                  {selectedWebinar.title}
-                </h1>
-                <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
-                  {selectedWebinar.totalDays}-Day Bootcamp
-                </span>
-                <span className={`px-3 py-1 rounded-full text-xs font-extrabold border ${
-                  selectedWebinar.status === 'Live' ? 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse' :
-                  selectedWebinar.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                  'bg-indigo-100 text-indigo-700 border-indigo-200'
-                }`}>
-                  {selectedWebinar.status === 'Live' ? '● Live Now' : selectedWebinar.status}
-                </span>
+            ) : (
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20">
+                <Video size={24} />
               </div>
-
-              {selectedWebinar.topic && (
-                <p className="text-xs sm:text-sm text-slate-600 font-medium">
-                  {selectedWebinar.topic}
-                </p>
-              )}
-
-              <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-xs text-slate-500 font-medium pt-1">
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={14} className="text-purple-600" />
-                  <strong className="text-slate-700">{formatDateFull(selectedWebinar.startDate)}</strong>
-                  <span>&rarr;</span>
-                  <strong className="text-slate-700">{formatDateFull(selectedWebinar.endDate || selectedWebinar.startDate)}</strong>
-                </span>
-
-                {selectedWebinar.time && (
-                  <span className="flex items-center gap-1.5">
-                    <Clock size={14} className="text-slate-400" />
-                    <span>{selectedWebinar.time}</span>
-                  </span>
-                )}
-
-                {selectedWebinar.speaker && (
-                  <span className="flex items-center gap-1.5">
-                    <User size={14} className="text-indigo-600" />
-                    <span>Host: <strong className="text-slate-700">{selectedWebinar.speaker}</strong></span>
-                  </span>
-                )}
-
-                {selectedWebinar.meetingLink && (
-                  <a
-                    href={selectedWebinar.meetingLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-emerald-700 font-bold hover:underline"
-                  >
-                    <ExternalLink size={13} />
-                    <span>Join Meeting</span>
-                  </a>
-                )}
-              </div>
-            </div>
-          ) : (
+            )}
             <div>
-              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
-                  <Video size={14} /> Multi-Day Webinars
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                  <Lock size={12} /> Admin Only • Hidden from Public Website
-                </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  {selectedWebinar ? selectedWebinar.title : 'Webinar Management'}
+                </h1>
+                {selectedWebinar && (
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                    {selectedWebinar.totalDays}-Day Bootcamp
+                  </span>
+                )}
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Multi-Day Webinars &amp; Attendance Management
-              </h1>
               <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-                Organize multi-day bootcamps (e.g. 15 days), track live attendance day-by-day, and issue certificates to students with &ge; 75% attendance.
+                {selectedWebinar 
+                  ? `Active Schedule: ${formatDateFull(selectedWebinar.startDate)} → ${formatDateFull(selectedWebinar.endDate || selectedWebinar.startDate)}`
+                  : 'Track daily attendance, manage Google Form CSV imports, and issue verified course certificates.'}
               </p>
             </div>
-          )}
+          </div>
 
           {/* Action Buttons */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 pt-2 lg:pt-0">
@@ -1468,9 +1255,7 @@ export default function ManageWebinars() {
         </div>
       </div>
 
-      {/* ========================================================= */}
-      {/* 2. STATS SUMMARY GRID                                     */}
-      {/* ========================================================= */}
+      {/* KPI Overview Grid */}
       {selectedWebinar ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
@@ -1576,1536 +1361,148 @@ export default function ManageWebinars() {
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 3. MAIN CONTENT                                           */}
-      {/* ========================================================= */}
+      {/* Main Content Area */}
       {!selectedWebinar ? (
-        /* ------------------------------------------------------- */
-        /* ALL WEBINARS LIST VIEW                                  */
-        /* ------------------------------------------------------- */
-        <div className="space-y-4">
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input
-                type="text"
-                placeholder="Search webinars by title, topic, or speaker..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
-              />
-              {searchTerm && (
-                <button 
-                  onClick={() => setSearchTerm('')} 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium w-full sm:w-auto">
-                <Filter size={14} className="text-slate-400 shrink-0" />
-                <select
-                  value={webinarStatusFilter}
-                  onChange={(e) => setWebinarStatusFilter(e.target.value as any)}
-                  className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full sm:w-auto text-xs"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="Upcoming">Upcoming</option>
-                  <option value="Live">Live Now</option>
-                  <option value="Completed">Completed</option>
-                </select>
-              </div>
-
-              <button
-                onClick={fetchData}
-                className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 active:scale-95"
-                title="Refresh webinars"
-              >
-                <RefreshCw size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* Webinars Cards Grid */}
-          {loading ? (
-            <div className="py-20 text-center bg-white rounded-3xl border border-slate-200/80">
-              <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-xs font-medium text-slate-500">Loading webinars...</p>
-            </div>
-          ) : filteredWebinars.length === 0 ? (
-            <div className="py-16 px-4 text-center max-w-md mx-auto bg-white rounded-3xl border border-slate-200/80">
-              <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-                <Video size={28} />
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Multi-Day Webinars Found</h3>
-              <p className="text-xs text-slate-500 font-medium mb-6">
-                Create a 15-day webinar, track attendance each day, and issue certificates to eligible students.
-              </p>
-              <button
-                onClick={handleOpenCreateWebinar}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md active:scale-95"
-              >
-                <Plus size={15} />
-                <span>Create First Webinar</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredWebinars.map(webinar => {
-                const metrics = webinarMetrics.get(webinar.id) || { total: 0, eligibleCount: 0, certCount: 0, colleges: new Set() };
-                const eligibleRate = metrics.total > 0 ? Math.round((metrics.eligibleCount / metrics.total) * 100) : 0;
-
-                return (
-                  <div
-                    key={webinar.id}
-                    onClick={() => { setSelectedWebinar(webinar); setSearchTerm(''); }}
-                    className="bg-white rounded-3xl border border-slate-200/80 hover:border-purple-300 p-5 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden active:scale-[0.99]"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
-                            {webinar.totalDays}-Day Bootcamp
-                          </span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border ${
-                            webinar.status === 'Live' ? 'bg-rose-100 text-rose-700 border-rose-200 animate-pulse' :
-                            webinar.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                            'bg-indigo-100 text-indigo-700 border-indigo-200'
-                          }`}>
-                            {webinar.status === 'Live' ? '● Live Now' : webinar.status}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => handleOpenEditWebinar(webinar, e)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-purple-700 hover:bg-purple-50 transition-colors"
-                            title="Edit Webinar"
-                          >
-                            <Edit size={15} />
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteWebinar(webinar, e)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                            title="Delete Webinar"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-purple-700 transition-colors leading-snug line-clamp-2">
-                          {webinar.title}
-                        </h3>
-                        {webinar.topic && (
-                          <p className="text-xs text-slate-500 font-medium mt-1 line-clamp-2">
-                            {webinar.topic}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="bg-slate-50 p-3 rounded-2xl space-y-1.5 text-xs text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={13} className="text-purple-600 shrink-0" />
-                          <span className="font-bold text-slate-800 truncate">{formatDateFull(webinar.startDate)} &rarr; {formatDateFull(webinar.endDate || webinar.startDate)}</span>
-                        </div>
-                        {webinar.speaker && (
-                          <div className="flex items-center gap-2">
-                            <User size={13} className="text-indigo-600 shrink-0" />
-                            <span className="truncate">Host: <strong className="text-slate-800">{webinar.speaker}</strong></span>
-                          </div>
-                        )}
-                        {webinar.time && (
-                          <div className="flex items-center gap-2 text-slate-500">
-                            <Clock size={13} className="text-slate-400 shrink-0" />
-                            <span className="truncate">{webinar.time}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Footer Metrics */}
-                    <div className="pt-4 mt-3 border-t border-slate-100 space-y-3">
-                      <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                        <div className="bg-purple-50/60 p-2 rounded-xl">
-                          <p className="font-black text-purple-900 text-sm sm:text-base">{metrics.total}</p>
-                          <p className="text-[10px] text-purple-700 uppercase font-bold">Students</p>
-                        </div>
-                        <div className="bg-emerald-50/60 p-2 rounded-xl">
-                          <p className="font-black text-emerald-800 text-sm sm:text-base">{metrics.eligibleCount}</p>
-                          <p className="text-[10px] text-emerald-700 uppercase font-bold">&ge;75% ({eligibleRate}%)</p>
-                        </div>
-                        <div className="bg-amber-50/60 p-2 rounded-xl">
-                          <p className="font-black text-amber-800 text-sm sm:text-base">{metrics.certCount}</p>
-                          <p className="text-[10px] text-amber-700 uppercase font-bold">Certs</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedWebinar(webinar); }}
-                          className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95"
-                        >
-                          <Calendar size={14} />
-                          <span>Daily Attendance ({webinar.totalDays} Days)</span>
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); triggerCsvUploadForWebinar(webinar); }}
-                          className="p-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold transition-all active:scale-95"
-                          title="Import Google Form CSV into this webinar"
-                        >
-                          <Upload size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <WebinarCatalog
+          webinars={filteredWebinars}
+          loading={loading}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          statusFilter={webinarStatusFilter}
+          setStatusFilter={setWebinarStatusFilter}
+          webinarMetrics={webinarMetrics}
+          onSelectWebinar={(w) => {
+            setSelectedWebinar(w);
+            setSearchTerm('');
+          }}
+          onCreateWebinar={handleOpenCreateWebinar}
+          onEditWebinar={handleOpenEditWebinar}
+          onDeleteWebinar={handleDeleteWebinar}
+          onImportCsvForWebinar={triggerCsvUploadForWebinar}
+          onRefresh={fetchData}
+        />
       ) : (
-        /* ------------------------------------------------------- */
-        /* INSIDE SELECTED WEBINAR: MULTI-DAY ATTENDANCE MATRIX    */
-        /* ------------------------------------------------------- */
         <div className="space-y-4">
-          {/* ===================================================== */}
-          {/* DAILY ATTENDANCE & BACK DATE SELECTOR WIDGET          */}
-          {/* ===================================================== */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl border border-purple-200 shadow-sm space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                    <Calendar size={16} />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-                      <span>Daily Attendance &amp; Schedule Tracker</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${
-                        activeScheduleList.find(s => s.date === activeDate)?.isPostponed
-                          ? 'bg-amber-50 text-amber-800 border-amber-300'
-                          : 'bg-purple-50 text-purple-700 border-purple-200'
-                      }`}>
-                        Active: {formatDateFull(activeDate)} {activeScheduleList.find(s => s.date === activeDate)?.isPostponed ? '(Postponed)' : ''}
-                      </span>
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-0.5">
-                      Select any session day or back-date below to mark attendance or postpone when unavailable.
-                    </p>
-                  </div>
-                </div>
-              </div>
+          <WebinarAttendanceFilters
+            selectedWebinar={selectedWebinar}
+            activeDate={activeDate}
+            setActiveDate={setActiveDate}
+            activeScheduleList={activeScheduleList}
+            activeSessionDates={activeSessionDates}
+            attendeesForSelectedWebinar={attendeesForSelectedWebinar}
+            dayRibbonRef={dayRibbonRef}
+            scrollDayRibbon={scrollDayRibbon}
+            handleNavigateDay={handleNavigateDay}
+            handleTogglePostponeDay={handleTogglePostponeDay}
+            handleMarkAllPresentOnActiveDate={handleMarkAllPresentOnActiveDate}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            attendanceEligibilityFilter={attendanceEligibilityFilter}
+            setAttendanceEligibilityFilter={setAttendanceEligibilityFilter}
+            selectedCollege={selectedCollege}
+            setSelectedCollege={setSelectedCollege}
+            uniqueColleges={uniqueColleges}
+            selectedIds={selectedIds}
+            onBulkMarkAttended={handleBulkMarkAttendedActiveDate}
+            onBulkDelete={handleBulkDelete}
+            onRefresh={fetchData}
+          />
 
-              {/* Quick Actions & Prev/Next for activeDate */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {!activeScheduleList.find(s => s.date === activeDate)?.isPostponed ? (
-                  <button
-                    onClick={handleMarkAllPresentOnActiveDate}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
-                  >
-                    <UserCheck size={14} />
-                    <span>Mark All Present ({formatDateShort(activeDate)})</span>
-                  </button>
-                ) : null}
-
-                {/* Postpone / Resume Toggle Button */}
-                {activeScheduleList.find(s => s.date === activeDate)?.isPostponed ? (
-                  <button
-                    onClick={() => handleTogglePostponeDay(activeDate, true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
-                    title="Resume this session as an active teaching day"
-                  >
-                    <span>▶️ Resume Day</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleTogglePostponeDay(activeDate, false)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-all shadow-xs active:scale-95 cursor-pointer"
-                    title="Postpone this day (Schedule extends by +1 day)"
-                  >
-                    <span>⏸️ Postpone Day (+1d)</span>
-                  </button>
-                )}
-
-                <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-2 rounded-xl text-xs font-bold text-slate-700">
-                  <Calendar size={13} className="text-slate-500" />
-                  <span>Date:</span>
-                  <input
-                    type="date"
-                    value={activeDate}
-                    onChange={(e) => setActiveDate(e.target.value)}
-                    className="bg-transparent font-bold outline-none cursor-pointer text-xs"
-                  />
-                </div>
-
-                {/* Day Navigation Chevrons in Header */}
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                  <button
-                    onClick={() => handleNavigateDay('prev')}
-                    disabled={activeSessionDates.indexOf(activeDate) <= 0}
-                    className="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                    title="Previous Day"
-                  >
-                    <ChevronLeft size={15} />
-                  </button>
-                  <button
-                    onClick={() => handleNavigateDay('next')}
-                    disabled={activeSessionDates.indexOf(activeDate) >= activeSessionDates.length - 1}
-                    className="p-1.5 rounded-lg text-slate-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                    title="Next Day"
-                  >
-                    <ChevronRight size={15} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Scrollable Day Ribbon with Clean Margins (NO OVERLAPPING CHEVRONS) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => scrollDayRibbon('left')}
-                className="hidden sm:flex p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 active:scale-95"
-                title="Scroll Days Left"
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              <div 
-                ref={dayRibbonRef}
-                className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-none snap-x snap-mandatory overscroll-x-contain flex-1 px-1"
-              >
-                {activeScheduleList.map((scheduleItem) => {
-                  const dateStr = scheduleItem.date;
-                  const isSelected = activeDate === dateStr;
-                  const isPostponed = scheduleItem.isPostponed;
-                  const presentCount = attendeesForSelectedWebinar.filter(a => a.dailyAttendance?.[dateStr] === 'Present').length;
-                  const total = attendeesForSelectedWebinar.length;
-
-                  return (
-                    <button
-                      key={dateStr}
-                      onClick={() => setActiveDate(dateStr)}
-                      className={`flex-shrink-0 px-4 py-2.5 rounded-2xl border text-left transition-all cursor-pointer snap-start ${
-                        isSelected 
-                          ? isPostponed
-                            ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white border-transparent shadow-md ring-2 ring-amber-400/50 scale-[1.02]'
-                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-md shadow-purple-500/25 ring-2 ring-purple-400/50 scale-[1.02]'
-                          : isPostponed
-                            ? 'bg-amber-50/90 hover:bg-amber-100 text-amber-900 border-amber-200 shadow-xs'
-                            : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2.5">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${
-                          isSelected ? 'text-white' : isPostponed ? 'text-amber-800' : 'text-slate-400'
-                        }`}>
-                          {isPostponed ? '⏸️ Postponed' : scheduleItem.label}
-                        </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                          isSelected ? 'bg-white/20 text-white' : isPostponed ? 'bg-amber-200 text-amber-950' : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {isPostponed ? 'No Class' : `${presentCount}/${total}`}
-                        </span>
-                      </div>
-                      <p className="text-xs font-extrabold mt-0.5 whitespace-nowrap">{formatDateShort(dateStr)}</p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => scrollDayRibbon('right')}
-                className="hidden sm:flex p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 active:scale-95"
-                title="Scroll Days Right"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-
-            {/* Postponed Day Banner if current active date is postponed */}
-            {activeScheduleList.find(s => s.date === activeDate)?.isPostponed && (
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 font-extrabold text-lg">
-                    ⏸️
-                  </div>
-                  <div>
-                    <p className="font-extrabold text-sm">
-                      Session on {formatDateFull(activeDate)} is Postponed / Rescheduled
-                    </p>
-                    <p className="text-xs text-amber-800 font-medium mt-0.5">
-                      Reason: <strong className="font-bold">{activeScheduleList.find(s => s.date === activeDate)?.reason || 'Instructor Unavailable'}</strong> • The bootcamp has been extended by +1 day (New End Date: <strong>{formatDateFull(selectedWebinar.endDate || activeDate)}</strong>). No attendance required for this date.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleTogglePostponeDay(activeDate, true)}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
-                >
-                  ▶️ Resume Active Day
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Search, Filter & Bulk Actions Bar */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search students by name, email, phone, or college..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
-                />
-                {searchTerm && (
-                  <button 
-                    onClick={() => setSearchTerm('')} 
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* 75% Attendance Filter */}
-                <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium">
-                  <SlidersHorizontal size={14} className="text-slate-400 shrink-0" />
-                  <select
-                    value={attendanceEligibilityFilter}
-                    onChange={(e) => setAttendanceEligibilityFilter(e.target.value as any)}
-                    className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full text-xs"
-                  >
-                    <option value="All">All Students ({attendeesForSelectedWebinar.length})</option>
-                    <option value="Confirmed">Confirmed Seats</option>
-                    <option value="Waitlisted">Waitlisted Students</option>
-                    <option value="Eligible">Eligible (&ge; 75% Attendance)</option>
-                    <option value="Ineligible">Ineligible (&lt; 75% Attendance)</option>
-                    <option value="CertIssued">Certificates Issued</option>
-                    <option value="CertPending">Pending Issuance (&ge; 75%)</option>
-                  </select>
-                </div>
-
-                {/* College Filter */}
-                {uniqueColleges.length > 0 && (
-                  <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium">
-                    <School size={14} className="text-slate-400 shrink-0" />
-                    <select
-                      value={selectedCollege}
-                      onChange={(e) => setSelectedCollege(e.target.value)}
-                      className="bg-transparent font-bold text-slate-700 outline-none cursor-pointer w-full max-w-[150px] truncate text-xs"
-                    >
-                      <option value="All">All Colleges ({uniqueColleges.length})</option>
-                      {uniqueColleges.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <button
-                  onClick={fetchData}
-                  className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors shrink-0 active:scale-95"
-                  title="Refresh list"
-                >
-                  <RefreshCw size={15} />
-                </button>
-              </div>
-            </div>
-
-            {/* Bulk Controls Bar */}
-            {selectedIds.length > 0 && (
-              <div className="p-3.5 bg-purple-50 rounded-xl border border-purple-100 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in fade-in">
-                <span className="text-xs font-bold text-purple-900">
-                  {selectedIds.length} student(s) selected
-                </span>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={handleBulkMarkAttendedActiveDate}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95 cursor-pointer"
-                  >
-                    <UserCheck size={14} />
-                    <span>Mark Present ({formatDateShort(activeDate)})</span>
-                  </button>
-                  <button
-                    onClick={handleBulkDelete}
-                    className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-xs active:scale-95 cursor-pointer"
-                  >
-                    <Trash2 size={14} />
-                    <span>Delete Selected</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Attendees Table / Mobile Cards */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-            {displayedAttendees.length === 0 ? (
-              <div className="py-16 px-4 text-center max-w-md mx-auto">
-                <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-                  <Users size={28} />
-                </div>
-                <h3 className="text-lg font-extrabold text-slate-900 mb-1">No Students Match Criteria</h3>
-                <p className="text-xs text-slate-500 font-medium mb-6">
-                  Try adjusting your filter or import Google Form CSV responses.
-                </p>
-                <button
-                  onClick={() => triggerCsvUploadForWebinar(selectedWebinar)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 transition-colors shadow-md active:scale-95"
-                >
-                  <Upload size={15} />
-                  <span>Import Google Form CSV</span>
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Desktop Table View */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[11px]">
-                        <th className="p-4 w-10">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.length === displayedAttendees.length && displayedAttendees.length > 0}
-                            onChange={handleSelectAll}
-                            className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                          />
-                        </th>
-                        <th className="p-4">Student &amp; College</th>
-                        <th className="p-4">
-                          Attendance on <span className="text-purple-700 font-black">{formatDateFull(activeDate)}</span>
-                        </th>
-                        <th className="p-4">Overall 15-Day Attendance</th>
-                        <th className="p-4">Certificate Eligibility</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                      {displayedAttendees.map((attendee) => {
-                        const isSelected = selectedIds.includes(attendee.id);
-                        const isPresentToday = attendee.dailyAttendance?.[activeDate] === 'Present';
-                        const totalDays = selectedWebinar.totalDays || 15;
-                        const { presentDays, percentage, isEligible, daysNeededFor75 } = computeAttendeeStats(attendee, totalDays);
-
-                        return (
-                          <tr key={attendee.id} className={`hover:bg-slate-50/70 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
-                            <td className="p-4">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => handleToggleSelectId(attendee.id)}
-                                className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                              />
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 font-black flex items-center justify-center shrink-0 text-xs">
-                                  {getInitials(attendee.studentName)}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="font-extrabold text-slate-900 text-sm">{attendee.studentName}</div>
-                                  <div className="text-slate-500 font-mono text-[11px]">{attendee.email}</div>
-                                  <div className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5 font-medium">
-                                    <School size={12} className="text-indigo-500 shrink-0" />
-                                    <span>{attendee.collegeName}</span>
-                                  </div>
-                                  {attendee.status === 'Waitlisted' ? (
-                                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
-                                        ⏳ Waitlisted {attendee.waitlistPosition ? `#${attendee.waitlistPosition}` : ''}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => handlePromoteAttendee(attendee)}
-                                        className="text-[10px] font-extrabold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200 cursor-pointer transition-colors"
-                                      >
-                                        Promote to Confirmed
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-emerald-700 mt-0.5">
-                                      ✓ Confirmed
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* 1-Click Daily Attendance Toggle */}
-                            <td className="p-4">
-                              <button
-                                onClick={() => handleToggleDailyAttendance(attendee, activeDate)}
-                                className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer active:scale-95 shadow-xs ${
-                                  isPresentToday
-                                    ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300'
-                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                                }`}
-                                title={`Click to toggle attendance for ${formatDateFull(activeDate)}`}
-                              >
-                                {isPresentToday ? (
-                                  <>
-                                    <CheckCircle2 size={15} className="text-emerald-700" />
-                                    <span>Present</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle size={15} className="text-slate-400" />
-                                    <span>Absent</span>
-                                  </>
-                                )}
-                              </button>
-                            </td>
-
-                            {/* Overall Progress & Detail Modal Trigger */}
-                            <td className="p-4">
-                              <div className="space-y-1.5 max-w-[180px]">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className={`font-black ${isEligible ? 'text-emerald-700' : 'text-rose-600'}`}>
-                                    {percentage}%
-                                  </span>
-                                  <span className="text-slate-500 font-bold text-[11px]">
-                                    {presentDays}/{totalDays} Days
-                                  </span>
-                                </div>
-                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                  <div 
-                                    className={`h-full rounded-full transition-all duration-300 ${
-                                      percentage >= 75 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-amber-500' : 'bg-rose-500'
-                                    }`}
-                                    style={{ width: `${Math.min(100, percentage)}%` }}
-                                  />
-                                </div>
-                                <button
-                                  onClick={() => setDetailStudent(attendee)}
-                                  className="text-[11px] text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1 cursor-pointer pt-0.5"
-                                >
-                                  <History size={12} />
-                                  <span>View / Edit All 15 Days</span>
-                                </button>
-                              </div>
-                            </td>
-
-                            {/* Certificate Eligibility & Action */}
-                            <td className="p-4">
-                              {attendee.certificateIssued ? (
-                                <div className="space-y-0.5">
-                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
-                                    <Award size={13} className="text-amber-700" />
-                                    <span>Issued</span>
-                                  </span>
-                                  {attendee.certificateId && (
-                                    <p className="font-mono text-[10px] text-slate-500">{attendee.certificateId}</p>
-                                  )}
-                                </div>
-                              ) : isEligible ? (
-                                <button
-                                  onClick={() => handleIssueCertificate(attendee)}
-                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs transition-all shadow-md shadow-amber-500/20 cursor-pointer active:scale-95"
-                                  title="Eligible (>= 75% attendance). Click to issue certificate."
-                                >
-                                  <Sparkles size={13} />
-                                  <span>Issue Certificate</span>
-                                </button>
-                              ) : (
-                                <div className="space-y-0.5">
-                                  <span 
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200"
-                                  >
-                                    <AlertCircle size={13} />
-                                    <span>Ineligible (&lt;75%)</span>
-                                  </span>
-                                  <p className="text-[10px] text-slate-400 font-medium">Need {daysNeededFor75} more days</p>
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Actions */}
-                            <td className="p-4 text-right">
-                              <button
-                                onClick={() => handleDeleteAttendee(attendee)}
-                                className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
-                                title="Delete record"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile App-Style Cards View */}
-                <div className="block md:hidden divide-y divide-slate-100">
-                  {displayedAttendees.map((attendee) => {
-                    const isSelected = selectedIds.includes(attendee.id);
-                    const isPresentToday = attendee.dailyAttendance?.[activeDate] === 'Present';
-                    const totalDays = selectedWebinar.totalDays || 15;
-                    const { presentDays, percentage, isEligible } = computeAttendeeStats(attendee, totalDays);
-
-                    return (
-                      <div key={attendee.id} className={`p-4 space-y-3 ${isSelected ? 'bg-purple-50/40' : ''}`}>
-                        {/* Header: Student Info & Delete */}
-                        <div className="flex items-start justify-between gap-2.5">
-                          <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleToggleSelectId(attendee.id)}
-                              className="w-4 h-4 mt-1 rounded text-purple-600 focus:ring-purple-500 shrink-0"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <h4 className="font-black text-slate-900 text-sm leading-snug truncate">
-                                {attendee.studentName}
-                              </h4>
-                              <p className="text-slate-500 font-mono text-[11px] truncate flex items-center gap-1 mt-0.5">
-                                <Mail size={11} className="shrink-0 text-slate-400" />
-                                <span className="truncate">{attendee.email}</span>
-                              </p>
-                              {attendee.phone && (
-                                <p className="text-slate-400 text-[11px] flex items-center gap-1 mt-0.5">
-                                  <Phone size={11} className="shrink-0 text-slate-400" />
-                                  <span>{attendee.phone}</span>
-                                </p>
-                              )}
-                              <p className="text-slate-500 text-[11px] flex items-center gap-1 mt-0.5 font-medium truncate">
-                                <School size={11} className="text-indigo-600 shrink-0" />
-                                <span className="truncate">{attendee.collegeName}</span>
-                              </p>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => handleDeleteAttendee(attendee)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors shrink-0"
-                            title="Delete Student"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-
-                        {/* Overall 15-Day Progress Bar */}
-                        <div className="bg-slate-50 p-3 rounded-2xl space-y-1.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-slate-600 font-medium">15-Day Attendance:</span>
-                            <span className={`font-black ${isEligible ? 'text-emerald-700' : 'text-rose-600'}`}>
-                              {percentage}% ({presentDays}/{totalDays} Days)
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                percentage >= 75 ? 'bg-emerald-500' : percentage >= 50 ? 'bg-amber-500' : 'bg-rose-500'
-                              }`}
-                              style={{ width: `${Math.min(100, percentage)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Mobile Actions: Daily Toggle & 15 Days Grid */}
-                        <div className="grid grid-cols-2 gap-2 pt-0.5">
-                          {/* 1-Tap Daily Attendance */}
-                          <button
-                            onClick={() => handleToggleDailyAttendance(attendee, activeDate)}
-                            className={`flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl text-xs font-black transition-all active:scale-95 ${
-                              isPresentToday
-                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
-                            }`}
-                          >
-                            {isPresentToday ? <CheckCircle2 size={14} className="text-emerald-700 shrink-0" /> : <XCircle size={14} className="text-slate-400 shrink-0" />}
-                            <span className="truncate">{formatDateShort(activeDate)}: {isPresentToday ? 'Present' : 'Absent'}</span>
-                          </button>
-
-                          {/* 15 Days History Modal Button */}
-                          <button
-                            onClick={() => setDetailStudent(attendee)}
-                            className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors active:scale-95"
-                          >
-                            <History size={13} className="shrink-0" />
-                            <span>15 Days Grid</span>
-                          </button>
-                        </div>
-
-                        {/* Certificate Status / Action on Mobile */}
-                        <div className="pt-0.5">
-                          {attendee.certificateIssued ? (
-                            <div className="w-full py-2 px-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-between text-xs font-bold">
-                              <span className="flex items-center gap-1.5">
-                                <Award size={14} className="text-amber-600" />
-                                <span>Certificate Issued</span>
-                              </span>
-                              <span className="font-mono text-[10px] text-amber-700">{attendee.certificateId}</span>
-                            </div>
-                          ) : isEligible ? (
-                            <button
-                              onClick={() => handleIssueCertificate(attendee)}
-                              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
-                            >
-                              <Sparkles size={14} />
-                              <span>Issue Certificate (&ge; 75% Eligible)</span>
-                            </button>
-                          ) : (
-                            <div className="w-full py-2 px-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-100 flex items-center justify-between text-[11px] font-bold">
-                              <span className="flex items-center gap-1">
-                                <AlertCircle size={13} />
-                                <span>Ineligible for Certificate</span>
-                              </span>
-                              <span>{percentage}% (&lt;75%)</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
+          <WebinarAttendanceTable
+            displayedAttendees={displayedAttendees}
+            selectedWebinar={selectedWebinar}
+            activeDate={activeDate}
+            selectedIds={selectedIds}
+            onToggleSelectId={(id) => {
+              setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+            }}
+            onSelectAll={() => {
+              if (selectedIds.length === displayedAttendees.length) {
+                setSelectedIds([]);
+              } else {
+                setSelectedIds(displayedAttendees.map(a => a.id));
+              }
+            }}
+            onToggleDailyAttendance={handleToggleDailyAttendance}
+            onOpenDetailStudent={setDetailStudent}
+            onIssueCertificate={handleIssueCertificate}
+            onDeleteAttendee={handleDeleteAttendee}
+            onPromoteAttendee={handlePromoteAttendee}
+            onImportCsv={() => triggerCsvUploadForWebinar(selectedWebinar)}
+            computeStats={computeAttendeeStats}
+          />
         </div>
       )}
 
-      {/* ========================================================= */}
-      {/* 4. STUDENT 15-DAY ATTENDANCE HISTORY MODAL                */}
-      {/* ========================================================= */}
-      {detailStudent && selectedWebinar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 font-bold">
-                  <History size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900 truncate max-w-[200px] sm:max-w-none">{detailStudent.studentName}</h2>
-                  <p className="text-xs text-slate-500 font-medium truncate max-w-[200px] sm:max-w-none">{detailStudent.email} • {selectedWebinar.title}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setDetailStudent(null)}
-                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
+      {/* Student 15-Day Attendance History Modal */}
+      <AttendeeDetailModal
+        attendee={detailStudent}
+        selectedWebinar={selectedWebinar}
+        activeSessionDates={activeSessionDates}
+        onClose={() => setDetailStudent(null)}
+        onToggleAttendance={handleToggleDailyAttendance}
+        onIssueCertificate={handleIssueCertificate}
+        computeStats={computeAttendeeStats}
+      />
 
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
-              {/* Summary Stats Badge */}
-              {(() => {
-                const totalDays = selectedWebinar.totalDays || 15;
-                const { presentDays, percentage, isEligible, daysNeededFor75 } = computeAttendeeStats(detailStudent, totalDays);
-                return (
-                  <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                    isEligible ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
-                  }`}>
-                    <div>
-                      <p className={`font-black text-sm ${isEligible ? 'text-emerald-900' : 'text-rose-900'}`}>
-                        Attendance: {percentage}% ({presentDays} of {totalDays} Days Attended)
-                      </p>
-                      <p className={`text-xs mt-0.5 ${isEligible ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {isEligible 
-                          ? '✅ Eligible for Course Completion Certificate (>= 75%)' 
-                          : `❌ Ineligible for Certificate (Need ${daysNeededFor75} more days to reach 75%)`}
-                      </p>
-                    </div>
+      {/* Create / Edit Webinar Modal */}
+      <CreateEditWebinarModal
+        isOpen={showWebinarModal}
+        onClose={() => setShowWebinarModal(false)}
+        editingWebinar={editingWebinar}
+        formData={webinarFormData}
+        setFormData={setWebinarFormData}
+        onSubmit={handleSaveWebinar}
+        isSaving={isSavingWebinar}
+      />
 
-                    {!detailStudent.certificateIssued && isEligible && (
-                      <button
-                        onClick={() => handleIssueCertificate(detailStudent)}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
-                      >
-                        <Award size={14} />
-                        <span>Issue Cert</span>
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
+      {/* CSV Specification / Guide Modal */}
+      <WebinarCsvGuideModal
+        isOpen={showFormatGuide}
+        onClose={() => setShowFormatGuide(false)}
+        onDownloadSample={downloadSampleCSV}
+      />
 
-              <p className="font-bold text-slate-800 text-xs sm:text-sm">
-                Tap any day to toggle attendance (Present / Absent):
-              </p>
+      {/* CSV Import Modal */}
+      <WebinarCsvImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        csvFileName={csvFileName}
+        parsedRows={parsedRows}
+        webinars={webinars}
+        targetWebinarId={targetWebinarId}
+        setTargetWebinarId={setTargetWebinarId}
+        targetWebinarTitle={targetWebinarTitle}
+        setTargetWebinarTitle={setTargetWebinarTitle}
+        importAttendanceForDate={importAttendanceForDate}
+        setImportAttendanceForDate={setImportAttendanceForDate}
+        onConfirmImport={handleConfirmImport}
+        importing={importing}
+      />
 
-              {/* 15 Days Grid (2 cols on phone, 3 cols on desktop) */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {activeSessionDates.map((dateStr, idx) => {
-                  const isPresent = detailStudent.dailyAttendance?.[dateStr] === 'Present';
+      {/* Manual Add Student Modal */}
+      <AddAttendeeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        webinars={webinars}
+        formData={addFormData}
+        setFormData={setAddFormData}
+        onSubmit={handleAddManualSubmit}
+        isAdding={isAdding}
+      />
 
-                  return (
-                    <button
-                      key={dateStr}
-                      onClick={() => handleToggleDailyAttendance(detailStudent, dateStr)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center justify-between active:scale-95 ${
-                        isPresent
-                          ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border-emerald-200 shadow-xs'
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span className="text-[10px] uppercase font-black text-slate-400 block">Day {idx + 1}</span>
-                        <span className="font-bold text-xs truncate block">{formatDateShort(dateStr)}</span>
-                      </div>
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ml-1.5 ${
-                        isPresent ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'
-                      }`}>
-                        {isPresent ? <Check size={13} /> : <X size={13} />}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+      {/* Postpone Modal */}
+      <PostponeDayModal
+        isOpen={showPostponeModal}
+        onClose={() => setShowPostponeModal(false)}
+        dateTarget={postponeDateTarget}
+        reason={postponeReason}
+        setReason={setPostponeReason}
+        onConfirm={handleConfirmPostpone}
+        isSubmitting={isPostponing}
+      />
 
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end shrink-0">
-              <button
-                onClick={() => setDetailStudent(null)}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CREATE / EDIT WEBINAR MODAL */}
-      {showWebinarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 font-bold">
-                  <Video size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">
-                    {editingWebinar ? 'Edit Multi-Day Webinar' : 'Create Multi-Day Webinar'}
-                  </h2>
-                  <p className="text-xs text-slate-500 font-medium">Configure duration (e.g. 15 days), timing &amp; meeting links</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowWebinarModal(false)}
-                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveWebinar} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-3.5 text-xs sm:text-sm">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Webinar Title <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={webinarFormData.title}
-                    onChange={(e) => setWebinarFormData({ ...webinarFormData, title: e.target.value })}
-                    placeholder="e.g. 15-Day Masterclass on AI & Full-Stack Roadmap"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold text-slate-900"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Start Date <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={webinarFormData.startDate}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, startDate: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Total Days Duration <span className="text-rose-500">*</span>
-                    </label>
-                    <select
-                      value={webinarFormData.totalDays}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, totalDays: Number(e.target.value) })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white"
-                    >
-                      <option value="1">1 Day (Single Session)</option>
-                      <option value="3">3 Days (Weekend Bootcamp)</option>
-                      <option value="5">5 Days (Week Sprint)</option>
-                      <option value="7">7 Days (1 Week)</option>
-                      <option value="10">10 Days</option>
-                      <option value="15">15 Days (Recommended)</option>
-                      <option value="21">21 Days (3 Weeks)</option>
-                      <option value="30">30 Days (1 Month)</option>
-                      <option value="45">45 Days</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Capacity / Max Seats <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={webinarFormData.maxSeats}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, maxSeats: Number(e.target.value) || 100 })}
-                      placeholder="e.g. 100"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Topic / Subtitle Description
-                  </label>
-                  <input
-                    type="text"
-                    value={webinarFormData.topic}
-                    onChange={(e) => setWebinarFormData({ ...webinarFormData, topic: e.target.value })}
-                    placeholder="e.g. Daily hands-on coding, System Design, & Capstone projects"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Host / Speaker Name</label>
-                    <input
-                      type="text"
-                      value={webinarFormData.speaker}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, speaker: e.target.value })}
-                      placeholder="e.g. Er. Rahul & Technical Team"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Status</label>
-                    <select
-                      value={webinarFormData.status}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, status: e.target.value as any })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white"
-                    >
-                      <option value="Upcoming">Upcoming</option>
-                      <option value="Live">Live Now</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Daily Timing</label>
-                    <input
-                      type="text"
-                      value={webinarFormData.time}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, time: e.target.value })}
-                      placeholder="e.g. 05:00 PM - 06:30 PM"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Meeting Link (Google Meet / Zoom)</label>
-                    <input
-                      type="url"
-                      value={webinarFormData.meetingLink}
-                      onChange={(e) => setWebinarFormData({ ...webinarFormData, meetingLink: e.target.value })}
-                      placeholder="https://meet.google.com/xyz-abcd-efg"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowWebinarModal(false)}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingWebinar}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                >
-                  {isSavingWebinar ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    editingWebinar ? 'Update Webinar' : 'Create Webinar'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CSV FORMAT & GOOGLE FORM GUIDE MODAL */}
-      {showFormatGuide && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 font-bold">
-                  <FileSpreadsheet size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">Google Form CSV Specification</h2>
-                  <p className="text-xs text-slate-500 font-medium">How to download and import Google Form responses</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowFormatGuide(false)} 
-                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
-              <div className="bg-purple-50/70 p-3.5 sm:p-4 rounded-2xl border border-purple-100 space-y-2">
-                <h4 className="font-extrabold text-purple-900 flex items-center gap-1.5">
-                  <CheckCircle2 size={16} className="text-purple-600" />
-                  How to export from Google Forms:
-                </h4>
-                <ol className="list-decimal list-inside space-y-1 text-slate-700 text-xs sm:text-sm">
-                  <li>Open your Google Form &rarr; Click on the <strong>Responses</strong> tab.</li>
-                  <li>Click the 3 vertical dots (<strong>&vellip;</strong>) next to the Google Sheets icon.</li>
-                  <li>Select <strong>Download responses (.csv)</strong>.</li>
-                  <li>Open any webinar and click <strong>Import Google Form CSV</strong>.</li>
-                </ol>
-              </div>
-
-              <div>
-                <h4 className="font-extrabold text-slate-900 mb-2">Supported Column Header Names</h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse min-w-[400px]">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px] sm:text-[11px]">
-                        <th className="p-2.5">Field</th>
-                        <th className="p-2.5">Supported Keywords</th>
-                        <th className="p-2.5">Sample Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-700">
-                      <tr>
-                        <td className="p-2.5 font-bold">Student Name <span className="text-rose-500">*</span></td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Name, Full Name, Student Name</td>
-                        <td className="p-2.5">Rahul Sharma</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold">Email <span className="text-rose-500">*</span></td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Email, Email Address, Mail</td>
-                        <td className="p-2.5">rahul@example.com</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold">Phone</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Phone, WhatsApp, Mobile</td>
-                        <td className="p-2.5">+91 9876543210</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold">College</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">College, College Name, Institute</td>
-                        <td className="p-2.5">MIT Muzaffarpur</td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 font-bold">Branch / Year</td>
-                        <td className="p-2.5 font-mono text-[11px] text-purple-700">Branch, Department, Year</td>
-                        <td className="p-2.5">CSE • 3rd Year</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0">
-              <button
-                onClick={downloadSampleCSV}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
-              >
-                <Download size={15} />
-                <span>Download Sample CSV</span>
-              </button>
-              <button
-                onClick={() => setShowFormatGuide(false)}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                Got It
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CSV PREVIEW & IMPORT CONFIRMATION MODAL */}
-      {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                  <FileSpreadsheet size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">Preview CSV Import</h2>
-                  <p className="text-xs text-slate-500 font-medium">Found {parsedRows.length} attendee records in {csvFileName}</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowImportModal(false)}
-                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-4 text-xs sm:text-sm">
-              <div className="bg-purple-50/70 p-3.5 sm:p-4 rounded-2xl border border-purple-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-purple-900 mb-1">
-                    Destination Webinar Session <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={targetWebinarId}
-                    onChange={(e) => {
-                      const wid = e.target.value;
-                      setTargetWebinarId(wid);
-                      const found = webinars.find(w => w.id === wid);
-                      if (found) setTargetWebinarTitle(found.title);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white font-bold text-slate-900 text-xs sm:text-base"
-                  >
-                    {webinars.map(w => (
-                      <option key={w.id} value={w.id}>{w.title} ({w.totalDays} Days)</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-purple-900 mb-1">
-                    Initial Attendance (Optional Date)
-                  </label>
-                  <input
-                    type="date"
-                    value={importAttendanceForDate}
-                    onChange={(e) => setImportAttendanceForDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white font-medium text-slate-900 text-xs sm:text-base"
-                  />
-                  <p className="text-[11px] text-purple-700 mt-0.5">Students will be marked Present on this date.</p>
-                </div>
-              </div>
-
-              {/* Preview Table */}
-              <div>
-                <h4 className="font-bold text-slate-800 mb-2">Parsed Records Preview ({parsedRows.length})</h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden max-h-[220px] overflow-y-auto">
-                  <table className="w-full text-left text-xs border-collapse min-w-[320px]">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px] sm:text-[11px] sticky top-0 bg-slate-50">
-                        <th className="p-2.5">#</th>
-                        <th className="p-2.5">Name</th>
-                        <th className="p-2.5">Email</th>
-                        <th className="p-2.5">College</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {parsedRows.slice(0, 50).map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50">
-                          <td className="p-2.5 text-slate-400 font-mono">{idx + 1}</td>
-                          <td className="p-2.5 font-bold text-slate-900 truncate">{row.studentName}</td>
-                          <td className="p-2.5 font-mono text-slate-600 truncate">{row.email}</td>
-                          <td className="p-2.5 text-slate-700 truncate">{row.collegeName}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
-                disabled={importing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmImport}
-                disabled={importing || !targetWebinarTitle.trim()}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-              >
-                {importing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Importing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={15} />
-                    <span>Confirm &amp; Import {parsedRows.length} Students</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MANUAL ADD STUDENT MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-100 bg-slate-50/80 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                  <Plus size={20} />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-xl font-extrabold text-slate-900">Add Student to Webinar</h2>
-                  <p className="text-xs text-slate-500 font-medium">Manually register a student for a session</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                className="p-2 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddManualSubmit} className="flex flex-col flex-1 overflow-hidden">
-              <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-3.5 text-xs sm:text-sm">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Select Webinar Session <span className="text-rose-500">*</span>
-                  </label>
-                  <select
-                    value={addFormData.webinarId}
-                    onChange={(e) => {
-                      const wid = e.target.value;
-                      const found = webinars.find(w => w.id === wid);
-                      setAddFormData({
-                        ...addFormData,
-                        webinarId: wid,
-                        webinarTitle: found?.title || '',
-                      });
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white"
-                  >
-                    {webinars.map(w => (
-                      <option key={w.id} value={w.id}>{w.title} ({w.totalDays} Days)</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Student Name <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    value={addFormData.studentName}
-                    onChange={(e) => setAddFormData({ ...addFormData, studentName: e.target.value })}
-                    placeholder="e.g. Rahul Sharma"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Email Address <span className="text-rose-500">*</span></label>
-                    <input
-                      type="email"
-                      required
-                      value={addFormData.email}
-                      onChange={(e) => setAddFormData({ ...addFormData, email: e.target.value })}
-                      placeholder="e.g. rahul@gmail.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Phone / WhatsApp</label>
-                    <input
-                      type="tel"
-                      value={addFormData.phone}
-                      onChange={(e) => setAddFormData({ ...addFormData, phone: e.target.value })}
-                      placeholder="e.g. 9876543210"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">College / Institute Name</label>
-                  <input
-                    type="text"
-                    value={addFormData.collegeName}
-                    onChange={(e) => setAddFormData({ ...addFormData, collegeName: e.target.value })}
-                    placeholder="e.g. MIT Muzaffarpur / Purnea College"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Branch / Stream</label>
-                    <input
-                      type="text"
-                      value={addFormData.branch}
-                      onChange={(e) => setAddFormData({ ...addFormData, branch: e.target.value })}
-                      placeholder="e.g. CSE / BCA"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Year / Semester</label>
-                    <input
-                      type="text"
-                      value={addFormData.yearOfStudy}
-                      onChange={(e) => setAddFormData({ ...addFormData, yearOfStudy: e.target.value })}
-                      placeholder="e.g. 3rd Year"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAdding}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                >
-                  {isAdding ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    'Add Student'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* POSTPONE DAY MODAL */}
-      {showPostponeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[92dvh] flex flex-col border border-gray-100 my-auto animate-in fade-in zoom-in-95">
-            <div className="flex justify-between items-center p-4 sm:p-5 border-b border-amber-100 bg-amber-50/80 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold text-lg">
-                  ⏸️
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900">Postpone Session Day</h2>
-                  <p className="text-xs text-slate-500 font-medium">Extend bootcamp schedule by +1 day</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowPostponeModal(false)}
-                className="p-2 hover:bg-amber-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-4 sm:p-6 space-y-4 text-xs sm:text-sm">
-              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
-                <p className="text-xs text-slate-500 font-medium">Session Date to Postpone:</p>
-                <p className="font-extrabold text-slate-900 text-sm sm:text-base">{formatDateFull(postponeDateTarget)}</p>
-                <p className="text-[11px] text-amber-700 font-bold mt-1">
-                  ⚠️ This day will be marked as "Postponed", and the bootcamp end date will automatically shift forward by +1 day.
-                </p>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">
-                  Reason for Postponement <span className="text-rose-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 gap-2 mb-3">
-                  {[
-                    'Instructor Unavailable',
-                    'National / Regional Holiday',
-                    'Technical / Network Maintenance',
-                    'Emergency / Unavoidable Delay',
-                  ].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => setPostponeReason(preset)}
-                      className={`text-left px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
-                        postponeReason === preset 
-                          ? 'bg-amber-100/80 border-amber-400 text-amber-950 shadow-xs' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-
-                <input
-                  type="text"
-                  required
-                  value={postponeReason}
-                  onChange={(e) => setPostponeReason(e.target.value)}
-                  placeholder="Or enter custom reason..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-xs sm:text-sm font-medium"
-                />
-              </div>
-            </div>
-
-            <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-end gap-2.5 shrink-0">
-              <button
-                onClick={() => setShowPostponeModal(false)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
-                disabled={isPostponing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmPostpone}
-                disabled={isPostponing || !postponeReason.trim()}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-xs sm:text-sm hover:bg-amber-700 transition-all shadow-md shadow-amber-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-              >
-                {isPostponing ? 'Postponing...' : 'Confirm & Extend Bootcamp +1d'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Styled Confirmation Modal */}
+      {/* Generic Confirmation Modal */}
       <ConfirmModal
         isOpen={confirmModalState.isOpen}
         onClose={() => setConfirmModalState(prev => ({ ...prev, isOpen: false }))}
