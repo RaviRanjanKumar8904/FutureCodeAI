@@ -10,7 +10,8 @@ export type AdminActionType =
   | 'INVITE' 
   | 'ISSUED' 
   | 'BULK_DELETED' 
-  | 'BULK_ISSUED';
+  | 'BULK_ISSUED'
+  | 'INSTITUTE_CSV_IMPORT';
 
 export async function logAdminActivity(
   adminEmail: string | null | undefined,
