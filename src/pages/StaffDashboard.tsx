@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { CalendarDays, ClipboardList, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardShell from '../components/layout/DashboardShell';
+import StaffAttendance from '../components/staff/StaffAttendance';
 
 const scheduledClasses = [
   {
@@ -20,27 +21,6 @@ const scheduledClasses = [
     time: '2:00 PM - 4:00 PM',
     location: 'Offline Campus',
     instructor: 'Anjali Sharma',
-  },
-];
-
-const attendanceLog = [
-  {
-    id: 'att1',
-    className: 'AI Classroom Essentials',
-    date: 'Jul 29, 2026',
-    status: 'Present',
-  },
-  {
-    id: 'att2',
-    className: 'ML Workshop',
-    date: 'Jul 30, 2026',
-    status: 'Present',
-  },
-  {
-    id: 'att3',
-    className: 'Data Structures Practice',
-    date: 'Jul 31, 2026',
-    status: 'Absent',
   },
 ];
 
@@ -84,40 +64,6 @@ function StaffSchedule() {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StaffAttendance() {
-  return (
-    <div className="space-y-6">
-      <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-extrabold text-text-heading">Attendance Log</h2>
-        <p className="text-sm text-slate-500 mt-2">Track recent attendance for your assigned sessions.</p>
-
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full text-left text-sm divide-y divide-gray-200">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Class</th>
-                <th className="px-4 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {attendanceLog.map((entry) => (
-                <tr key={entry.id} className="bg-white">
-                  <td className="px-4 py-4 font-medium text-slate-800">{entry.className}</td>
-                  <td className="px-4 py-4 text-slate-600">{entry.date}</td>
-                  <td className={`px-4 py-4 font-semibold ${entry.status === 'Present' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {entry.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
