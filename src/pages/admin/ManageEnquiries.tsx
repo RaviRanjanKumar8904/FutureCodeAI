@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../../firebase/config';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
 import { 
   MessageSquare, 
   Search, 
@@ -60,9 +60,9 @@ export default function ManageEnquiries() {
     setLoading(true);
     try {
       const [courseSnap, partnershipSnap, contactSnap] = await Promise.all([
-        getDocs(collection(db, 'enquiries')),
-        getDocs(collection(db, 'partnershipEnquiries')),
-        getDocs(collection(db, 'contactMessages'))
+        getDocs(query(collection(db, 'enquiries'), orderBy('createdAt', 'desc'), limit(300))),
+        getDocs(query(collection(db, 'partnershipEnquiries'), orderBy('createdAt', 'desc'), limit(150))),
+        getDocs(query(collection(db, 'contactMessages'), orderBy('createdAt', 'desc'), limit(150)))
       ]);
 
       const courseList: NormalizedEnquiry[] = courseSnap.docs.map(doc => {

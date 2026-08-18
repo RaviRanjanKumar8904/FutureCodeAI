@@ -4,7 +4,7 @@ import { Award, Eye, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import CertificateModal from '../certificate/CertificateModal';
 import type { CertificateData } from '../certificate/CourseCertificate';
 
@@ -40,10 +40,28 @@ export default function MyCertificates() {
         return;
       }
       try {
-        const snapshot = await getDocs(collection(db, 'certificates'));
-        const allCerts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as (Certificate & { studentId?: string })[];
+        const userEmailClean = (user.email || '').toLowerCase().trim();
+        const promises = [
+          getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean))),
+        ];
+        if (user.email && user.email !== userEmailClean) {
+          promises.push(getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', user.email))));
+        }
+        if (user.uid) {
+          promises.push(getDocs(query(collection(db, 'certificates'), where('studentId', '==', user.uid))));
+        }
 
-        const matched = allCerts.filter(cert => {
+        const snapshots = await Promise.all(promises);
+        const docsMap = new Map<string, Certificate & { studentId?: string }>();
+        snapshots.forEach(snap => {
+          snap.docs.forEach(doc => {
+            if (!docsMap.has(doc.id)) {
+              docsMap.set(doc.id, { id: doc.id, ...doc.data() } as any);
+            }
+          });
+        });
+
+        const matched = Array.from(docsMap.values()).filter(cert => {
           if (cert.revoked) return false;
           return matchesUser(user, cert.studentEmail, cert.studentName, cert.studentId);
         });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../../firebase/config';
-import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, orderBy } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import { Shield, ShieldAlert, Trash2, Plus, UserPlus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -42,7 +42,12 @@ export default function ManageAdmins() {
   useEffect(() => {
     const fetchAdmins = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'admins'));
+        let snapshot;
+        try {
+          snapshot = await getDocs(query(collection(db, 'admins'), orderBy('createdAt', 'desc')));
+        } catch {
+          snapshot = await getDocs(collection(db, 'admins'));
+        }
         const adminList = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()

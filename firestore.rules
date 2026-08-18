@@ -184,6 +184,20 @@ service cloud.firestore {
       // Only admins can modify internships
       allow write: if isAdmin();
     }
+
+    match /internshipApplications/{appId} {
+      // Students can submit internship applications
+      allow create: if isAuthenticated();
+      // Students can read their own applications by UID or email; admins can read all
+      allow read: if isAdmin() || (isAuthenticated() && (
+        resource.data.studentId == request.auth.uid || 
+        resource.data.userId == request.auth.uid || 
+        resource.data.studentEmail == request.auth.token.email || 
+        resource.data.email == request.auth.token.email
+      ));
+      // Only admins can update or delete internship applications
+      allow update, delete: if isAdmin();
+    }
     
     match /batches/{batchId} {
       // Anyone can read batches

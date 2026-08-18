@@ -4,7 +4,7 @@ import { BookOpen, Clock, ArrowRight, Award, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import CertificateModal from '../certificate/CertificateModal';
 import type { CertificateData } from '../certificate/CourseCertificate';
 
@@ -39,19 +39,41 @@ export default function MyCourses() {
         return;
       }
       try {
-        const [enrollSnap, certSnap, coursesSnap, usersSnap, enquirySnap] = await Promise.all([
-          getDocs(collection(db, 'enrollments')),
-          getDocs(collection(db, 'certificates')),
+        const userEmailClean = (user.email || '').toLowerCase().trim();
+        const [enrollSnap, enrollUidSnap, certSnap, certUidSnap, coursesSnap, usersSnap, enquirySnap] = await Promise.all([
+          getDocs(query(collection(db, 'enrollments'), where('studentEmail', '==', userEmailClean))),
+          user.uid ? getDocs(query(collection(db, 'enrollments'), where('studentId', '==', user.uid))) : Promise.resolve(null),
+          getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean))),
+          user.uid ? getDocs(query(collection(db, 'certificates'), where('studentId', '==', user.uid))) : Promise.resolve(null),
           getDocs(collection(db, 'courses')),
-          getDocs(collection(db, 'users')),
-          getDocs(collection(db, 'enquiries')),
+          getDocs(query(collection(db, 'users'), where('email', '==', userEmailClean))),
+          getDocs(query(collection(db, 'enquiries'), where('email', '==', userEmailClean))),
         ]);
 
         const catalogCourses = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        const allUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        const allEnrollments = enrollSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        const allCerts = certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        const allEnquiries = enquirySnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
+        // Merge & deduplicate user profiles
+        const userDocsMap = new Map<string, any>();
+        usersSnap.docs.forEach((doc: any) => userDocsMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        const allUsers = Array.from(userDocsMap.values());
+
+        // Merge & deduplicate enrollments
+        const enrollMap = new Map<string, any>();
+        enrollSnap.docs.forEach((doc: any) => enrollMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        if (enrollUidSnap) {
+          enrollUidSnap.docs.forEach((doc: any) => enrollMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        }
+        const allEnrollments = Array.from(enrollMap.values());
+
+        // Merge & deduplicate certificates
+        const certMap = new Map<string, any>();
+        certSnap.docs.forEach((doc: any) => certMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        if (certUidSnap) {
+          certUidSnap.docs.forEach((doc: any) => certMap.set(doc.id, { id: doc.id, ...doc.data() }));
+        }
+        const allCerts = Array.from(certMap.values());
+
+        const allEnquiries = enquirySnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) as any[];
 
         // 1. Find matching certificates
         const matchedCerts = allCerts.filter(c => {

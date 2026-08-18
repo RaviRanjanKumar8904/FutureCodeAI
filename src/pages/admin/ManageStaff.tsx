@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { db } from '../../firebase/config';
-import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import { Users, UserPlus, Trash2, Banknote, CalendarDays, Wallet } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -87,7 +87,12 @@ export default function ManageStaff() {
   useEffect(() => {
     const fetchStaff = async () => {
       try {
-        const snapshot = await getDocs(collection(db, 'staff'));
+        let snapshot;
+        try {
+          snapshot = await getDocs(query(collection(db, 'staff'), orderBy('createdAt', 'desc')));
+        } catch {
+          snapshot = await getDocs(collection(db, 'staff'));
+        }
         const list = snapshot.docs.map((docItem) => ({ id: docItem.id, ...(docItem.data() as any) })) as StaffEntry[];
         setStaff(list);
       } catch (error) {

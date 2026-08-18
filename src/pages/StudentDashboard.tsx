@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import MyCourses from '../components/dashboard/MyCourses';
@@ -44,28 +44,26 @@ export default function StudentDashboard() {
     if (!user) return;
     const fetchCounts = async () => {
       try {
-        const [certSnap, webinarSnap] = await Promise.all([
-          getDocs(collection(db, 'certificates')),
-          getDocs(collection(db, 'webinars')),
-        ]);
-
         const userEmailClean = (user.email || '').toLowerCase().trim();
-        const userNameClean = (user.displayName || '').toLowerCase().trim();
-        const count = certSnap.docs.filter(d => {
-          const c = d.data();
-          if (c.revoked) return false;
-          const cEmail = (c.studentEmail || '').toLowerCase().trim();
-          const cName = (c.studentName || '').toLowerCase().trim();
-          return (userEmailClean && cEmail === userEmailClean) || (user.uid && c.studentId === user.uid) || (userNameClean && cName === userNameClean);
-        }).length;
-        setCertCount(count);
+        const promises = [
+          getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean))),
+          getDocs(query(collection(db, 'webinars'), where('status', 'in', ['Live', 'Upcoming']))),
+        ];
+        if (user.uid) {
+          promises.push(getDocs(query(collection(db, 'certificates'), where('studentId', '==', user.uid))));
+        }
 
-        // Active webinars count
-        const activeCount = webinarSnap.docs.filter(d => {
-          const data = d.data();
-          return data.status === 'Live' || data.status === 'Upcoming';
-        }).length;
-        setWebinarCount(activeCount);
+        const [certSnap, webinarSnap, certUidSnap] = await Promise.all(promises);
+
+        const certMap = new Map<string, any>();
+        certSnap.docs.forEach(d => certMap.set(d.id, d.data()));
+        if (certUidSnap) {
+          certUidSnap.docs.forEach(d => certMap.set(d.id, d.data()));
+        }
+
+        const count = Array.from(certMap.values()).filter(c => !c.revoked).length;
+        setCertCount(count);
+        setWebinarCount(webinarSnap.docs.length);
       } catch (err) {
         console.error("Error fetching dashboard counts:", err);
       }

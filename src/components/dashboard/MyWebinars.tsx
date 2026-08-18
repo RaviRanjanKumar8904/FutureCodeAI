@@ -125,12 +125,21 @@ export default function MyWebinars() {
       });
       setWebinars(webinarsList);
 
-      // 2. Fetch Attendee records matching student email/uid/name
-      const attendeesSnap = await getDocs(collection(db, 'webinar_attendees'));
+      // 2. Fetch Attendee records matching student email/uid
+      const userEmailClean = (user.email || '').toLowerCase().trim();
+      const [attendeesSnap, attendeesUidSnap] = await Promise.all([
+        getDocs(query(collection(db, 'webinar_attendees'), where('email', '==', userEmailClean))),
+        user.uid ? getDocs(query(collection(db, 'webinar_attendees'), where('studentId', '==', user.uid))) : Promise.resolve({ docs: [] } as any),
+      ]);
 
-      const myRecords = attendeesSnap.docs
-        .map(d => ({ id: d.id, ...d.data() }) as WebinarAttendee)
-        .filter(a => matchesUser(user, a.email, a.studentName, (a as any).studentId));
+      const attendeeMap = new Map<string, WebinarAttendee>();
+      [...attendeesSnap.docs, ...attendeesUidSnap.docs].forEach(d => {
+        attendeeMap.set(d.id, { id: d.id, ...d.data() } as WebinarAttendee);
+      });
+
+      const myRecords = Array.from(attendeeMap.values()).filter(a => 
+        matchesUser(user, a.email, a.studentName, (a as any).studentId)
+      );
 
       setAttendeeRecords(myRecords);
     } catch (err) {

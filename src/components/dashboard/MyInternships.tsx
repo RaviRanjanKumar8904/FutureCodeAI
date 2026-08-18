@@ -4,7 +4,7 @@ import { Briefcase, ArrowRight, CheckCircle2, Building2, Calendar } from 'lucide
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 
 interface InternshipApplication {
   id: string;
@@ -30,26 +30,40 @@ export default function MyInternships() {
         return;
       }
       try {
-        const [appSnap, enquirySnap, certSnap, usersSnap] = await Promise.all([
-          getDocs(collection(db, 'internshipApplications')),
-          getDocs(collection(db, 'enquiries')),
-          getDocs(collection(db, 'certificates')),
-          getDocs(collection(db, 'users')),
+        const userEmailClean = (user.email || '').toLowerCase().trim();
+        const [appSnap, appEmailSnap, appUidSnap, enquirySnap, certSnap, certUidSnap, usersSnap] = await Promise.all([
+          getDocs(query(collection(db, 'internshipApplications'), where('studentEmail', '==', userEmailClean))),
+          getDocs(query(collection(db, 'internshipApplications'), where('email', '==', userEmailClean))),
+          user.uid ? getDocs(query(collection(db, 'internshipApplications'), where('studentId', '==', user.uid))) : Promise.resolve(null),
+          getDocs(query(collection(db, 'enquiries'), where('email', '==', userEmailClean))),
+          getDocs(query(collection(db, 'certificates'), where('studentEmail', '==', userEmailClean))),
+          user.uid ? getDocs(query(collection(db, 'certificates'), where('studentId', '==', user.uid))) : Promise.resolve(null),
+          getDocs(query(collection(db, 'users'), where('email', '==', userEmailClean))),
         ]);
+
+        const appMap = new Map<string, any>();
+        [...appSnap.docs, ...appEmailSnap.docs, ...(appUidSnap ? appUidSnap.docs : [])].forEach((d: any) => appMap.set(d.id, { id: d.id, ...d.data() }));
+        const allApps: any[] = Array.from(appMap.values());
+
+        const certMap = new Map<string, any>();
+        [...certSnap.docs, ...(certUidSnap ? certUidSnap.docs : [])].forEach((d: any) => certMap.set(d.id, { id: d.id, ...d.data() }));
+        const allCerts: any[] = Array.from(certMap.values());
+
+        const allEnquiries: any[] = enquirySnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allUsers: any[] = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const combined: InternshipApplication[] = [];
         const seenRoles = new Set<string>();
 
         // 1. From internshipApplications collection
-        appSnap.docs.forEach(d => {
-          const data = d.data();
+        allApps.forEach(data => {
           if (matchesUser(user, data.studentEmail || data.email || data.applicantEmail, data.studentName || data.name, data.studentId)) {
             const roleName = data.role || data.title || 'Tech Internship Track';
             const key = roleName.toLowerCase();
             if (!seenRoles.has(key)) {
               seenRoles.add(key);
               combined.push({
-                id: d.id,
+                id: data.id,
                 role: roleName,
                 company: data.company || 'FutureCode AI Partner Network',
                 status: data.status || 'Applied',
@@ -61,15 +75,14 @@ export default function MyInternships() {
         });
 
         // 2. From enquiries (where type === 'internship')
-        enquirySnap.docs.forEach(d => {
-          const data = d.data();
+        allEnquiries.forEach(data => {
           if (data.type === 'internship' && matchesUser(user, data.email, data.name, (data as any).studentId)) {
             const roleName = data.targetTitle || data.role || 'Industry Internship';
             const key = roleName.toLowerCase();
             if (!seenRoles.has(key)) {
               seenRoles.add(key);
               combined.push({
-                id: `enquiry-${d.id}`,
+                id: `enquiry-${data.id}`,
                 role: roleName,
                 company: 'FutureCode AI Labs',
                 status: data.status === 'resolved' || data.status === 'enrolled' ? 'Ongoing' : 'Applied',
@@ -81,47 +94,45 @@ export default function MyInternships() {
         });
 
         // 3. From users collection (if profile has internship field)
-        usersSnap.docs.forEach(d => {
-          const data = d.data();
-          if (matchesUser(user, data.email, data.displayName, d.id)) {
+        allUsers.forEach(data => {
+          if (matchesUser(user, data.email, data.displayName, data.id)) {
             if (data.enrolledInternship || data.internshipRole) {
               const roleName = data.enrolledInternship || data.internshipRole;
               const key = roleName.toLowerCase();
               if (!seenRoles.has(key)) {
                 seenRoles.add(key);
                 combined.push({
-                  id: `user-internship-${d.id}`,
+                  id: `user-internship-${data.id}`,
                   role: roleName,
-                  company: data.assignedCenter || 'FutureCode AI Incubation',
+                  company: 'FutureCode AI Incubator',
                   status: 'Ongoing',
                   appliedDate: data.createdAt?.toDate?.()?.toISOString()?.split('T')[0] || new Date().toISOString().split('T')[0],
-                  source: 'admin_enrollment',
+                  source: 'profile',
                 });
               }
             }
           }
         });
 
-        // 4. From certificates (if internship completion cert exists)
-        certSnap.docs.forEach(d => {
-          const data = d.data();
-          if (!data.revoked && matchesUser(user, data.studentEmail, data.studentName, data.studentId)) {
-            const isInternshipCert = 
-              (data.domain && data.domain.toLowerCase().includes('internship')) ||
-              (data.courseName && data.courseName.toLowerCase().includes('internship'));
-
-            if (isInternshipCert) {
-              const roleName = data.courseName || data.domain || 'Internship Experience';
-              const key = roleName.toLowerCase();
-              if (!seenRoles.has(key)) {
+        // 4. Match completed certificates for internships
+        allCerts.forEach(cert => {
+          if (!cert.revoked && matchesUser(user, cert.studentEmail, cert.studentName, cert.studentId)) {
+            const cName = cert.courseName || cert.domain || '';
+            if (cName.toLowerCase().includes('internship') || (cert.domain && cert.domain.toLowerCase().includes('internship'))) {
+              const key = cName.toLowerCase();
+              const existing = combined.find(item => item.role.toLowerCase() === key || item.company.toLowerCase().includes('futurecode'));
+              if (existing) {
+                existing.status = 'Completed';
+                existing.certificateId = cert.certificateId || cert.id;
+              } else if (!seenRoles.has(key)) {
                 seenRoles.add(key);
                 combined.push({
-                  id: `cert-internship-${d.id}`,
-                  role: roleName,
-                  company: 'FutureCode AI Global Track',
+                  id: `cert-intern-${cert.id}`,
+                  role: cName,
+                  company: 'FutureCode AI Verified Internship',
                   status: 'Completed',
-                  appliedDate: data.issueDate || 'Verified',
-                  certificateId: data.certificateId,
+                  appliedDate: cert.startDate || cert.issueDate || new Date().toISOString().split('T')[0],
+                  certificateId: cert.certificateId || cert.id,
                   source: 'certificate',
                 });
               }

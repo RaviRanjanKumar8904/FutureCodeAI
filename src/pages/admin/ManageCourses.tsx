@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { db } from '../../firebase/config';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where, getCountFromServer } from 'firebase/firestore';
 import { BookOpen, Search, Plus, Trash2, Edit2, Users, Flame, Eye, EyeOff, Clock, Layers } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import AddCourseModal from '../../components/admin/AddCourseModal';
@@ -21,22 +21,26 @@ export default function ManageCourses() {
   const fetchCoursesAndEnrollments = async () => {
     setLoading(true);
     try {
-      const [coursesSnap, enrollSnap] = await Promise.all([
-        getDocs(query(collection(db, 'courses'), orderBy('title'))),
-        getDocs(collection(db, 'enrollments'))
-      ]);
-
+      const coursesSnap = await getDocs(query(collection(db, 'courses'), orderBy('title')));
       const courseList = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Calculate enrollment counts per course
+
+      // Efficiently fetch counts per course
       const countMap: Record<string, number> = {};
-      enrollSnap.docs.forEach(d => {
-        const data = d.data();
-        const cName = data.courseName || data.courseTitle;
-        if (cName) {
-          countMap[cName] = (countMap[cName] || 0) + 1;
-        }
-      });
+      await Promise.all(
+        courseList.map(async (c: any) => {
+          const title = c.title || c.courseName;
+          if (title) {
+            try {
+              const countSnap = await getCountFromServer(
+                query(collection(db, 'enrollments'), where('courseName', '==', title))
+              );
+              countMap[title] = countSnap.data().count;
+            } catch {
+              countMap[title] = 0;
+            }
+          }
+        })
+      );
 
       setCourses(courseList);
       setEnrollmentsCount(countMap);

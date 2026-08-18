@@ -26,7 +26,17 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { db } from '../../firebase/config';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  updateDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  getCountFromServer 
+} from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 import { logAdminActivity } from '../../utils/adminLogger';
 import { useAuth } from '../../hooks/useAuth';
@@ -57,93 +67,78 @@ export default function AdminDashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      // 1. Efficient server-side counts
       const [
-        usersSnap, 
-        coursesSnap, 
-        enquiriesSnap, 
-        partnershipSnap, 
-        contactSnap, 
-        collaboratorsSnap,
-        certificatesSnap,
-        internshipsSnap,
-        staffSnap
+        studentsCountSnap,
+        coursesCountSnap,
+        enquiriesCountSnap,
+        partnershipCountSnap,
+        contactCountSnap,
+        collabCountSnap,
+        certCountSnap,
+        internCountSnap,
+        staffCountSnap,
+        recentEnquiriesSnap,
+        recentPartnershipSnap,
+        recentContactSnap,
+        recentStudentsSnap
       ] = await Promise.all([
-        getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'courses')),
-        getDocs(collection(db, 'enquiries')),
-        getDocs(collection(db, 'partnershipEnquiries')),
-        getDocs(collection(db, 'contactMessages')),
-        getDocs(collection(db, 'collaborators')),
-        getDocs(collection(db, 'certificates')),
-        getDocs(collection(db, 'internships')),
-        getDocs(collection(db, 'staff'))
+        getCountFromServer(query(collection(db, 'users'), where('role', '==', 'student'))),
+        getCountFromServer(collection(db, 'courses')),
+        getCountFromServer(collection(db, 'enquiries')),
+        getCountFromServer(collection(db, 'partnershipEnquiries')),
+        getCountFromServer(collection(db, 'contactMessages')),
+        getCountFromServer(collection(db, 'collaborators')),
+        getCountFromServer(collection(db, 'certificates')),
+        getCountFromServer(collection(db, 'internships')),
+        getCountFromServer(collection(db, 'staff')),
+        // 2. Fetch only latest records for dashboard display & charts
+        getDocs(query(collection(db, 'enquiries'), orderBy('createdAt', 'desc'), limit(15))),
+        getDocs(query(collection(db, 'partnershipEnquiries'), orderBy('createdAt', 'desc'), limit(10))),
+        getDocs(query(collection(db, 'contactMessages'), orderBy('createdAt', 'desc'), limit(10))),
+        getDocs(query(collection(db, 'users'), where('role', '==', 'student'), orderBy('createdAt', 'desc'), limit(100)))
       ]);
 
       const now = Date.now();
       const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
 
       let newStudents = 0;
-      let newInstitutes = 0;
-      let newCourses = 0;
       let newEnquiries = 0;
 
-      const usersData = usersSnap.docs.map(d => d.data());
-      const studentCount = usersData.filter(u => {
-        if (u.role === 'student') {
-          if (u.createdAt?.toMillis && now - u.createdAt.toMillis() < thirtyDaysMs) newStudents++;
-          return true;
-        }
-        return false;
-      }).length;
-
-      const instituteCount = collaboratorsSnap.size;
-      collaboratorsSnap.docs.forEach(d => {
-        const data = d.data();
-        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newInstitutes++;
+      recentStudentsSnap.docs.forEach(d => {
+        const u = d.data();
+        if (u.createdAt?.toMillis && now - u.createdAt.toMillis() < thirtyDaysMs) newStudents++;
       });
 
-      coursesSnap.docs.forEach(d => {
-        const data = d.data();
-        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newCourses++;
-      });
+      const totalEnquiriesCount = enquiriesCountSnap.data().count + partnershipCountSnap.data().count + contactCountSnap.data().count;
 
-      const totalEnquiriesCount = enquiriesSnap.size + partnershipSnap.size + contactSnap.size;
-
-      enquiriesSnap.docs.forEach(d => {
-        const data = d.data();
-        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
-      });
-      partnershipSnap.docs.forEach(d => {
-        const data = d.data();
-        if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
-      });
-      contactSnap.docs.forEach(d => {
+      [...recentEnquiriesSnap.docs, ...recentPartnershipSnap.docs, ...recentContactSnap.docs].forEach(d => {
         const data = d.data();
         if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
       });
 
       setStats({
-        students: studentCount,
-        institutes: instituteCount,
-        courses: coursesSnap.size,
+        students: studentsCountSnap.data().count,
+        institutes: collabCountSnap.data().count,
+        courses: coursesCountSnap.data().count,
         enquiries: totalEnquiriesCount,
-        certificates: certificatesSnap.size,
-        internships: internshipsSnap.size,
-        staff: staffSnap.size
+        certificates: certCountSnap.data().count,
+        internships: internCountSnap.data().count,
+        staff: staffCountSnap.data().count
       });
 
       setTrends({
         students: newStudents,
-        institutes: newInstitutes,
-        courses: newCourses,
+        institutes: 0,
+        courses: 0,
         enquiries: newEnquiries
       });
 
       // Combine and sort recent leads from all streams
       const rawEnquiries: any[] = [
-        ...enquiriesSnap.docs.map(d => ({ id: d.id, collection: 'enquiries', type: d.data().type || 'Course Lead', ...d.data() })),
-        ...partnershipSnap.docs.map(d => ({ id: d.id, collection: 'partnershipEnquiries', type: 'Partnership', ...d.data() })),
-        ...contactSnap.docs.map(d => ({ id: d.id, collection: 'contactMessages', type: 'General Contact', ...d.data() }))
+        ...recentEnquiriesSnap.docs.map(d => ({ id: d.id, collection: 'enquiries', type: d.data().type || 'Course Lead', ...d.data() })),
+        ...recentPartnershipSnap.docs.map(d => ({ id: d.id, collection: 'partnershipEnquiries', type: 'Partnership', ...d.data() })),
+        ...recentContactSnap.docs.map(d => ({ id: d.id, collection: 'contactMessages', type: 'General Contact', ...d.data() }))
       ];
 
       rawEnquiries.sort((a, b) => {
@@ -177,11 +172,12 @@ export default function AdminDashboard() {
         }
       });
 
-      usersData.forEach(u => {
-        if (u.role === 'student' && u.createdAt) {
-          const d = u.createdAt?.toDate ? u.createdAt.toDate() : u.createdAt?.seconds ? new Date(u.createdAt.seconds * 1000) : null;
-          if (d) {
-            const m = months[d.getMonth()];
+      recentStudentsSnap.docs.forEach(d => {
+        const u = d.data();
+        if (u.createdAt) {
+          const dt = u.createdAt?.toDate ? u.createdAt.toDate() : u.createdAt?.seconds ? new Date(u.createdAt.seconds * 1000) : null;
+          if (dt) {
+            const m = months[dt.getMonth()];
             if (trendsMap[m]) trendsMap[m].students += 1;
           }
         }
