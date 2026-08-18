@@ -1,14 +1,26 @@
+import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Camera } from 'lucide-react';
+import { Camera, FileText } from 'lucide-react';
 import UserAvatar from '../UserAvatar';
 import NotificationCenter from './NotificationCenter';
+import TranscriptModal from './TranscriptModal';
+import { useStudentTranscript } from '../../hooks/useStudentTranscript';
 
 export default function DashboardHeader() {
   const { user } = useAuth();
+  const [showTranscript, setShowTranscript] = useState(false);
+  const { transcriptData, loading: transcriptLoading, fetchTranscript } = useStudentTranscript();
 
   if (!user) return null;
+
+  const handleOpenTranscript = async () => {
+    const data = await fetchTranscript();
+    if (data) {
+      setShowTranscript(true);
+    }
+  };
 
   // Calculate profile completion
   const fields = [user.phone, user.school, user.city, user.degree, user.yearOfStudy, user.githubUrl, user.linkedinUrl];
@@ -51,7 +63,16 @@ export default function DashboardHeader() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-text-heading mb-1">
             Welcome back, {firstName}! 👋
           </h1>
-          <div className="flex items-center justify-center sm:justify-end gap-3">
+          <div className="flex items-center justify-center sm:justify-end gap-2.5 flex-wrap">
+            <button
+              onClick={handleOpenTranscript}
+              disabled={transcriptLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-r from-[#152a4f] to-[#24a4b5] hover:from-[#1d3a6d] hover:to-[#2bc0d4] text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              title="Generate and download official PDF transcript"
+            >
+              <FileText size={14} />
+              <span>{transcriptLoading ? 'Compiling...' : 'Transcript'}</span>
+            </button>
             <NotificationCenter />
             <Link
               to="/dashboard/student/settings"
@@ -86,6 +107,15 @@ export default function DashboardHeader() {
           </div>
         )}
       </div>
+
+      {/* Official Transcript Modal */}
+      {showTranscript && transcriptData && (
+        <TranscriptModal
+          isOpen={showTranscript}
+          onClose={() => setShowTranscript(false)}
+          data={transcriptData}
+        />
+      )}
     </motion.div>
   );
 }

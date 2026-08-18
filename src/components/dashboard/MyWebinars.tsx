@@ -8,11 +8,13 @@ import {
   CheckCircle2, 
   Award, 
   TrendingUp, 
+  TrendingDown,
   ExternalLink, 
   Sparkles, 
   Check, 
   X, 
   AlertCircle,
+  AlertTriangle,
   PlusCircle
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -186,6 +188,22 @@ export default function MyWebinars() {
     const isEligible = percentage >= 75;
     const daysNeededFor75 = Math.max(0, Math.ceil(0.75 * totalDays) - presentDays);
 
+    // Mid-bootcamp pace and trend calculations
+    const todayStr = new Date().toISOString().split('T')[0];
+    const elapsedActiveDates = scheduleInfo.activeDates.filter(dateStr => dateStr <= todayStr);
+    const elapsedDays = elapsedActiveDates.length;
+    const attendedSoFar = elapsedActiveDates.filter(dateStr => daily[dateStr] === 'Present').length;
+    const remainingDays = Math.max(0, totalDays - elapsedDays);
+    const maxPossibleAttendance = attendedSoFar + remainingDays;
+    const maxPossiblePercentage = Math.round((maxPossibleAttendance / (totalDays > 0 ? totalDays : 1)) * 100);
+    const currentPacePercentage = elapsedDays > 0 ? Math.round((attendedSoFar / elapsedDays) * 100) : 100;
+    const isCompleted = webinar.status === 'Completed' || (elapsedDays >= totalDays && scheduleInfo.activeDates.every(d => d <= todayStr));
+
+    // Trend classifications
+    const isAtRisk = !isCompleted && maxPossiblePercentage < 75;
+    const isTrendingLow = !isCompleted && !isAtRisk && elapsedDays >= 2 && currentPacePercentage < 75;
+    const isOnTrack = !isCompleted && !isAtRisk && !isTrendingLow && currentPacePercentage >= 75;
+
     return {
       attendee,
       isEnrolled,
@@ -194,6 +212,15 @@ export default function MyWebinars() {
       percentage,
       isEligible,
       daysNeededFor75,
+      elapsedDays,
+      attendedSoFar,
+      remainingDays,
+      maxPossiblePercentage,
+      currentPacePercentage,
+      isCompleted,
+      isAtRisk,
+      isTrendingLow,
+      isOnTrack,
       certificateIssued: attendee?.certificateIssued || false,
       certificateId: attendee?.certificateId,
       schedule: scheduleInfo.schedule,
@@ -420,6 +447,14 @@ export default function MyWebinars() {
                   percentage,
                   isEligible,
                   daysNeededFor75,
+                  elapsedDays,
+                  attendedSoFar,
+                  remainingDays,
+                  maxPossiblePercentage,
+                  currentPacePercentage,
+                  isAtRisk,
+                  isTrendingLow,
+                  isOnTrack,
                   certificateIssued,
                   certificateId,
                   schedule,
@@ -460,6 +495,25 @@ export default function MyWebinars() {
                               <span>Enrolled</span>
                             </span>
                           )}
+
+                          {/* Mid-bootcamp Trend Indicator Badge */}
+                          {isAtRisk ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                              <AlertTriangle size={12} className="text-rose-600" />
+                              <span>⚠️ &lt;75% Risk (Max: {maxPossiblePercentage}%)</span>
+                            </span>
+                          ) : isTrendingLow ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                              <TrendingDown size={12} className="text-amber-700" />
+                              <span>📉 Pace: {currentPacePercentage}% (&lt;75%)</span>
+                            </span>
+                          ) : isOnTrack && elapsedDays > 0 ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                              <TrendingUp size={12} className="text-emerald-700" />
+                              <span>📈 On Track ({currentPacePercentage}% Pace)</span>
+                            </span>
+                          ) : null}
+
                           {hasPostponedDays && (
                             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
                               <span>⏸️ {postponedDates.length} Postponed ({totalDays + postponedDates.length} Days Timeline)</span>
@@ -566,6 +620,42 @@ export default function MyWebinars() {
                           )}
                         </div>
                       </div>
+
+                      {/* Mid-Bootcamp Trend Alert Box */}
+                      {isAtRisk ? (
+                        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-950 flex items-start gap-2.5">
+                          <AlertTriangle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-rose-900">Attendance Pace Critical (&lt; 75% Risk)</p>
+                            <p className="text-rose-800 text-[11px] mt-0.5 leading-relaxed">
+                              You have attended <strong>{attendedSoFar} of {elapsedDays}</strong> past sessions ({currentPacePercentage}% pace). Even with 100% attendance in the remaining <strong>{remainingDays}</strong> sessions, your maximum possible attendance will be <strong>{maxPossiblePercentage}%</strong>. Contact your instructor/coordinator for make-up options.
+                            </p>
+                          </div>
+                        </div>
+                      ) : isTrendingLow ? (
+                        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
+                          <TrendingDown size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold text-amber-900">Mid-Bootcamp Pace Warning ({currentPacePercentage}% pace so far)</p>
+                            <p className="text-amber-800 text-[11px] mt-0.5 leading-relaxed">
+                              You have attended <strong>{attendedSoFar} of {elapsedDays}</strong> sessions held so far. To earn your verified Certificate of Completion (&ge; 75%), you must attend at least <strong>{daysNeededFor75}</strong> of the <strong>{remainingDays}</strong> remaining sessions.
+                            </p>
+                          </div>
+                        </div>
+                      ) : isOnTrack && elapsedDays > 0 ? (
+                        <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-950 flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp size={15} className="text-emerald-700 shrink-0" />
+                            <span className="font-bold text-emerald-900">On Track for Certificate!</span>
+                            <span className="text-[11px] text-emerald-800">
+                              ({attendedSoFar}/{elapsedDays} sessions attended • {currentPacePercentage}% pace)
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-950">
+                            Target: &ge;75%
+                          </span>
+                        </div>
+                      ) : null}
 
                       {/* Progress Bar */}
                       <div className="space-y-1.5">
@@ -837,6 +927,34 @@ export default function MyWebinars() {
             </div>
 
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 scrollbar-none space-y-3.5 text-xs sm:text-sm">
+              {(() => {
+                const stats = getStudentWebinarData(selectedWebinarForDetails.webinar);
+                return (
+                  <div className={`p-4 rounded-2xl border space-y-1.5 ${
+                    stats.isAtRisk
+                      ? 'bg-rose-50 border-rose-200 text-rose-950'
+                      : stats.isTrendingLow
+                      ? 'bg-amber-50 border-amber-200 text-amber-950'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                  }`}>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="flex items-center gap-1.5">
+                        {stats.isAtRisk ? <AlertTriangle size={15} className="text-rose-600" /> : stats.isTrendingLow ? <TrendingDown size={15} className="text-amber-700" /> : <TrendingUp size={15} className="text-emerald-700" />}
+                        <span>Attendance Trend: {stats.isAtRisk ? 'Critical Risk (< 75%)' : stats.isTrendingLow ? 'Warning (Pace < 75%)' : 'On Track (≥ 75%)'}</span>
+                      </span>
+                      <span className="font-extrabold">{stats.percentage}% Overall ({stats.presentDays}/{stats.totalDays} Days)</span>
+                    </div>
+                    <p className="text-[11px] opacity-90 leading-relaxed">
+                      {stats.isAtRisk
+                        ? `You have attended ${stats.attendedSoFar} of ${stats.elapsedDays} sessions held (${stats.currentPacePercentage}% pace). Max possible final attendance is ${stats.maxPossiblePercentage}%.`
+                        : stats.isTrendingLow
+                        ? `Current pace is ${stats.currentPacePercentage}% through ${stats.elapsedDays} sessions held so far. You need ${stats.daysNeededFor75} more sessions to reach 75% for your certificate.`
+                        : `Great pace! You have attended ${stats.attendedSoFar} of ${stats.elapsedDays} active sessions held so far (${stats.currentPacePercentage}% pace).`}
+                    </p>
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {generateWebinarSchedule(
                   selectedWebinarForDetails.webinar.startDate,

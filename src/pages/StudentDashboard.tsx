@@ -22,6 +22,8 @@ import MyWebinars from '../components/dashboard/MyWebinars';
 import MyEnquiries from '../components/dashboard/MyEnquiries';
 import ProfileSettings from '../components/dashboard/ProfileSettings';
 
+import NotificationCenter from '../components/dashboard/NotificationCenter';
+
 export default function StudentDashboard() {
   const { user } = useAuth();
   const location = useLocation();
@@ -71,7 +73,12 @@ export default function StudentDashboard() {
   if (!user) return <Navigate to="/" />;
 
   return (
-    <DashboardShell navItems={navItems} portalLabel="Student Portal" variant="light">
+    <DashboardShell 
+      navItems={navItems} 
+      portalLabel="Student Portal" 
+      variant="light"
+      headerRight={<NotificationCenter />}
+    >
       <div className="p-4 sm:p-6 md:p-8 lg:p-10 max-w-6xl mx-auto w-full pb-12">
         <DashboardHeader />
         

@@ -524,6 +524,17 @@ export default function ManageWebinars() {
         dailyAttendance: updatedDaily,
         updatedAt: serverTimestamp(),
       });
+
+      if (newStatus === 'Present' && attendee.email) {
+        sendNotification({
+          userId: attendee.id,
+          userEmail: attendee.email,
+          title: 'Attendance Marked Present ✅',
+          message: `Your attendance for "${attendee.webinarTitle || selectedWebinar?.title || 'Bootcamp'}" on ${formatDateShort(dateStr)} was marked Present.`,
+          type: 'attendance',
+          link: '/dashboard/student/webinars',
+        });
+      }
     } catch (err) {
       console.error('Error updating attendance:', err);
       toast.error('Failed to save attendance toggle');
@@ -550,6 +561,17 @@ export default function ManageWebinars() {
               dailyAttendance: updated,
               updatedAt: serverTimestamp(),
             });
+
+            if (a.email) {
+              sendNotification({
+                userId: a.id,
+                userEmail: a.email,
+                title: 'Attendance Marked Present ✅',
+                message: `Your attendance for "${a.webinarTitle || selectedWebinar.title}" on ${formatDateShort(activeDate)} was marked Present.`,
+                type: 'attendance',
+                link: '/dashboard/student/webinars',
+              });
+            }
           });
 
           await batch.commit();
@@ -581,6 +603,17 @@ export default function ManageWebinars() {
             dailyAttendance: updated,
             updatedAt: serverTimestamp(),
           });
+
+          if (target.email) {
+            sendNotification({
+              userId: target.id,
+              userEmail: target.email,
+              title: 'Attendance Marked Present ✅',
+              message: `Your attendance for "${target.webinarTitle || selectedWebinar?.title || 'Bootcamp'}" on ${formatDateShort(activeDate)} was marked Present.`,
+              type: 'attendance',
+              link: '/dashboard/student/webinars',
+            });
+          }
         }
       });
 

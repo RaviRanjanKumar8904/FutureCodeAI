@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Award, Eye, Share2 } from 'lucide-react';
+import { Award, Eye, Share2, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import CertificateModal from '../certificate/CertificateModal';
 import type { CertificateData } from '../certificate/CourseCertificate';
+import TranscriptModal from './TranscriptModal';
+import { useStudentTranscript } from '../../hooks/useStudentTranscript';
 
 interface Certificate {
   id: string;
@@ -34,6 +36,15 @@ export default function MyCertificates() {
   const [error, setError] = useState<string | null>(null);
   const [previewCert, setPreviewCert] = useState<CertificateData | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const { transcriptData, loading: transcriptLoading, fetchTranscript } = useStudentTranscript();
+
+  const handleOpenTranscript = async () => {
+    const data = await fetchTranscript();
+    if (data) {
+      setShowTranscript(true);
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -165,6 +176,15 @@ export default function MyCertificates() {
             </p>
           </div>
         </div>
+
+        <button
+          onClick={handleOpenTranscript}
+          disabled={transcriptLoading}
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-[#152a4f] to-[#24a4b5] hover:from-[#1d3a6d] hover:to-[#2bc0d4] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#24a4b5]/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+        >
+          <FileText size={16} />
+          <span>{transcriptLoading ? 'Compiling Transcript...' : 'Download Official Transcript'}</span>
+        </button>
       </div>
 
       {/* Certificates Grid */}
@@ -264,6 +284,15 @@ export default function MyCertificates() {
         onClose={() => { setShowPreview(false); setPreviewCert(null); }}
         certificate={previewCert}
       />
+
+      {/* Official Transcript Modal */}
+      {showTranscript && transcriptData && (
+        <TranscriptModal
+          isOpen={showTranscript}
+          onClose={() => setShowTranscript(false)}
+          data={transcriptData}
+        />
+      )}
     </div>
   );
 }

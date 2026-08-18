@@ -169,7 +169,7 @@ export default function ManageEnquiries() {
           title: `Application Status: ${newStatus}`,
           message: `Your ${item.type.toLowerCase()} application/enquiry for "${item.targetTitle || item.name}" is now marked as "${newStatus}".`,
           type: 'enquiry',
-          link: '/dashboard/student'
+          link: '/dashboard/student/enquiries'
         });
       }
 
