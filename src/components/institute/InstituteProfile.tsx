@@ -3,8 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../../hooks/useAuth';
-import { storage } from '../../firebase/config';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useMediaUpload } from '../../hooks/useMediaUpload';
 import { Clock, CheckCircle2, Lock, Upload, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -24,6 +23,7 @@ type ProfileFormValues = z.infer<typeof instituteProfileSchema>;
 
 export default function InstituteProfile() {
   const { user, updateProfile } = useAuth();
+  const { uploadFileToStorage } = useMediaUpload();
   const [isPending, setIsPending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
@@ -68,11 +68,7 @@ export default function InstituteProfile() {
     const toastId = toast.loading('Uploading institute logo...');
 
     try {
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const storageRef = ref(storage, `profile-photos/${user.uid}/${Date.now()}_${cleanFileName}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(snapshot.ref);
-
+      const downloadUrl = await uploadFileToStorage(file, `profile-photos/${user.uid}`);
       await updateProfile({ photoURL: downloadUrl });
       toast.success('Logo updated successfully!', { id: toastId });
     } catch (error) {
