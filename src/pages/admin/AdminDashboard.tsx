@@ -41,6 +41,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { logAdminActivity } from '../../utils/adminLogger';
 import { useAuth } from '../../hooks/useAuth';
 import { DashboardError } from '../../components/layout/DashboardState';
+import AdminGlobalSearch from '../../components/admin/AdminGlobalSearch';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -337,6 +338,9 @@ export default function AdminDashboard() {
           onRetry={handleRefresh}
         />
       )}
+
+      {/* Global Cross-Collection Search Bar */}
+      <AdminGlobalSearch />
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
