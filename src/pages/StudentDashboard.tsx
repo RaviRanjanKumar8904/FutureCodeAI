@@ -7,7 +7,8 @@ import {
   Briefcase, 
   MessageSquare, 
   Settings, 
-  Video
+  Video,
+  ClipboardCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase/config';
@@ -21,6 +22,9 @@ import MyInternships from '../components/dashboard/MyInternships';
 import MyWebinars from '../components/dashboard/MyWebinars';
 import MyEnquiries from '../components/dashboard/MyEnquiries';
 import ProfileSettings from '../components/dashboard/ProfileSettings';
+import MyTests from '../components/dashboard/MyTests';
+import TakeTest from '../components/dashboard/TakeTest';
+import TestResult from '../components/dashboard/TestResult';
 
 import NotificationCenter from '../components/dashboard/NotificationCenter';
 
@@ -66,6 +70,7 @@ export default function StudentDashboard() {
     { name: 'My Webinars', path: '/dashboard/student/webinars', icon: Video, badge: webinarCount > 0 ? webinarCount : undefined },
     { name: 'My Certificates', path: '/dashboard/student/certificates', icon: Award, badge: certCount > 0 ? certCount : undefined },
     { name: 'My Internship', path: '/dashboard/student/internships', icon: Briefcase },
+    { name: 'My Tests', path: '/dashboard/student/tests', icon: ClipboardCheck },
     { name: 'My Enquiries', path: '/dashboard/student/enquiries', icon: MessageSquare },
     { name: 'Profile Settings', path: '/dashboard/student/settings', icon: Settings },
   ];
@@ -95,6 +100,9 @@ export default function StudentDashboard() {
               <Route path="/webinars" element={<MyWebinars />} />
               <Route path="/certificates" element={<MyCertificates />} />
               <Route path="/internships" element={<MyInternships />} />
+              <Route path="/tests" element={<MyTests />} />
+              <Route path="/tests/:testId" element={<TakeTest />} />
+              <Route path="/tests/:testId/result/:attemptId" element={<TestResult />} />
               <Route path="/enquiries" element={<MyEnquiries />} />
               <Route path="/settings" element={<ProfileSettings />} />
             </Routes>

@@ -252,6 +252,33 @@ service cloud.firestore {
       // Admins and system can create, manage, and delete notifications
       allow create, delete: if isAdmin() || isAuthenticated();
     }
+
+    // ----------------------------------------------------------------------
+    // TESTS, QUESTIONS & ATTEMPTS
+    // ----------------------------------------------------------------------
+    match /tests/{testId} {
+      // Admins can do everything; authenticated students can read active tests
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.isActive == true);
+      allow write: if isAdmin();
+
+      // Questions subcollection
+      match /questions/{questionId} {
+        // Admins can manage questions; authenticated users can read (for taking tests)
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+    }
+
+    match /testAttempts/{attemptId} {
+      // Students can create their own attempts
+      allow create: if isAuthenticated() && request.resource.data.studentId == request.auth.uid;
+      // Students can read their own attempts; admins can read all
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.studentId == request.auth.uid);
+      // Students can update their own in-progress attempts; admins can update any (for manual grading)
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.studentId == request.auth.uid);
+      // Only admins can delete attempts
+      allow delete: if isAdmin();
+    }
   }
 }
 

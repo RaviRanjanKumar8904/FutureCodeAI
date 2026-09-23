@@ -12,7 +12,8 @@ import {
   ShieldAlert,
   Building2,
   ListOrdered,
-  Video
+  Video,
+  ClipboardCheck
 } from 'lucide-react';
 import DashboardShell from '../components/layout/DashboardShell';
 
@@ -26,6 +27,7 @@ const ADMIN_NAV = [
   { name: 'Internships', path: '/admin/internships', icon: Briefcase },
   { name: 'Students', path: '/admin/students', icon: Users },
   { name: 'Webinars', path: '/admin/webinars', icon: Video },
+  { name: 'Tests', path: '/admin/tests', icon: ClipboardCheck },
   { name: 'Certificates', path: '/admin/certificates', icon: Award },
   { name: 'Gallery', path: '/admin/gallery', icon: ImageIcon },
   { name: 'Activity Log', path: '/admin/logs', icon: ListOrdered },
