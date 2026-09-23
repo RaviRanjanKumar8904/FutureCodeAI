@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, storage } from '../../firebase/config';
-import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Image as ImageIcon, Upload, Trash2, X, Plus, Eye, EyeOff } from 'lucide-react';
+import { Image as ImageIcon, Upload, Trash2, X, Plus } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { useAuth } from '../../hooks/useAuth';

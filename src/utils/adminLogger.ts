@@ -11,7 +11,9 @@ export type AdminActionType =
   | 'ISSUED' 
   | 'BULK_DELETED' 
   | 'BULK_ISSUED'
-  | 'INSTITUTE_CSV_IMPORT';
+  | 'INSTITUTE_CSV_IMPORT'
+  | 'APPROVED'
+  | 'REJECTED';
 
 export async function logAdminActivity(
   adminEmail: string | null | undefined,
