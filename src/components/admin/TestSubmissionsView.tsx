@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebase/config';
-import { collection, getDocs, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { X, Search, Download, Eye, CheckCircle2, AlertCircle, Save, FileText, ShieldAlert, ShieldCheck, AlertOctagon } from 'lucide-react';
+import { collection, getDocs, query, where, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { X, Search, Download, Eye, CheckCircle2, AlertCircle, Save, FileText, ShieldAlert, ShieldCheck, AlertOctagon, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportCSV } from '../../utils/csv';
 import { generateTestResultPDF } from '../../utils/generateTestResultPDF';
@@ -21,6 +21,8 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
   const [questions, setQuestions] = useState<any[]>([]);
   const [gradingChanges, setGradingChanges] = useState<Record<string, number>>({});
   const [savingGrade, setSavingGrade] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchAttempts = useCallback(async () => {
     if (!test?.id) return;
@@ -110,6 +112,26 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
     toast.success(`${filteredAttempts.length} PDF(s) generated!`);
   };
 
+  const handleDeleteAttempt = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'testAttempts', deleteTarget.id));
+      toast.success(`Attempt by "${deleteTarget.studentName || 'Unknown'}" deleted. Student can now reattempt.`);
+      if (selectedAttempt?.id === deleteTarget.id) {
+        setSelectedAttempt(null);
+        setGradingChanges({});
+      }
+      setDeleteTarget(null);
+      fetchAttempts();
+    } catch (error) {
+      console.error('Error deleting attempt:', error);
+      toast.error('Failed to delete attempt');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleGradeChange = (questionId: string, newMarks: number) => {
     setGradingChanges(prev => ({ ...prev, [questionId]: newMarks }));
   };
@@ -194,7 +216,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
         <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shrink-0">
           <div>
             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900">
-              {selectedAttempt ? 'Attempt Detail' : `Submissions — ${test?.title}`}
+              {selectedAttempt ? 'Attempt Detail' : `Submissions — ${test?.title || ''}`}
             </h2>
             <p className="text-slate-500 font-medium text-xs">
               {selectedAttempt
@@ -205,12 +227,21 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
           </div>
           <div className="flex items-center gap-2">
             {selectedAttempt && (
-              <button
-                onClick={() => { setSelectedAttempt(null); setGradingChanges({}); }}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              >
-                ← Back
-              </button>
+              <>
+                <button
+                  onClick={() => { setSelectedAttempt(null); setGradingChanges({}); }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(selectedAttempt); }}
+                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                  title="Delete this attempt so the student can reattempt"
+                >
+                  <Trash2 size={13} /> Delete Attempt
+                </button>
+              </>
             )}
             <button
               onClick={onClose}
@@ -540,6 +571,13 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                         <div className="text-xs text-slate-400 font-medium shrink-0 hidden md:block w-28 text-right">
                           {formatDate(attempt.submittedAt)}
                         </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(attempt); }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                          title="Delete attempt to allow reattempt"
+                        >
+                          <Trash2 size={16} />
+                        </button>
                         <Eye size={18} className="text-slate-400 hover:text-indigo-600 shrink-0" />
                       </div>
                     </div>
@@ -560,6 +598,59 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
             >
               Close
             </button>
+          </div>
+        )}
+
+        {/* Delete Attempt Confirmation Modal */}
+        {deleteTarget && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm p-4 flex items-center justify-center z-[1200]">
+            <div
+              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-gray-100 p-6 text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900 mb-2 tracking-tight">Delete Attempt?</h3>
+              <p className="text-sm text-slate-600 leading-relaxed mb-2">
+                This will permanently delete the test attempt by:
+              </p>
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 mb-4 text-left">
+                <p className="text-sm font-bold text-slate-800">{deleteTarget.studentName || 'Unknown Student'}</p>
+                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
+                  {deleteTarget.rollNo && <span className="font-mono font-bold text-indigo-600">{deleteTarget.rollNo}</span>}
+                  {deleteTarget.branch && <><span>•</span><span>{deleteTarget.branch}</span></>}
+                  {deleteTarget.studentEmail && <><span>•</span><span className="truncate">{deleteTarget.studentEmail}</span></>}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 text-xs">
+                  <span className="font-bold text-slate-700">Score: {deleteTarget.totalScore ?? 0}/{deleteTarget.maxScore ?? 0}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    deleteTarget.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
+                    {deleteTarget.passed ? 'Passed' : 'Failed'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2 border border-amber-200 mb-5 font-semibold">
+                ⚠️ The student will be able to reattempt this test after deletion. This action cannot be undone.
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAttempt}
+                  disabled={deleting}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50 bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Attempt'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
