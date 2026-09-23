@@ -16,7 +16,34 @@ import toast from 'react-hot-toast';
 // ---------------------------------------------------------------------------
 // AutoProctor & Fullscreen Utility Functions
 // ---------------------------------------------------------------------------
+
+// Detect if the device supports the Fullscreen API at all.
+// iOS Safari does NOT support it; many mobile browsers have partial/no support.
+const isFullscreenSupported = (): boolean => {
+  const elem = document.documentElement as any;
+  return !!(
+    elem.requestFullscreen ||
+    elem.webkitRequestFullscreen ||
+    elem.mozRequestFullScreen ||
+    elem.msRequestFullscreen
+  );
+};
+
+// Detect mobile devices via user-agent + touch heuristics
+const isMobileDevice = (): boolean => {
+  const ua = navigator.userAgent || '';
+  const isMobileUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+  const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 1;
+  const isSmallScreen = window.innerWidth <= 1024;
+  return isMobileUA || (hasTouch && isSmallScreen);
+};
+
 const isFullscreenActive = () => {
+  // On mobile devices where fullscreen API is not supported,
+  // treat the device as always "fullscreen" (the phone screen IS full screen).
+  if (!isFullscreenSupported() && isMobileDevice()) {
+    return true;
+  }
   const doc = document as any;
   return !!(
     doc.fullscreenElement ||
@@ -27,6 +54,12 @@ const isFullscreenActive = () => {
 };
 
 const requestFullscreen = async () => {
+  // If fullscreen API is not supported (e.g. iOS Safari), skip gracefully.
+  // The test will still start — we just can't enforce native fullscreen.
+  if (!isFullscreenSupported()) {
+    console.info('Fullscreen API not supported on this device — skipping fullscreen request.');
+    return true; // Return true so the caller doesn't treat this as a failure
+  }
   const elem = document.documentElement as any;
   try {
     if (elem.requestFullscreen) {
@@ -46,6 +79,7 @@ const requestFullscreen = async () => {
 };
 
 const exitFullscreen = async () => {
+  if (!isFullscreenSupported()) return; // Nothing to exit on unsupported devices
   const doc = document as any;
   try {
     if (isFullscreenActive()) {
@@ -119,7 +153,9 @@ export default function TakeTest() {
   const [attemptCount, setAttemptCount] = useState(0);
 
   // AutoProctor state
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  // On mobile devices without fullscreen API support, start as "true"
+  // so the blocking overlay never appears on those devices.
+  const [isFullscreen, setIsFullscreen] = useState(() => !isFullscreenSupported() && isMobileDevice());
   const [proctorWarnings, setProctorWarnings] = useState(0);
   const [, setProctorViolations] = useState<any[]>([]);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -402,7 +438,9 @@ export default function TakeTest() {
   useEffect(() => {
     if (!started || submitted) return;
 
-    // Fullscreen change listener
+    const fullscreenApiAvailable = isFullscreenSupported();
+
+    // Fullscreen change listener — only attach if API is actually supported
     const handleFullscreenChange = () => {
       const active = isFullscreenActive();
       setIsFullscreen(active);
@@ -458,16 +496,22 @@ export default function TakeTest() {
       }
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    // Only listen for fullscreen changes if the API is supported;
+    // on mobile without support, we skip fullscreen enforcement entirely.
+    if (fullscreenApiAvailable) {
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    }
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      if (fullscreenApiAvailable) {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('contextmenu', handleContextMenu);
@@ -510,7 +554,7 @@ export default function TakeTest() {
     localStorage.setItem('fc_candidate_branch', candidateBranch.trim());
     localStorage.setItem('fc_candidate_rollNo', candidateRollNo.trim());
 
-    // Enter Full Screen
+    // Enter Full Screen (gracefully skipped on mobile devices without API support)
     await requestFullscreen();
     setIsFullscreen(isFullscreenActive());
 
@@ -843,7 +887,7 @@ export default function TakeTest() {
                 <p className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                   🛡️ AutoProctor Anti-Cheating Active
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
-                    Compulsory Full Screen
+                    {isFullscreenSupported() ? 'Compulsory Full Screen' : 'Immersive Mode'}
                   </span>
                 </p>
                 <p className="text-[11px] text-slate-500 font-medium">Strict anti-cheat monitoring is enforced during this assessment.</p>
@@ -853,7 +897,7 @@ export default function TakeTest() {
             <div className="text-xs text-slate-700 space-y-2 font-medium">
               <div className="flex items-start gap-2">
                 <span className="text-indigo-600 font-bold">1.</span>
-                <p><strong>Mandatory Full Screen:</strong> This test must be completed in full screen. Exiting full screen mode triggers a proctoring violation warning.</p>
+                <p><strong>{isFullscreenSupported() ? 'Mandatory Full Screen:' : 'Immersive Mode:'}</strong> {isFullscreenSupported() ? 'This test must be completed in full screen. Exiting full screen mode triggers a proctoring violation warning.' : 'On mobile devices, the test runs in immersive mode. Tab switching and leaving the app will still be detected and trigger violations.'}</p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-indigo-600 font-bold">2.</span>
@@ -896,7 +940,7 @@ export default function TakeTest() {
                 </>
               ) : (
                 <>
-                  <Play size={20} fill="currentColor" /> Start Test in Full Screen
+                  <Play size={20} fill="currentColor" /> {isFullscreenSupported() ? 'Start Test in Full Screen' : 'Start Test'}
                 </>
               )}
             </button>
