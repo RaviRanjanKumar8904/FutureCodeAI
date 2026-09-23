@@ -233,15 +233,14 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                  <BookOpen size={14} className="text-purple-500"/> Assign to Course <span className="text-rose-500">*</span>
+                  <BookOpen size={14} className="text-purple-500"/> Assign to Course <span className="text-xs font-normal text-slate-400">(Optional)</span>
                 </label>
                 <select 
-                  required
                   value={formData.courseId}
                   onChange={e => handleCourseChange(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base bg-white"
                 >
-                  <option value="">Select a course...</option>
+                  <option value="">All Courses (Open to all students)</option>
                   {courses.map(course => (
                     <option key={course.id} value={course.id}>
                       {course.title || course.courseName}

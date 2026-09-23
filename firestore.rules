@@ -12,34 +12,35 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
-    // Since we store roles in the 'users' collection, we use get() to check them securely.
-    // NOTE: This incurs an extra read per rule evaluation.
-    function getRole() {
+    function hasUserDoc() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function getUserRole() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.email in ['raviranjan8904@gmail.com', 'futurecodeai@gmail.com', 'killerravi8904@gmail.com'] ||
-        getRole() == 'admin' || 
-        getRole() == 'super_admin' ||
+        ('email' in request.auth.token && request.auth.token.email in ['raviranjan8904@gmail.com', 'futurecodeai@gmail.com', 'killerravi8904@gmail.com']) ||
+        (hasUserDoc() && (getUserRole() == 'admin' || getUserRole() == 'super_admin')) ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
     function isSuperAdmin() {
       return isAuthenticated() && (
-        request.auth.token.email in ['raviranjan8904@gmail.com', 'futurecodeai@gmail.com', 'killerravi8904@gmail.com'] ||
-        (isAdmin() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin')
+        ('email' in request.auth.token && request.auth.token.email in ['raviranjan8904@gmail.com', 'futurecodeai@gmail.com', 'killerravi8904@gmail.com']) ||
+        (isAdmin() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)) && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'super_admin')
       );
     }
 
     function isInstitute() {
-      return isAuthenticated() && getRole() == 'institute';
+      return isAuthenticated() && hasUserDoc() && getUserRole() == 'institute';
     }
     
     function isStudent() {
-      return isAuthenticated() && getRole() == 'student';
+      return isAuthenticated() && hasUserDoc() && getUserRole() == 'student';
     }
 
     // ----------------------------------------------------------------------
@@ -64,8 +65,9 @@ service cloud.firestore {
     // ADMINS, STAFF & AUDIT LOGS
     // ----------------------------------------------------------------------
     match /admins/{adminId} {
-      // Admins can read the allow-list
-      allow read: if isAdmin();
+      // Admins can read all; authenticated users can read their own admin doc
+      allow get: if isAuthenticated() && (isAdmin() || request.auth.uid == adminId);
+      allow list: if isAdmin();
       // Only Super Admins can add or remove admins
       allow write: if isSuperAdmin();
     }

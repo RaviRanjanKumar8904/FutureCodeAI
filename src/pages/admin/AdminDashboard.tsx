@@ -40,7 +40,9 @@ import {
   where, 
   orderBy, 
   limit, 
-  getCountFromServer 
+  getCountFromServer,
+  type QuerySnapshot,
+  type DocumentData
 } from 'firebase/firestore';
 import toast, { Toaster } from 'react-hot-toast';
 import { logAdminActivity } from '../../utils/adminLogger';
@@ -78,16 +80,35 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     try {
       // 1. Server-side aggregate counts & latest records
+      const safeCount = async (q: any, label: string) => {
+        try {
+          const snap = await getCountFromServer(q);
+          return snap.data().count;
+        } catch (e) {
+          console.warn(`[Dashboard] Count failed for ${label}:`, e);
+          return 0;
+        }
+      };
+
+      const safeDocs = async (q: any, label: string): Promise<QuerySnapshot<DocumentData>> => {
+        try {
+          return await getDocs(q);
+        } catch (e) {
+          console.warn(`[Dashboard] Docs query failed for ${label}:`, e);
+          return { docs: [] } as unknown as QuerySnapshot<DocumentData>;
+        }
+      };
+
       const [
-        studentsCountSnap,
-        coursesCountSnap,
-        enquiriesCountSnap,
-        partnershipCountSnap,
-        contactCountSnap,
-        collabCountSnap,
-        certCountSnap,
-        internCountSnap,
-        staffCountSnap,
+        studentsCount,
+        coursesCount,
+        enquiriesCount,
+        partnershipCount,
+        contactCount,
+        collabCount,
+        certCount,
+        internCount,
+        staffCount,
         recentEnquiriesSnap,
         recentPartnershipSnap,
         recentContactSnap,
@@ -95,22 +116,22 @@ export default function AdminDashboard() {
         recentCertsSnap,
         recentAttendeesSnap
       ] = await Promise.all([
-        getCountFromServer(query(collection(db, 'users'), where('role', '==', 'student'))),
-        getCountFromServer(collection(db, 'courses')),
-        getCountFromServer(collection(db, 'enquiries')),
-        getCountFromServer(collection(db, 'partnershipEnquiries')),
-        getCountFromServer(collection(db, 'contactMessages')),
-        getCountFromServer(collection(db, 'collaborators')),
-        getCountFromServer(collection(db, 'certificates')),
-        getCountFromServer(collection(db, 'internships')),
-        getCountFromServer(collection(db, 'staff')),
+        safeCount(query(collection(db, 'users'), where('role', '==', 'student')), 'students'),
+        safeCount(collection(db, 'courses'), 'courses'),
+        safeCount(collection(db, 'enquiries'), 'enquiries'),
+        safeCount(collection(db, 'partnershipEnquiries'), 'partnershipEnquiries'),
+        safeCount(collection(db, 'contactMessages'), 'contactMessages'),
+        safeCount(collection(db, 'collaborators'), 'collaborators'),
+        safeCount(collection(db, 'certificates'), 'certificates'),
+        safeCount(collection(db, 'internships'), 'internships'),
+        safeCount(collection(db, 'staff'), 'staff'),
         // 2. Fetch latest records for dashboard analytics & charts
-        getDocs(query(collection(db, 'enquiries'), orderBy('createdAt', 'desc'), limit(15))),
-        getDocs(query(collection(db, 'partnershipEnquiries'), orderBy('createdAt', 'desc'), limit(10))),
-        getDocs(query(collection(db, 'contactMessages'), orderBy('createdAt', 'desc'), limit(10))),
-        getDocs(query(collection(db, 'users'), where('role', '==', 'student'), orderBy('createdAt', 'desc'), limit(100))),
-        getDocs(query(collection(db, 'certificates'), orderBy('createdAt', 'desc'), limit(100))),
-        getDocs(query(collection(db, 'webinar_attendees'), limit(150)))
+        safeDocs(query(collection(db, 'enquiries'), orderBy('createdAt', 'desc'), limit(15)), 'recentEnquiries'),
+        safeDocs(query(collection(db, 'partnershipEnquiries'), orderBy('createdAt', 'desc'), limit(10)), 'recentPartnership'),
+        safeDocs(query(collection(db, 'contactMessages'), orderBy('createdAt', 'desc'), limit(10)), 'recentContact'),
+        safeDocs(query(collection(db, 'users'), where('role', '==', 'student'), orderBy('createdAt', 'desc'), limit(100)), 'recentStudents'),
+        safeDocs(query(collection(db, 'certificates'), orderBy('createdAt', 'desc'), limit(100)), 'recentCerts'),
+        safeDocs(query(collection(db, 'webinar_attendees'), limit(150)), 'recentAttendees')
       ]);
 
       const now = Date.now();
@@ -119,26 +140,26 @@ export default function AdminDashboard() {
       let newStudents = 0;
       let newEnquiries = 0;
 
-      recentStudentsSnap.docs.forEach(d => {
+      recentStudentsSnap.docs.forEach((d: any) => {
         const u = d.data();
         if (u.createdAt?.toMillis && now - u.createdAt.toMillis() < thirtyDaysMs) newStudents++;
       });
 
-      const totalEnquiriesCount = enquiriesCountSnap.data().count + partnershipCountSnap.data().count + contactCountSnap.data().count;
+      const totalEnquiriesCount = enquiriesCount + partnershipCount + contactCount;
 
-      [...recentEnquiriesSnap.docs, ...recentPartnershipSnap.docs, ...recentContactSnap.docs].forEach(d => {
+      [...recentEnquiriesSnap.docs, ...recentPartnershipSnap.docs, ...recentContactSnap.docs].forEach((d: any) => {
         const data = d.data();
         if (data.createdAt?.toMillis && now - data.createdAt.toMillis() < thirtyDaysMs) newEnquiries++;
       });
 
       setStats({
-        students: studentsCountSnap.data().count,
-        institutes: collabCountSnap.data().count,
-        courses: coursesCountSnap.data().count,
+        students: studentsCount,
+        institutes: collabCount,
+        courses: coursesCount,
         enquiries: totalEnquiriesCount,
-        certificates: certCountSnap.data().count,
-        internships: internCountSnap.data().count,
-        staff: staffCountSnap.data().count
+        certificates: certCount,
+        internships: internCount,
+        staff: staffCount
       });
 
       setTrends({

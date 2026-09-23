@@ -39,22 +39,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userRef = doc(db, 'users', firebaseUser.uid);
 
         // Use onSnapshot for live role updates (promotions/demotions)
-        unsubscribeSnapshot = onSnapshot(userRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const userData = snapshot.data() as User;
+        unsubscribeSnapshot = onSnapshot(
+          userRef, 
+          (snapshot) => {
+            if (snapshot.exists()) {
+              const userData = snapshot.data() as User;
 
-            // If institute is still pending, don't log them in fully
-            if (userData.role === 'institute' && userData.status === 'pending') {
-              auth.signOut();
-              setUser(null);
+              // If institute is still pending, don't log them in fully
+              if (userData.role === 'institute' && userData.status === 'pending') {
+                auth.signOut();
+                setUser(null);
+              } else {
+                setUser(userData);
+              }
             } else {
-              setUser(userData);
+              // No user doc yet — they're mid-signup; signInWithOAuth will create it
             }
-          } else {
-            // No user doc yet — they're mid-signup; signInWithOAuth will create it
+            setLoading(false);
+          },
+          (error) => {
+            console.error('Error listening to user document:', error);
+            setLoading(false);
           }
-          setLoading(false);
-        });
+        );
       } else {
         setUser(null);
         setLoading(false);
@@ -94,27 +101,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await auth.signOut();
           throw new Error('access_denied');
         }
-        const staffQ = query(collection(db, 'staff'), where('email', '==', email));
-        const staffSnap = await getDocs(staffQ);
-        if (staffSnap.empty) {
-          await auth.signOut();
-          throw new Error('access_denied');
+        try {
+          const staffQ = query(collection(db, 'staff'), where('email', '==', email));
+          const staffSnap = await getDocs(staffQ);
+          if (staffSnap.empty) {
+            await auth.signOut();
+            throw new Error('access_denied');
+          }
+        } catch (err: any) {
+          if (err.message === 'access_denied') throw err;
+          console.warn('Could not verify staff allowlist:', err);
         }
       }
       
       // onSnapshot will pick up the existing data and call setUser
     } else {
       // Check if they've been pre-allow-listed as an admin
-      const adminSnap = await getDoc(doc(db, 'admins', firebaseUser.uid));
-      const isPreApprovedAdmin = adminSnap.exists() && (adminSnap.data()?.role === 'super_admin' || adminSnap.data()?.role === 'admin' || adminSnap.data()?.pendingRole === 'admin');
+      let isPreApprovedAdmin = false;
+      try {
+        const adminSnap = await getDoc(doc(db, 'admins', firebaseUser.uid));
+        isPreApprovedAdmin = adminSnap.exists() && (adminSnap.data()?.role === 'super_admin' || adminSnap.data()?.role === 'admin' || adminSnap.data()?.pendingRole === 'admin');
+      } catch (err) {
+        console.warn('Admin status check skipped or restricted:', err);
+      }
 
       // Check staff allow-list by email (admin can add staff by email)
       let isPreApprovedStaff = false;
       if (firebaseUser.email) {
-        const staffQ = query(collection(db, 'staff'), where('email', '==', firebaseUser.email.toLowerCase()));
-        const staffSnap = await getDocs(staffQ);
-        if (!staffSnap.empty) {
-          isPreApprovedStaff = true;
+        try {
+          const staffQ = query(collection(db, 'staff'), where('email', '==', firebaseUser.email.toLowerCase()));
+          const staffSnap = await getDocs(staffQ);
+          if (!staffSnap.empty) {
+            isPreApprovedStaff = true;
+          }
+        } catch (err) {
+          console.warn('Staff allowlist check skipped or restricted:', err);
         }
       }
 
@@ -154,7 +175,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // If they were pre-approved, clear the pendingRole flag from the admins doc
       if (isPreApprovedAdmin) {
-        await updateDoc(doc(db, 'admins', firebaseUser.uid), { pendingRole: null });
+        try {
+          await updateDoc(doc(db, 'admins', firebaseUser.uid), { pendingRole: null });
+        } catch (err) {
+          console.warn('Could not update pendingRole on admins doc:', err);
+        }
       }
 
       if (finalRole === 'institute') {

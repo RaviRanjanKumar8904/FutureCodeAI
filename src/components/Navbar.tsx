@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Menu, X, ShieldCheck, LogOut, LayoutDashboard, 
-  Home, BookOpen, Briefcase, Building2, Image, User as UserIcon
+  Home, BookOpen, Briefcase, Building2, Image, User as UserIcon, ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import UserAvatar from './UserAvatar';
@@ -43,6 +43,7 @@ export default function Navbar() {
     { name: 'Home', path: '/', icon: <Home size={18} /> },
     { name: 'Programs', path: '/programs', icon: <BookOpen size={18} /> },
     { name: 'Internships', path: '/internships', icon: <Briefcase size={18} /> },
+    { name: 'Tests', path: user?.role === 'admin' ? '/admin/tests' : '/dashboard/student/tests', icon: <ClipboardCheck size={18} /> },
     { name: 'Collaborators', path: '/collaborators', icon: <Building2 size={18} /> },
     { name: 'Gallery', path: '/gallery', icon: <Image size={18} /> }
   ];
@@ -75,11 +76,46 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6 lg:gap-8">
+          <nav className="hidden md:flex items-center gap-5 lg:gap-7">
             {navLinks.map((link) => {
               const isActive = link.path === '/' 
                 ? location.pathname === '/' 
                 : location.pathname.startsWith(link.path);
+              const isTests = link.name === 'Tests';
+
+              if (isTests) {
+                return (
+                  <Link
+                    key={link.name}
+                    to={link.path}
+                    className="relative group px-3.5 py-1.5 rounded-full transition-all duration-300 flex items-center gap-1.5 overflow-visible select-none"
+                  >
+                    {/* Animated Pulsing Radial Glow Backdrop */}
+                    <span className="absolute -inset-1 rounded-full bg-gradient-to-r from-indigo-500/30 via-purple-500/40 to-pink-500/30 blur-md opacity-75 group-hover:opacity-100 group-hover:blur-lg transition-all duration-300 animate-pulse pointer-events-none" />
+                    
+                    {/* Glowing Pill Outline with Luminous Box Shadow */}
+                    <span className="absolute inset-0 rounded-full bg-white/80 backdrop-blur-sm border border-indigo-300/80 group-hover:border-purple-500 shadow-[0_0_12px_rgba(99,102,241,0.45)] group-hover:shadow-[0_0_22px_rgba(168,85,247,0.75)] transition-all duration-300" />
+                    
+                    {/* Text with Glowing Gradient & Radar Ping Dot */}
+                    <span className="relative z-10 text-sm font-extrabold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent group-hover:from-indigo-500 group-hover:to-pink-500 flex items-center gap-1.5 transition-all">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-gradient-to-r from-indigo-500 to-purple-600 shadow-[0_0_8px_rgba(147,51,234,0.9)]" />
+                      </span>
+                      {link.name}
+                    </span>
+
+                    {isActive && (
+                      <motion.div 
+                        layoutId="navbar-indicator"
+                        className="absolute -bottom-1.5 left-2 right-2 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.9)]"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                  </Link>
+                );
+              }
+
               return (
                 <Link 
                   key={link.name} 
@@ -156,14 +192,24 @@ export default function Navbar() {
                           {user.role === 'admin' ? 'Admin Panel' : user.role === 'staff' ? 'Staff Portal' : user.role === 'institute' ? 'Center Portal' : 'My Dashboard'}
                         </Link>
                         {user.role === 'student' && (
-                          <Link 
-                            to="/dashboard/student/settings"
-                            onClick={() => setDropdownOpen(false)}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
-                          >
-                            <UserIcon size={16} />
-                            Profile Settings
-                          </Link>
+                          <>
+                            <Link 
+                              to="/dashboard/student/tests"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
+                            >
+                              <ClipboardCheck size={16} />
+                              My Tests
+                            </Link>
+                            <Link 
+                              to="/dashboard/student/settings"
+                              onClick={() => setDropdownOpen(false)}
+                              className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary transition-colors"
+                            >
+                              <UserIcon size={16} />
+                              Profile Settings
+                            </Link>
+                          </>
                         )}
                         <button 
                           onClick={() => {
@@ -260,6 +306,32 @@ export default function Navbar() {
                   const isActive = link.path === '/' 
                     ? location.pathname === '/' 
                     : location.pathname.startsWith(link.path);
+                  const isTests = link.name === 'Tests';
+
+                  if (isTests) {
+                    return (
+                      <Link 
+                        key={link.name} 
+                        to={link.path}
+                        className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all relative overflow-hidden ${
+                          isActive 
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' 
+                            : 'bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-pink-50/80 text-indigo-700 border border-indigo-200/80 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
+                        }`}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={isActive ? 'text-white' : 'text-indigo-600'}>{link.icon}</span>
+                          <span className="font-extrabold">{link.name}</span>
+                        </div>
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/15 text-indigo-700 border border-indigo-300/40">
+                          <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 animate-ping" />
+                          Live
+                        </span>
+                      </Link>
+                    );
+                  }
+
                   return (
                     <Link 
                       key={link.name} 

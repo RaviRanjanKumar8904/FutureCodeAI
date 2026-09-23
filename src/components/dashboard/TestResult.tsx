@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { db } from '../../firebase/config';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { 
   Trophy, ChevronLeft, Download, RotateCcw, CheckCircle2, XCircle, 
-  Clock, AlertCircle, Code2, ListChecks 
+  Clock, AlertCircle, Code2, ListChecks, User, RefreshCw,
+  AlertOctagon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -18,46 +19,54 @@ export default function TestResult() {
   const [attempt, setAttempt] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!testId || !attemptId) return;
+    try {
+      const [testDoc, attemptDoc, qSnap] = await Promise.all([
+        getDoc(doc(db, 'tests', testId)),
+        getDoc(doc(db, 'testAttempts', attemptId)),
+        getDocs(collection(db, 'tests', testId, 'questions')),
+      ]);
+
+      if (!testDoc.exists() || !attemptDoc.exists()) {
+        toast.error('Result not found');
+        navigate('/dashboard/student/tests');
+        return;
+      }
+
+      const attemptData = attemptDoc.data();
+      if (user && attemptData?.studentId && attemptData.studentId !== user.uid) {
+        toast.error('Unauthorized access to this test result');
+        navigate('/dashboard/student/tests');
+        return;
+      }
+
+      setTest({ id: testDoc.id, ...testDoc.data() });
+      setAttempt({ id: attemptDoc.id, ...attemptData });
+      
+      const qData = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      qData.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      setQuestions(qData);
+    } catch (error) {
+      console.error("Error fetching result:", error);
+      toast.error("Failed to load result");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [testId, attemptId, user, navigate]);
 
   useEffect(() => {
-    if (!testId || !attemptId) return;
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [testDoc, attemptDoc, qSnap] = await Promise.all([
-          getDoc(doc(db, 'tests', testId)),
-          getDoc(doc(db, 'testAttempts', attemptId)),
-          getDocs(collection(db, 'tests', testId, 'questions')),
-        ]);
-
-        if (!testDoc.exists() || !attemptDoc.exists()) {
-          toast.error('Result not found');
-          navigate('/dashboard/student/tests');
-          return;
-        }
-
-        const attemptData = attemptDoc.data();
-        if (user && attemptData?.studentId && attemptData.studentId !== user.uid) {
-          toast.error('Unauthorized access to this test result');
-          navigate('/dashboard/student/tests');
-          return;
-        }
-
-        setTest({ id: testDoc.id, ...testDoc.data() });
-        setAttempt({ id: attemptDoc.id, ...attemptData });
-        
-        const qData = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        qData.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-        setQuestions(qData);
-      } catch (error) {
-        console.error("Error fetching result:", error);
-        toast.error("Failed to load result");
-      } finally {
-        setLoading(false);
-      }
-    };
+    setLoading(true);
     fetchData();
-  }, [testId, attemptId, user, navigate]);
+  }, [fetchData]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
 
   const handleDownloadPDF = async () => {
     try {
@@ -93,10 +102,167 @@ export default function TestResult() {
     );
   }
 
-  const hasPendingReview = questions.some(q => 
+  // Count pending review questions
+  const pendingCount = questions.filter(q => 
     attempt.answers?.[q.id]?.reviewStatus === 'pending_review'
-  );
+  ).length;
 
+  const autoCount = questions.filter(q => 
+    attempt.answers?.[q.id]?.reviewStatus === 'auto' || attempt.answers?.[q.id]?.reviewStatus === 'reviewed'
+  ).length;
+
+  const hasPendingReview = attempt.evaluationStatus === 'pending' || pendingCount > 0;
+
+  // --------------------------------------------------------------------------
+  // PENDING EVALUATION SCREEN (Shown until instructor finishes grading)
+  // --------------------------------------------------------------------------
+  if (hasPendingReview) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Navigation / Action bar */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate('/dashboard/student/tests')}
+            className="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-primary transition-colors cursor-pointer"
+          >
+            <ChevronLeft size={16} /> Back to My Tests
+          </button>
+
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+          >
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Checking...' : 'Check Status'}
+          </button>
+        </div>
+
+        {/* Proctoring Violation Notice */}
+        {attempt.status === 'violation_submitted' && (
+          <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 text-xs font-bold text-rose-900 flex items-start gap-3 shadow-xs">
+            <AlertOctagon size={20} className="text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-extrabold text-sm text-rose-950">AutoProctor Strike Limit Reached (Test Auto-Submitted)</p>
+              <p className="font-medium text-rose-800 mt-1 leading-relaxed">
+                This test was automatically terminated and submitted because 3 proctoring warnings were triggered (switching browser tabs, minimizing the window, or exiting full screen). Your completed answers have been retained.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Hero Card */}
+        <div className="rounded-3xl border-2 border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-white to-indigo-50/40 p-6 sm:p-10 text-center shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-200/20 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Icon Badge */}
+          <div className="relative inline-flex items-center justify-center mb-4">
+            <span className="animate-ping absolute inline-flex h-20 w-20 rounded-full bg-amber-400 opacity-20" />
+            <div className="w-20 h-20 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-amber-700 shadow-inner">
+              <Clock size={36} className="animate-pulse" />
+            </div>
+          </div>
+
+          <div className="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300/60 mb-3">
+            ⏳ Under Evaluation
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">Evaluation in Progress</h1>
+          
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-4">
+            📘 {test.title} {test.courseName ? `• ${test.courseName}` : ''}
+          </div>
+
+          <p className="text-sm text-slate-600 max-w-lg mx-auto leading-relaxed mb-6 font-medium">
+            Your test has been successfully submitted! Coding and subjective questions are currently awaiting manual grading by your instructor.
+          </p>
+
+          {/* Status Breakdown Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto mb-6 text-left">
+            <div className="bg-white/80 backdrop-blur-sm p-3.5 rounded-2xl border border-amber-100 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submission</span>
+              <span className="text-xs font-extrabold text-emerald-600 flex items-center gap-1 mt-0.5">
+                <CheckCircle2 size={12} /> Received
+              </span>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm p-3.5 rounded-2xl border border-amber-100 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Questions</span>
+              <span className="text-xs font-extrabold text-slate-800 mt-0.5 block">
+                {questions.length} Total
+              </span>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm p-3.5 rounded-2xl border border-amber-100 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Auto-Evaluated</span>
+              <span className="text-xs font-extrabold text-indigo-600 mt-0.5 block">
+                {autoCount} Checked
+              </span>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm p-3.5 rounded-2xl border border-amber-200 shadow-2xs bg-amber-50/50">
+              <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">Manual Review</span>
+              <span className="text-xs font-extrabold text-amber-700 mt-0.5 block flex items-center gap-1">
+                <Clock size={11} /> {pendingCount} Pending
+              </span>
+            </div>
+          </div>
+
+          {/* Informational callout */}
+          <div className="bg-amber-100/70 border border-amber-300/80 rounded-2xl p-4 text-xs font-bold text-amber-900 max-w-xl mx-auto leading-relaxed text-left flex items-start gap-2.5">
+            <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-extrabold mb-0.5 text-amber-950">Result Notice</p>
+              <p className="font-medium text-amber-800">
+                Your total score, percentage, answer solutions, and certificate report will be revealed right here once all pending evaluations are completed by your faculty.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Candidate Information Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <User size={16} className="text-primary" />
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Candidate Information</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Candidate Name</span>
+              <p className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{attempt.studentName || user?.displayName || 'Student'}</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Roll / Reg No</span>
+              <p className="text-sm font-mono font-extrabold text-indigo-600 truncate mt-0.5">{attempt.rollNo || (user as any)?.rollNo || '—'}</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Branch / Batch</span>
+              <p className="text-sm font-extrabold text-slate-800 truncate mt-0.5">{attempt.branch || (user as any)?.batch || '—'}</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Submitted At</span>
+              <p className="text-sm font-medium text-slate-700 truncate mt-0.5">
+                {attempt.submittedAt?.toDate 
+                  ? attempt.submittedAt.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                  : 'Submitted'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-3">
+          <button
+            onClick={() => navigate('/dashboard/student/tests')}
+            className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-600 transition-colors shadow-glow-primary cursor-pointer active:scale-95"
+          >
+            Back to My Tests
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // FULL EVALUATED RESULT SCREEN (Revealed after all evaluations are completed)
+  // --------------------------------------------------------------------------
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Back Button */}
@@ -106,6 +272,19 @@ export default function TestResult() {
       >
         <ChevronLeft size={16} /> Back to Tests
       </button>
+
+      {/* Proctoring Violation Notice */}
+      {attempt.status === 'violation_submitted' && (
+        <div className="bg-rose-50 border-2 border-rose-300 rounded-2xl p-4 text-xs font-bold text-rose-900 flex items-start gap-3 shadow-xs">
+          <AlertOctagon size={20} className="text-rose-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-extrabold text-sm text-rose-950">AutoProctor Strike Limit Reached (Test Auto-Submitted)</p>
+            <p className="font-medium text-rose-800 mt-1 leading-relaxed">
+              This test was automatically terminated and submitted because 3 proctoring warnings were triggered (switching browser tabs, minimizing the window, or exiting full screen).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Score Card */}
       <div className={`rounded-2xl border-2 p-6 sm:p-8 text-center ${
@@ -146,18 +325,38 @@ export default function TestResult() {
           </div>
         </div>
 
-        {hasPendingReview && (
-          <div className="bg-amber-100 border border-amber-200 rounded-xl px-4 py-2 text-xs font-bold text-amber-800 inline-flex items-center gap-1.5">
-            <Clock size={14} /> Some coding answers are pending manual review. Score may change.
-          </div>
-        )}
-
         {/* Status */}
         {attempt.status === 'timed_out' && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-xs font-bold text-amber-700 inline-flex items-center gap-1.5 mt-2">
             <Clock size={14} /> Test was auto-submitted due to timeout
           </div>
         )}
+      </div>
+
+      {/* Candidate Details Card */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <User size={16} className="text-primary" />
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Candidate Information</h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Candidate Name</span>
+            <p className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{attempt.studentName || 'Student'}</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Roll / Reg No</span>
+            <p className="text-sm font-mono font-extrabold text-indigo-600 truncate mt-0.5">{attempt.rollNo || '—'}</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Branch / Stream</span>
+            <p className="text-sm font-extrabold text-slate-800 truncate mt-0.5">{attempt.branch || '—'}</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Email ID</span>
+            <p className="text-sm font-medium text-slate-700 truncate mt-0.5">{attempt.studentEmail || '—'}</p>
+          </div>
+        </div>
       </div>
 
       {/* Quick Stats */}

@@ -8,9 +8,82 @@ import {
 } from 'firebase/firestore';
 import {
   Clock, AlertTriangle, ChevronLeft, ChevronRight, Send, Play,
-  ListChecks, Flag, CheckCircle2, ClipboardCheck, Target
+  ListChecks, Flag, CheckCircle2, ClipboardCheck, Target,
+  User, GraduationCap, Hash, Shield, ShieldAlert, Maximize2, AlertOctagon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+// ---------------------------------------------------------------------------
+// AutoProctor & Fullscreen Utility Functions
+// ---------------------------------------------------------------------------
+const isFullscreenActive = () => {
+  const doc = document as any;
+  return !!(
+    doc.fullscreenElement ||
+    doc.webkitFullscreenElement ||
+    doc.mozFullScreenElement ||
+    doc.msFullscreenElement
+  );
+};
+
+const requestFullscreen = async () => {
+  const elem = document.documentElement as any;
+  try {
+    if (elem.requestFullscreen) {
+      await elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) {
+      await elem.webkitRequestFullscreen();
+    } else if (elem.mozRequestFullScreen) {
+      await elem.mozRequestFullScreen();
+    } else if (elem.msRequestFullscreen) {
+      await elem.msRequestFullscreen();
+    }
+    return true;
+  } catch (err) {
+    console.warn("Fullscreen request error:", err);
+    return false;
+  }
+};
+
+const exitFullscreen = async () => {
+  const doc = document as any;
+  try {
+    if (isFullscreenActive()) {
+      if (doc.exitFullscreen) {
+        await doc.exitFullscreen();
+      } else if (doc.webkitExitFullscreen) {
+        await doc.webkitExitFullscreen();
+      } else if (doc.mozCancelFullScreen) {
+        await doc.mozCancelFullScreen();
+      } else if (doc.msExitFullscreen) {
+        await doc.msExitFullscreen();
+      }
+    }
+  } catch {
+    // Non-critical
+  }
+};
+
+const playWarningBeep = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(750, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(350, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch {
+    // Audio might be blocked if browser policy prevents it, non-critical
+  }
+};
 
 export default function TakeTest() {
   const { testId } = useParams<{ testId: string }>();
@@ -20,6 +93,18 @@ export default function TakeTest() {
   const [test, setTest] = useState<any>(null);
   const [questions, setQuestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Candidate details
+  const [candidateName, setCandidateName] = useState(() =>
+    localStorage.getItem('fc_candidate_name') || ''
+  );
+  const [candidateBranch, setCandidateBranch] = useState(() =>
+    localStorage.getItem('fc_candidate_branch') || ''
+  );
+  const [candidateRollNo, setCandidateRollNo] = useState(() =>
+    localStorage.getItem('fc_candidate_rollNo') || ''
+  );
+  const [detailsErrors, setDetailsErrors] = useState<{ name?: string; branch?: string; rollNo?: string }>({});
 
   // Test state
   const [started, setStarted] = useState(false);
@@ -33,8 +118,30 @@ export default function TakeTest() {
   const [existingAttempt, setExistingAttempt] = useState<any>(null);
   const [attemptCount, setAttemptCount] = useState(0);
 
+  // AutoProctor state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [proctorWarnings, setProctorWarnings] = useState(0);
+  const [, setProctorViolations] = useState<any[]>([]);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningModalData, setWarningModalData] = useState<{
+    title: string;
+    message: string;
+    count: number;
+    isTerminated: boolean;
+  }>({
+    title: '',
+    message: '',
+    count: 0,
+    isTerminated: false,
+  });
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const handleSubmitRef = useRef<(isAutoSubmit?: boolean) => Promise<void>>(async () => {});
+  const handleSubmitRef = useRef<(isAutoSubmit?: boolean, reason?: 'manual' | 'time_expired' | 'proctor_violation') => Promise<void>>(async () => { });
+  const proctorWarningsRef = useRef(0);
+  const proctorViolationsRef = useRef<any[]>([]);
+  const lastViolationTimeRef = useRef(0);
+  const isSubmittingRef = useRef(false);
+  const recordViolationRef = useRef<(type: 'tab_switch' | 'window_blur' | 'fullscreen_exit', detail: string) => void>(() => { });
 
   const gradeAnswers = (ans: Record<string, any>, qs: any[]) => {
     let mcqScore = 0;
@@ -50,7 +157,7 @@ export default function TakeTest() {
         const isCorrect = selected.length === correct.length &&
           selected.every((s: number) => correct.includes(s)) &&
           correct.every((c: number) => selected.includes(c));
-        
+
         const marksAwarded = isCorrect ? (q.marks || 0) : 0;
         mcqScore += marksAwarded;
 
@@ -91,11 +198,14 @@ export default function TakeTest() {
       const maxScore = (t as any).totalMarks || 0;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
       const passed = percentage >= ((t as any).passPercentage || 0);
+      const hasPendingReview = Object.values(gradedAnswers).some((a: any) => a.reviewStatus === 'pending_review');
 
       await updateDoc(doc(db, 'testAttempts', aId), {
         answers: gradedAnswers,
         mcqScore, codingScore, totalScore, maxScore, percentage, passed,
         status: 'timed_out',
+        submissionReason: 'time_expired',
+        evaluationStatus: hasPendingReview ? 'pending' : 'completed',
         submittedAt: serverTimestamp(),
       });
       setSubmitted(true);
@@ -127,8 +237,24 @@ export default function TakeTest() {
         qData.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
         setQuestions(qData);
 
-        // Check existing attempts
+        // Check existing attempts & prefill candidate details
         if (user) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              const uData = userDoc.data();
+              setCandidateName(prev => prev || uData.displayName || uData.name || user.displayName || '');
+              setCandidateBranch(prev => prev || uData.degree || uData.branch || uData.educationDetails || '');
+              setCandidateRollNo(prev => prev || uData.rollNo || uData.rollNumber || uData.studentId || '');
+            } else if (user.displayName) {
+              setCandidateName(prev => prev || user.displayName || '');
+            }
+          } catch {
+            if (user.displayName) {
+              setCandidateName(prev => prev || user.displayName || '');
+            }
+          }
+
           const attSnap = await getDocs(
             query(collection(db, 'testAttempts'),
               where('testId', '==', testId),
@@ -144,19 +270,32 @@ export default function TakeTest() {
             setExistingAttempt(inProgress);
             setAnswers(inProgress.answers || {});
             setAttemptId(inProgress.id);
+            if (inProgress.studentName) setCandidateName(inProgress.studentName);
+            if (inProgress.branch) setCandidateBranch(inProgress.branch);
+            if (inProgress.rollNo) setCandidateRollNo(inProgress.rollNo);
+
+            // Restore previous proctor warnings if resuming
+            if (inProgress.proctorWarnings) {
+              setProctorWarnings(inProgress.proctorWarnings);
+              proctorWarningsRef.current = inProgress.proctorWarnings;
+            }
+            if (inProgress.proctorViolations) {
+              setProctorViolations(inProgress.proctorViolations);
+              proctorViolationsRef.current = inProgress.proctorViolations;
+            }
 
             // Calculate remaining time
             const startedAt = inProgress.startedAt?.toDate?.() || new Date();
             const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 1000);
             const remaining = Math.max(0, (testData as any).durationMinutes * 60 - elapsed);
             setTimeLeft(remaining);
-            
-            if (remaining > 0) {
-              setStarted(true);
-            } else {
+
+            if (remaining <= 0) {
               // Time expired while away — auto-submit
               await handleAutoSubmit(inProgress.id, inProgress.answers || {}, qData, testData);
             }
+            // Do NOT automatically call setStarted(true) here; wait for student to click "Resume Test in Full Screen"
+            // so that full screen request is triggered cleanly from user gesture.
           }
         }
       } catch (error) {
@@ -177,8 +316,7 @@ export default function TakeTest() {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          // Auto-submit using latest callback ref
-          handleSubmitRef.current(true);
+          handleSubmitRef.current(true, 'time_expired');
           return 0;
         }
         return prev - 1;
@@ -196,12 +334,189 @@ export default function TakeTest() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // ---------------------------------------------------------------------------
+  // AutoProctor: Anti-Cheat Violation Recorder
+  // ---------------------------------------------------------------------------
+  const recordViolation = (type: 'tab_switch' | 'window_blur' | 'fullscreen_exit', detail: string) => {
+    if (!started || submitted || isSubmittingRef.current) return;
+
+    const now = Date.now();
+    // 2000ms cooldown to deduplicate simultaneous blur + visibilitychange + fullscreen events
+    if (now - lastViolationTimeRef.current < 2000) {
+      return;
+    }
+    lastViolationTimeRef.current = now;
+
+    const newCount = proctorWarningsRef.current + 1;
+    proctorWarningsRef.current = newCount;
+    setProctorWarnings(newCount);
+
+    playWarningBeep();
+
+    const violationEntry = {
+      timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      type,
+      detail,
+      warningNumber: newCount,
+    };
+    const updatedViolations = [...proctorViolationsRef.current, violationEntry];
+    proctorViolationsRef.current = updatedViolations;
+    setProctorViolations(updatedViolations);
+
+    // Persist proctor warning to Firestore immediately
+    if (attemptId) {
+      updateDoc(doc(db, 'testAttempts', attemptId), {
+        proctorWarnings: newCount,
+        proctorViolations: updatedViolations,
+      }).catch(err => console.warn('Failed to sync proctor warnings:', err));
+    }
+
+    if (newCount >= 3) {
+      // 3rd strike! Automatic submission & test termination
+      setWarningModalData({
+        title: '🚨 Test Terminated: 3 Proctoring Warnings Exceeded',
+        message: 'You have switched tabs, minimized, or exited full screen 3 times. According to the anti-cheating policy, your test is now being automatically submitted.',
+        count: 3,
+        isTerminated: true,
+      });
+      setShowWarningModal(true);
+      handleSubmitRef.current(true, 'proctor_violation');
+    } else {
+      setWarningModalData({
+        title: newCount === 2 ? '⚠️ FINAL WARNING (2 of 3)' : '⚠️ Proctoring Warning (1 of 3)',
+        message: newCount === 2
+          ? 'You have switched tabs, minimized, or exited full screen for the 2nd time! Any further violation will IMMEDIATELY terminate and auto-submit your test.'
+          : `${detail}. Please remain in full screen and do not navigate away from this test window.`,
+        count: newCount,
+        isTerminated: false,
+      });
+      setShowWarningModal(true);
+    }
+  };
+
+  recordViolationRef.current = recordViolation;
+
+  // ---------------------------------------------------------------------------
+  // AutoProctor: Event Listeners (Tab Switch, Minimize, Blur, Fullscreen, Keys)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!started || submitted) return;
+
+    // Fullscreen change listener
+    const handleFullscreenChange = () => {
+      const active = isFullscreenActive();
+      setIsFullscreen(active);
+      if (!active && !isSubmittingRef.current) {
+        recordViolationRef.current('fullscreen_exit', 'Exited full screen mode');
+      }
+    };
+
+    // Tab switch & browser minimize listener
+    const handleVisibilityChange = () => {
+      if ((document.hidden || document.visibilityState === 'hidden') && !isSubmittingRef.current) {
+        recordViolationRef.current('tab_switch', 'Switched browser tab or minimized window');
+      }
+    };
+
+    // Window blur listener (switching applications, clicking secondary screen)
+    const handleWindowBlur = () => {
+      if (!isSubmittingRef.current) {
+        recordViolationRef.current('window_blur', 'Window lost focus (switched application or clicked outside)');
+      }
+    };
+
+    // Block right-click context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      toast('Right-click context menu is disabled during the test.', { icon: '🛡️', id: 'no-context' });
+    };
+
+    // Block developer tools & copy-paste shortcuts on questions
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block F12
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'J', 'C', 'i', 'j', 'c'].includes(e.key)) {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+U (View Source)
+      if ((e.ctrlKey || e.metaKey) && ['u', 'U'].includes(e.key)) {
+        e.preventDefault();
+        return;
+      }
+      // Block Copying question text outside of code editor
+      if ((e.ctrlKey || e.metaKey) && ['c', 'C'].includes(e.key)) {
+        const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (targetTag !== 'textarea' && targetTag !== 'input') {
+          e.preventDefault();
+          toast('Copying question text is disabled.', { icon: '🛡️', id: 'no-copy' });
+        }
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('contextmenu', handleContextMenu);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('contextmenu', handleContextMenu);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [started, submitted]);
+
+  // Handle re-entering fullscreen after warning modal
+  const handleDismissWarning = async () => {
+    if (warningModalData.isTerminated) return;
+    await requestFullscreen();
+    setIsFullscreen(isFullscreenActive());
+    setShowWarningModal(false);
+  };
+
   const handleStartTest = async () => {
     if (!user || !test) return;
 
     // Check attempt limits
-    if (test.maxAttempts > 0 && attemptCount >= test.maxAttempts) {
+    if (test.maxAttempts > 0 && attemptCount >= test.maxAttempts && !existingAttempt) {
       toast.error(`Maximum ${test.maxAttempts} attempts allowed. You've used all attempts.`);
+      return;
+    }
+
+    // Validate candidate details
+    const errors: { name?: string; branch?: string; rollNo?: string } = {};
+    if (!candidateName.trim()) errors.name = 'Full name is required';
+    if (!candidateBranch.trim()) errors.branch = 'Branch / Stream is required';
+    if (!candidateRollNo.trim()) errors.rollNo = 'Roll / Reg No is required';
+
+    if (Object.keys(errors).length > 0) {
+      setDetailsErrors(errors);
+      toast.error('Please enter your Name, Branch, and Roll/Reg No before starting.');
+      return;
+    }
+    setDetailsErrors({});
+
+    // Save to localStorage so student doesn't have to retype next time
+    localStorage.setItem('fc_candidate_name', candidateName.trim());
+    localStorage.setItem('fc_candidate_branch', candidateBranch.trim());
+    localStorage.setItem('fc_candidate_rollNo', candidateRollNo.trim());
+
+    // Enter Full Screen
+    await requestFullscreen();
+    setIsFullscreen(isFullscreenActive());
+
+    if (existingAttempt) {
+      setStarted(true);
+      toast.success('Test resumed in Full Screen!');
       return;
     }
 
@@ -210,10 +525,15 @@ export default function TakeTest() {
         testId: test.id,
         testTitle: test.title,
         studentId: user.uid,
-        studentName: user.displayName || 'Student',
+        studentName: candidateName.trim(),
         studentEmail: user.email,
+        branch: candidateBranch.trim(),
+        rollNo: candidateRollNo.trim(),
         courseId: test.courseId || '',
         status: 'in_progress',
+        proctored: true,
+        proctorWarnings: 0,
+        proctorViolations: [],
         startedAt: serverTimestamp(),
         submittedAt: null,
         answers: {},
@@ -229,7 +549,7 @@ export default function TakeTest() {
       setAttemptId(docRef.id);
       setStarted(true);
       setTimeLeft(test.durationMinutes * 60);
-      toast.success('Test started! Good luck!');
+      toast.success('Test started in Full Screen! AutoProctor is active.');
     } catch (error) {
       console.error("Error starting test:", error);
       toast.error('Failed to start test');
@@ -240,7 +560,7 @@ export default function TakeTest() {
     setAnswers(prev => {
       const current = prev[questionId]?.selectedOptions || [];
       let newSelected: number[];
-      
+
       if (isMultiple) {
         newSelected = current.includes(optionIdx)
           ? current.filter((i: number) => i !== optionIdx)
@@ -271,11 +591,14 @@ export default function TakeTest() {
     }));
   };
 
-  const handleSubmit = async (isAutoSubmit = false) => {
+  const handleSubmit = async (
+    isAutoSubmit = false,
+    reason: 'manual' | 'time_expired' | 'proctor_violation' = isAutoSubmit ? 'time_expired' : 'manual'
+  ) => {
     if (!attemptId || submitting) return;
 
     if (!isAutoSubmit) {
-      const unanswered = questions.filter(q => !answers[q.id] || 
+      const unanswered = questions.filter(q => !answers[q.id] ||
         (q.type === 'mcq' && (!answers[q.id].selectedOptions || answers[q.id].selectedOptions.length === 0)) ||
         (q.type === 'coding' && !answers[q.id]?.code)
       );
@@ -291,24 +614,37 @@ export default function TakeTest() {
     }
 
     setSubmitting(true);
+    isSubmittingRef.current = true;
     if (timerRef.current) clearInterval(timerRef.current);
+    exitFullscreen();
 
     try {
       const { mcqScore, codingScore, totalScore, gradedAnswers } = gradeAnswers(answers, questions);
       const maxScore = test.totalMarks || 0;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
       const passed = percentage >= (test.passPercentage || 0);
+      const hasPendingReview = Object.values(gradedAnswers).some((a: any) => a.reviewStatus === 'pending_review');
+
+      const attemptStatus = reason === 'proctor_violation' ? 'violation_submitted' : isAutoSubmit ? 'timed_out' : 'completed';
 
       await updateDoc(doc(db, 'testAttempts', attemptId), {
         answers: gradedAnswers,
         mcqScore, codingScore, totalScore, maxScore, percentage, passed,
-        status: isAutoSubmit ? 'timed_out' : 'completed',
+        status: attemptStatus,
+        submissionReason: reason,
+        proctorWarnings: proctorWarningsRef.current,
+        proctorViolations: proctorViolationsRef.current,
+        evaluationStatus: hasPendingReview ? 'pending' : 'completed',
         submittedAt: serverTimestamp(),
       });
 
       setSubmitted(true);
-      if (isAutoSubmit) {
+      if (reason === 'proctor_violation') {
+        toast.error('Test auto-submitted due to 3 proctoring violations.', { duration: 5000 });
+      } else if (isAutoSubmit) {
         toast('Time expired! Test auto-submitted.', { icon: '⏰' });
+      } else if (hasPendingReview) {
+        toast('Test submitted! Your answers are submitted for manual evaluation.', { icon: '⏳' });
       } else {
         toast.success('Test submitted successfully!');
       }
@@ -320,8 +656,8 @@ export default function TakeTest() {
     } catch (error) {
       console.error("Error submitting test:", error);
       toast.error("Failed to submit test");
-    } finally {
       setSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -364,7 +700,9 @@ export default function TakeTest() {
     );
   }
 
-  // Not started yet — show test overview / instructions
+  // ---------------------------------------------------------------------------
+  // Not started yet — show test overview, Candidate details & AutoProctor rules
+  // ---------------------------------------------------------------------------
   if (!started) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
@@ -375,12 +713,12 @@ export default function TakeTest() {
           <ChevronLeft size={16} /> Back to Tests
         </button>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 mx-auto mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 mx-auto mb-4 shadow-sm">
               <ClipboardCheck size={32} />
             </div>
-            <h1 className="text-2xl font-extrabold text-slate-900 mb-2">{test.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-2">{test.title}</h1>
             {test.description && (
               <p className="text-sm text-slate-500">{test.description}</p>
             )}
@@ -409,29 +747,158 @@ export default function TakeTest() {
             </div>
           </div>
 
-          {/* Rules */}
-          <div className="bg-amber-50/70 rounded-xl p-4 border border-amber-100 mb-6 text-xs text-amber-900 space-y-1.5">
-            <p className="font-bold text-sm">📋 Test Rules</p>
-            <p>• The timer starts as soon as you click "Start Test" and cannot be paused.</p>
-            <p>• The test will auto-submit when time runs out.</p>
-            <p>• Your answers are saved automatically every 30 seconds.</p>
-            <p>• MCQ questions are auto-graded instantly.</p>
-            <p>• Coding questions may require manual review by the instructor.</p>
+          {/* Candidate Details Form */}
+          <div className="bg-slate-50/80 rounded-2xl p-5 border border-slate-200 mb-6">
+            <div className="flex items-center gap-2.5 mb-3.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                <User size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">Candidate Information</h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Enter your details before starting. These are permanently recorded on your submission and result report.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={candidateName}
+                    onChange={e => {
+                      setCandidateName(e.target.value);
+                      if (detailsErrors.name) setDetailsErrors(p => ({ ...p, name: undefined }));
+                    }}
+                    placeholder="e.g. Alex Johnson"
+                    className={`w-full pl-8 pr-3 py-2 bg-white border rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.name ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                      }`}
+                  />
+                </div>
+                {detailsErrors.name && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1">{detailsErrors.name}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Branch / Stream <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <GraduationCap size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={candidateBranch}
+                    onChange={e => {
+                      setCandidateBranch(e.target.value);
+                      if (detailsErrors.branch) setDetailsErrors(p => ({ ...p, branch: undefined }));
+                    }}
+                    placeholder="e.g. CSE / IT / BCA"
+                    className={`w-full pl-8 pr-3 py-2 bg-white border rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.branch ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                      }`}
+                  />
+                </div>
+                {detailsErrors.branch && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1">{detailsErrors.branch}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                  Roll / Reg No <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={candidateRollNo}
+                    onChange={e => {
+                      setCandidateRollNo(e.target.value);
+                      if (detailsErrors.rollNo) setDetailsErrors(p => ({ ...p, rollNo: undefined }));
+                    }}
+                    placeholder="e.g. 21BCSE104"
+                    className={`w-full pl-8 pr-3 py-2 bg-white border rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.rollNo ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                      }`}
+                  />
+                </div>
+                {detailsErrors.rollNo && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1">{detailsErrors.rollNo}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* AutoProctor Anti-Cheating Rules Card */}
+          <div className="rounded-2xl p-5 border-2 border-rose-200 bg-gradient-to-br from-rose-50/70 via-amber-50/50 to-indigo-50/50 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <ShieldAlert size={18} />
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  🛡️ AutoProctor Anti-Cheating Active
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white">
+                    Compulsory Full Screen
+                  </span>
+                </p>
+                <p className="text-[11px] text-slate-500 font-medium">Strict anti-cheat monitoring is enforced during this assessment.</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-700 space-y-2 font-medium">
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-600 font-bold">1.</span>
+                <p><strong>Mandatory Full Screen:</strong> This test must be completed in full screen. Exiting full screen mode triggers a proctoring violation warning.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-600 font-bold">2.</span>
+                <p><strong>Tab Switch & Minimize Detection:</strong> Switching browser tabs, minimizing the window, or clicking outside will trigger an immediate strike.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-rose-600 font-bold">3.</span>
+                <p><strong>3-Strike Rule (Strict Auto-Submit):</strong> You will receive a maximum of <strong>2 warnings</strong>. On the <strong>3rd violation</strong>, your test will be <strong>terminated and automatically submitted</strong> immediately.</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-600 font-bold">4.</span>
+                <p><strong>Anti-Tamper Protections:</strong> Right-clicking, developer tools shortcuts, and question text copying are strictly disabled.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Test Rules */}
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-6 text-xs text-slate-600 space-y-1.5">
+            <p className="font-bold text-xs text-slate-800 uppercase tracking-wider">General Guidelines</p>
+            <p>• Timer starts immediately upon entering full screen and cannot be paused.</p>
+            <p>• Answers are continuously auto-saved every 30 seconds.</p>
+            <p>• Coding questions are automatically recorded for instructor evaluation.</p>
             {test.maxAttempts > 0 && (
               <p>• Maximum attempts allowed: <strong>{test.maxAttempts}</strong> (Used: {attemptCount})</p>
             )}
           </div>
 
-          {test.maxAttempts > 0 && attemptCount >= test.maxAttempts ? (
+          {test.maxAttempts > 0 && attemptCount >= test.maxAttempts && !existingAttempt ? (
             <div className="text-center p-4 bg-red-50 rounded-xl border border-red-100 text-sm text-red-600 font-bold">
               You have used all {test.maxAttempts} attempts for this test.
             </div>
           ) : (
             <button
               onClick={handleStartTest}
-              className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white font-extrabold rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
+              className="w-full py-4 bg-primary hover:bg-primary-hover text-white font-extrabold rounded-2xl shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all flex items-center justify-center gap-2.5 text-base cursor-pointer active:scale-98"
             >
-              <Play size={18} fill="currentColor" /> {existingAttempt ? 'Resume Test' : 'Start Test Now'}
+              {existingAttempt ? (
+                <>
+                  <Maximize2 size={20} /> Resume Test in Full Screen
+                </>
+              ) : (
+                <>
+                  <Play size={20} fill="currentColor" /> Start Test in Full Screen
+                </>
+              )}
             </button>
           )}
         </div>
@@ -456,24 +923,150 @@ export default function TakeTest() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      {/* Timer & Progress Bar */}
-      <div className={`sticky top-0 z-20 bg-white/95 backdrop-blur-md rounded-2xl border shadow-sm p-3 flex items-center justify-between ${
+      {/* -------------------------------------------------------------------- */}
+      {/* AutoProctor Warning & Full Screen Enforcer Blocking Modal Overlay     */}
+      {/* -------------------------------------------------------------------- */}
+      {started && !submitted && (showWarningModal || !isFullscreen) && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border-4 border-rose-500 text-center animate-in fade-in zoom-in-95 duration-200">
+            {/* Warning Icon Badge */}
+            <div className={`w-20 h-20 rounded-3xl mx-auto mb-4 flex items-center justify-center ${
+              warningModalData.isTerminated || proctorWarnings >= 3
+                ? 'bg-rose-100 text-rose-600 animate-bounce'
+                : proctorWarnings === 2
+                  ? 'bg-amber-100 text-amber-600 animate-pulse'
+                  : 'bg-indigo-100 text-indigo-600'
+            }`}>
+              {warningModalData.isTerminated || proctorWarnings >= 3 ? (
+                <AlertOctagon size={42} />
+              ) : (
+                <ShieldAlert size={42} />
+              )}
+            </div>
+
+            {/* Title */}
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 mb-2">
+              {warningModalData.title || (!isFullscreen ? '⚠️ Full Screen Required' : '⚠️ Proctoring Warning')}
+            </h2>
+
+            {/* 3-Strike Visual Indicator */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              {[1, 2, 3].map((num) => {
+                const isFired = num <= proctorWarnings;
+                return (
+                  <div
+                    key={num}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                      isFired
+                        ? num === 3
+                          ? 'bg-rose-600 text-white shadow-sm'
+                          : 'bg-rose-100 text-rose-700 border border-rose-300'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}
+                  >
+                    Strike {num} {isFired ? '⚠️' : '○'}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Explanation Message */}
+            <p className="text-sm font-semibold text-slate-600 mb-6 leading-relaxed">
+              {warningModalData.message || 'You must keep this test in full screen mode and refrain from switching tabs or minimizing.'}
+            </p>
+
+            {/* Action Buttons */}
+            {warningModalData.isTerminated || proctorWarnings >= 3 ? (
+              <div className="space-y-3">
+                <div className="py-2.5 px-4 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200">
+                  Auto-submitting test due to 3 proctoring violations... Please wait.
+                </div>
+                <button
+                  onClick={() => handleSubmit(true, 'proctor_violation')}
+                  className="w-full py-3.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl shadow-lg transition-colors text-sm cursor-pointer"
+                >
+                  View Test Results
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleDismissWarning}
+                className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white font-extrabold rounded-xl shadow-lg shadow-primary/25 transition-all text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+              >
+                <Maximize2 size={16} /> Re-enter Full Screen & Continue Test
+              </button>
+            )}
+
+            {/* Footer Rule Note */}
+            <p className="text-[11px] font-bold text-slate-400 mt-4">
+              ⚠️ Maximum 3 warnings allowed. 3rd violation results in instant test auto-submission.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------------- */}
+      {/* Sticky Header: Timer, AutoProctor HUD, Candidate details & Submit    */}
+      {/* -------------------------------------------------------------------- */}
+      <div className={`sticky top-0 z-20 bg-white/95 backdrop-blur-md rounded-2xl border shadow-sm p-3 flex items-center justify-between gap-3 ${
         isTimeLow ? 'border-rose-200 bg-rose-50/95' : 'border-slate-200'
       }`}>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-slate-500">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <span className="text-xs font-bold text-slate-500 shrink-0">
             Q {currentQ + 1} / {questions.length}
           </span>
-          <div className="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+          <div className="w-16 sm:w-28 h-1.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
             <div
               className="h-full bg-primary rounded-full transition-all"
               style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
             />
           </div>
+
+          {/* AutoProctor HUD Badge */}
+          <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold shadow-2xs shrink-0">
+            <Shield size={13} className="text-emerald-600 animate-pulse" />
+            <span className="hidden sm:inline">AutoProctor</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+          </div>
+
+          {/* Warnings Counter Badge */}
+          <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border text-[11px] font-extrabold shrink-0 ${
+            proctorWarnings === 0
+              ? 'bg-slate-50 border-slate-200 text-slate-600'
+              : proctorWarnings === 1
+                ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse'
+                : 'bg-rose-50 border-rose-300 text-rose-700 animate-bounce'
+          }`}>
+            <ShieldAlert size={12} className={proctorWarnings > 0 ? 'text-rose-600' : 'text-slate-400'} />
+            <span><span className="hidden sm:inline">Warnings: </span><span className="font-mono">{proctorWarnings}/3</span></span>
+          </div>
+
+          {/* Candidate badge */}
+          {(candidateName || candidateRollNo) && (
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-[11px] font-semibold text-indigo-700 truncate max-w-[200px]">
+              <User size={12} className="shrink-0 text-indigo-500" />
+              <span className="truncate">{candidateName}</span>
+              {candidateRollNo && <span className="text-indigo-400 font-mono text-[10px]">({candidateRollNo})</span>}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-extrabold text-sm ${
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Fullscreen recovery button if accidentally lost */}
+          {!isFullscreen && (
+            <button
+              onClick={async () => {
+                await requestFullscreen();
+                setIsFullscreen(isFullscreenActive());
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-extrabold shadow-sm animate-pulse cursor-pointer"
+              title="Click to enter Full Screen mode"
+            >
+              <Maximize2 size={12} /> Full Screen
+            </button>
+          )}
+
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-extrabold text-xs sm:text-sm ${
             isTimeLow ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-700'
           }`}>
             <Clock size={14} />
@@ -482,7 +1075,7 @@ export default function TakeTest() {
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
-            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="px-3 sm:px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
             <Send size={13} />
             {submitting ? 'Submitting...' : 'Submit'}
@@ -502,8 +1095,8 @@ export default function TakeTest() {
                 onClick={() => setCurrentQ(idx)}
                 className={`w-10 h-10 rounded-xl text-xs font-bold flex items-center justify-center transition-all cursor-pointer relative ${
                   idx === currentQ ? 'bg-primary text-white shadow-md' :
-                  answered ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                  'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
+                    answered ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                      'bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100'
                 }`}
               >
                 {idx + 1}
@@ -515,8 +1108,8 @@ export default function TakeTest() {
           })}
         </div>
 
-        {/* Question Content */}
-        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Question Content (select-none prevents text copying) */}
+        <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden select-none">
           <div className="p-5 sm:p-6">
             {/* Question Header */}
             <div className="flex items-center justify-between mb-4">
@@ -554,7 +1147,7 @@ export default function TakeTest() {
 
             {q.type === 'mcq' ? (
               <>
-                <p className="text-sm sm:text-base font-semibold text-slate-800 mb-4 leading-relaxed whitespace-pre-wrap">
+                <p className="text-sm sm:text-base font-semibold text-slate-800 mb-4 leading-relaxed whitespace-pre-wrap select-none">
                   {q.questionText}
                 </p>
 
@@ -566,7 +1159,7 @@ export default function TakeTest() {
                         key={idx}
                         type="button"
                         onClick={() => handleAnswerMCQ(q.id, idx, isMultipleCorrect)}
-                        className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all cursor-pointer ${
+                        className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all cursor-pointer select-none ${
                           isSelected
                             ? 'border-primary bg-indigo-50 text-primary'
                             : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
@@ -585,13 +1178,13 @@ export default function TakeTest() {
               </>
             ) : (
               <>
-                <div className="text-sm font-semibold text-slate-800 mb-4 leading-relaxed whitespace-pre-wrap">
+                <div className="text-sm font-semibold text-slate-800 mb-4 leading-relaxed whitespace-pre-wrap select-none">
                   {q.problemStatement}
                 </div>
 
                 {/* Sample I/O */}
                 {(q.sampleInput || q.sampleOutput) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 select-none">
                     {q.sampleInput && (
                       <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                         <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Sample Input</p>
@@ -661,8 +1254,8 @@ export default function TakeTest() {
                   onClick={() => setCurrentQ(idx)}
                   className={`w-7 h-7 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${
                     idx === currentQ ? 'bg-primary text-white' :
-                    answers[questions[idx].id] ? 'bg-emerald-100 text-emerald-700' :
-                    'bg-slate-100 text-slate-500'
+                      answers[questions[idx].id] ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-slate-100 text-slate-500'
                   }`}
                 >
                   {idx + 1}

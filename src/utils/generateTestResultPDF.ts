@@ -59,28 +59,50 @@ export function generateTestResultPDF(
   pdf.setTextColor(71, 85, 105); // slate-600
 
   const infoLeftX = margin;
-  const infoRightX = pageWidth / 2 + 10;
+  const infoRightX = pageWidth / 2 + 5;
 
+  // Row 1: Student Name & Roll No
   pdf.text('Student Name:', infoLeftX, y);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(30, 41, 59);
-  pdf.text(attempt.studentName || 'N/A', infoLeftX + 30, y);
+  pdf.text(attempt.studentName || 'N/A', infoLeftX + 27, y);
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(71, 85, 105);
+  pdf.text('Roll / Reg No:', infoRightX, y);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(30, 41, 59);
+  pdf.text(attempt.rollNo || 'N/A', infoRightX + 26, y);
+
+  y += 5.5;
+
+  // Row 2: Branch & Email
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(71, 85, 105);
+  pdf.text('Branch / Stream:', infoLeftX, y);
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(30, 41, 59);
+  pdf.text(attempt.branch || 'N/A', infoLeftX + 29, y);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(71, 85, 105);
   pdf.text('Email:', infoRightX, y);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(30, 41, 59);
-  pdf.text(attempt.studentEmail || 'N/A', infoRightX + 15, y);
+  pdf.text(attempt.studentEmail || 'N/A', infoRightX + 14, y);
 
-  y += 6;
+  y += 5.5;
 
+  // Row 3: Test Title & Date
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(71, 85, 105);
   pdf.text('Test Title:', infoLeftX, y);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(30, 41, 59);
-  pdf.text(test.title || 'N/A', infoLeftX + 22, y);
+  const testTitle = (test.title || 'N/A').length > 35 
+    ? (test.title.substring(0, 32) + '...') 
+    : (test.title || 'N/A');
+  pdf.text(testTitle, infoLeftX + 20, y);
 
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(71, 85, 105);
@@ -88,12 +110,13 @@ export function generateTestResultPDF(
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(30, 41, 59);
   const submittedDate = attempt.submittedAt?.toDate
-    ? attempt.submittedAt.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-  pdf.text(submittedDate, infoRightX + 13, y);
+    ? attempt.submittedAt.toDate().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  pdf.text(submittedDate, infoRightX + 12, y);
 
-  y += 6;
+  y += 5.5;
 
+  // Row 4: Type & Attempt
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(71, 85, 105);
   pdf.text('Type:', infoLeftX, y);
@@ -106,9 +129,9 @@ export function generateTestResultPDF(
   pdf.text('Attempt:', infoRightX, y);
   pdf.setFont('helvetica', 'normal');
   pdf.setTextColor(30, 41, 59);
-  pdf.text(`#${attempt.attemptNumber || 1}`, infoRightX + 19, y);
+  pdf.text(`#${attempt.attemptNumber || 1}`, infoRightX + 18, y);
 
-  y += 10;
+  y += 9;
 
   // ─── Score Summary Box ───────────────────────────────────
   const boxHeight = 28;
