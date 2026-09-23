@@ -6,7 +6,7 @@ import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { 
   Trophy, ChevronLeft, Download, RotateCcw, CheckCircle2, XCircle, 
   Clock, AlertCircle, Code2, ListChecks, User, RefreshCw,
-  AlertOctagon
+  AlertOctagon, MessageSquare, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -384,6 +384,19 @@ export default function TestResult() {
         </div>
       </div>
 
+      {/* Instructor Overall Feedback Card */}
+      {attempt.adminFeedback && (
+        <div className="bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-indigo-50/90 border border-indigo-200/90 rounded-2xl p-4 sm:p-5 shadow-2xs">
+          <div className="flex items-center gap-2 mb-1.5 text-indigo-900 font-extrabold text-xs uppercase tracking-wider">
+            <Sparkles size={15} className="text-indigo-600" />
+            Instructor Evaluation Feedback
+          </div>
+          <p className="text-sm font-semibold text-slate-800 leading-relaxed italic">
+            "{attempt.adminFeedback}"
+          </p>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
         <button
@@ -473,6 +486,17 @@ export default function TestResult() {
                     <pre className="text-xs text-emerald-400 font-mono whitespace-pre-wrap">
                       {answer.code || '(No code submitted)'}
                     </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* Instructor Question Feedback */}
+              {answer.feedback && (
+                <div className="mt-2.5 bg-indigo-50/70 border border-indigo-200/70 rounded-xl p-2.5 text-xs text-indigo-950 flex items-start gap-2">
+                  <MessageSquare size={13} className="text-indigo-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold text-[10px] uppercase tracking-wider text-indigo-700 block mb-0.5">Instructor Feedback:</span>
+                    <span className="font-medium text-slate-800">{answer.feedback}</span>
                   </div>
                 </div>
               )}

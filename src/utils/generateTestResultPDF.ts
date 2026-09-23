@@ -178,7 +178,28 @@ export function generateTestResultPDF(
   pdf.setTextColor(isPassed ? 5 : 220, isPassed ? 150 : 38, isPassed ? 105 : 38);
   pdf.text(isPassed ? 'PASSED' : 'FAILED', pageWidth - margin - 12, boxCenterY + 1, { align: 'right' });
 
-  y += boxHeight + 10;
+  y += boxHeight + 8;
+
+  // ─── Instructor Evaluation Remark (if available) ──────────
+  if (attempt.adminFeedback) {
+    addNewPageIfNeeded(18);
+    pdf.setFillColor(238, 242, 255); // indigo-50
+    pdf.setDrawColor(199, 210, 254); // indigo-200
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, y, contentWidth, 13, 2, 2, 'FD');
+
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(67, 56, 202); // indigo-700
+    pdf.text('INSTRUCTOR EVALUATION REMARK:', margin + 4, y + 4.5);
+
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(30, 41, 59);
+    const safeFeedback = attempt.adminFeedback.length > 130 ? attempt.adminFeedback.slice(0, 127) + '...' : attempt.adminFeedback;
+    pdf.text(`"${safeFeedback}"`, margin + 4, y + 9.5);
+    y += 17;
+  }
 
   // ─── Question Breakdown Table ────────────────────────────
   pdf.setFontSize(11);
@@ -320,7 +341,18 @@ export function generateTestResultPDF(
         }
       });
 
-      y += codeHeight + 6;
+      y += codeHeight + 3;
+
+      if (answer.feedback) {
+        pdf.setFontSize(7);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(79, 70, 229); // indigo-600
+        const safeFeedback = answer.feedback.length > 120 ? answer.feedback.slice(0, 117) + '...' : answer.feedback;
+        pdf.text(`Instructor Note: ${safeFeedback}`, margin, y);
+        y += 4;
+      }
+
+      y += 3;
     });
   }
 
