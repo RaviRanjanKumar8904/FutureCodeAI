@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import BackgroundBlobs from '../components/BackgroundBlobs';
 import VerifyHero from '../components/verify/VerifyHero';
@@ -48,23 +48,45 @@ export default function VerifyCertificate() {
       // Artificial delay to mitigate rapid enumeration
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      const docRef = doc(db, 'certificates', id.trim());
+      const cleanId = id.trim();
+      let docData: any = null;
+      let found = false;
+
+      // 1. Direct document ID lookup
+      const docRef = doc(db, 'certificates', cleanId);
       const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        docData = { id: docSnap.id, ...docSnap.data() };
+        found = true;
+      } else {
+        // 2. Fallback: Secondary lookup by certificateId field
+        try {
+          const q = query(collection(db, 'certificates'), where('certificateId', '==', cleanId), limit(1));
+          const querySnap = await getDocs(q);
+          if (!querySnap.empty) {
+            const firstDoc = querySnap.docs[0];
+            docData = { id: firstDoc.id, ...firstDoc.data() };
+            found = true;
+          }
+        } catch (queryErr) {
+          console.warn("Secondary certificate query failed:", queryErr);
+        }
+      }
       
       // Fire-and-forget log of the verification attempt
       try {
         await addDoc(collection(db, 'verificationLogs'), {
-          certificateId: id.trim(),
+          certificateId: cleanId,
           timestamp: serverTimestamp(),
-          found: docSnap.exists(),
+          found,
           userAgent: navigator.userAgent
         });
       } catch (logErr) {
         console.warn("Failed to log verification attempt", logErr);
       }
 
-      if (docSnap.exists()) {
-        const docData = docSnap.data();
+      if (found && docData) {
         setData(docData);
         if (docData.revoked === true) {
           setStatus('revoked');

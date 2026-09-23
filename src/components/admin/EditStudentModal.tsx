@@ -235,7 +235,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   required 
                   value={formData.studentName} 
                   onChange={e => setFormData({ ...formData, studentName: e.target.value })}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base text-slate-800" 
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm text-slate-800" 
                 />
               </div>
               <div>
@@ -245,7 +245,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                 <select
                   value={formData.gender}
                   onChange={e => setFormData({ ...formData, gender: e.target.value })}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-xs sm:text-base text-slate-800 cursor-pointer"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-bold text-base sm:text-sm text-slate-800 cursor-pointer"
                 >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -263,7 +263,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   type="email" 
                   value={formData.email} 
                   disabled
-                  className="w-full bg-slate-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-slate-500 font-medium text-xs sm:text-base cursor-not-allowed" 
+                  className="w-full bg-slate-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-slate-500 font-medium text-base sm:text-sm cursor-not-allowed" 
                 />
               </div>
               <div>
@@ -274,7 +274,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   type="tel" 
                   value={formData.phone} 
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base text-slate-800" 
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm text-slate-800" 
                 />
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   type="text"
                   value={formData.collegeName}
                   onChange={e => setFormData({ ...formData, collegeName: e.target.value })}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base text-slate-800"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm text-slate-800"
                   placeholder="e.g. Purnea College"
                 />
               </div>
@@ -302,7 +302,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   type="text"
                   value={formData.rollNo}
                   onChange={e => setFormData({ ...formData, rollNo: e.target.value })}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base text-slate-800"
+                  className="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm text-slate-800"
                   placeholder="e.g. 21CS042"
                 />
               </div>
@@ -318,7 +318,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   <select 
                     value={formData.courseId} 
                     onChange={e => handleCourseChange(e.target.value)}
-                    className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm"
                   >
                     <option value="">No Course Assigned</option>
                     {courses.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -329,7 +329,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
                   <select 
                     value={formData.batch} 
                     onChange={e => setFormData({ ...formData, batch: e.target.value })}
-                    className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm"
                   >
                     <option value="">No Batch Assigned</option>
                     {batchOptions.map(b => <option key={b} value={b}>{b}</option>)}
@@ -345,7 +345,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
               <select 
                 value={formData.centerId} 
                 onChange={e => handleCenterChange(e.target.value)}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-xs sm:text-base text-slate-800"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-base sm:text-sm text-slate-800"
               >
                 <option value="">FutureCodeAI (Online)</option>
                 {centers.map(c => <option key={c.id} value={c.id}>{c.name} — {c.city || 'N/A'}</option>)}
@@ -359,7 +359,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
           <button 
             type="button" 
             onClick={onClose} 
-            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
+            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-sm cursor-pointer min-h-[44px] flex items-center justify-center"
           >
             Cancel
           </button>
@@ -367,7 +367,7 @@ export default function EditStudentModal({ isOpen, onClose, onSuccess, student }
             form="editForm" 
             type="submit" 
             disabled={loading} 
-            className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 disabled:opacity-70 text-sm cursor-pointer active:scale-95 min-h-[44px]"
           >
             {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save size={15} /> Save Changes</>}
           </button>

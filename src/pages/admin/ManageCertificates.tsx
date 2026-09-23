@@ -570,7 +570,7 @@ export default function ManageCertificates() {
                       value={formData.studentName}
                       onChange={(e) => setFormData({...formData, studentName: e.target.value})}
                       placeholder="E.g. Rahul Kumar"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-base sm:text-sm"
                       required
                     />
                   </div>
@@ -579,7 +579,7 @@ export default function ManageCertificates() {
                     <select 
                       value={formData.gender}
                       onChange={(e) => setFormData({...formData, gender: e.target.value as '' | 'Male' | 'Female'})}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base bg-white"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-base sm:text-sm bg-white"
                     >
                       <option value="">Select Gender</option>
                       <option value="Male">Male</option>
@@ -595,7 +595,7 @@ export default function ManageCertificates() {
                     value={formData.studentEmail}
                     onChange={(e) => setFormData({...formData, studentEmail: e.target.value})}
                     placeholder="E.g. student@email.com"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-base sm:text-sm"
                   />
                 </div>
 
@@ -607,7 +607,7 @@ export default function ManageCertificates() {
                       value={formData.courseName}
                       onChange={(e) => setFormData({...formData, courseName: e.target.value})}
                       placeholder="E.g. Full-Stack Web Dev"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-base sm:text-sm"
                       required
                     />
                   </div>
@@ -618,7 +618,7 @@ export default function ManageCertificates() {
                       value={formData.domain}
                       onChange={(e) => setFormData({...formData, domain: e.target.value})}
                       placeholder="E.g. Full Stack Web"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-base sm:text-sm"
                     />
                   </div>
                 </div>
@@ -630,7 +630,7 @@ export default function ManageCertificates() {
                       type="date"
                       value={formData.startDate}
                       onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-base sm:text-sm"
                     />
                   </div>
                   <div>
@@ -639,7 +639,7 @@ export default function ManageCertificates() {
                       type="date"
                       value={formData.endDate}
                       onChange={(e) => { const v = e.target.value; setFormData({...formData, endDate: v, issueDate: v}); }}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-base sm:text-sm"
                     />
                   </div>
                   <div>
@@ -648,7 +648,7 @@ export default function ManageCertificates() {
                       type="date"
                       value={formData.issueDate}
                       onChange={(e) => { const v = e.target.value; setFormData({...formData, issueDate: v, endDate: v}); }}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-xs sm:text-base"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-700 text-base sm:text-sm"
                       required
                     />
                   </div>
@@ -662,7 +662,7 @@ export default function ManageCertificates() {
                       value={formData.grade}
                       onChange={(e) => setFormData({...formData, grade: e.target.value})}
                       placeholder="E.g. A+"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-base sm:text-sm"
                     />
                   </div>
                   <div>
@@ -672,7 +672,7 @@ export default function ManageCertificates() {
                       value={formData.marksPercentage}
                       onChange={(e) => setFormData({...formData, marksPercentage: e.target.value})}
                       placeholder="E.g. 95"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-xs sm:text-base"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-base sm:text-sm"
                     />
                   </div>
                 </div>
@@ -718,14 +718,14 @@ export default function ManageCertificates() {
               placeholder="Search by ID, name, or course..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm font-medium w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full sm:w-80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
             />
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        {/* Desktop / Tablet Table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
                 <th className="p-4 pl-6">Certificate Details</th>
@@ -808,16 +808,18 @@ export default function ManageCertificates() {
                             });
                             setShowPreview(true);
                           }}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5"
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5 min-w-[36px] min-h-[36px] justify-center"
                           title="Preview & Download Certificate"
+                          aria-label="Preview Certificate"
                         >
                           <Eye size={18} />
                           <span className="text-xs font-bold hidden sm:inline-block">Preview</span>
                         </button>
                         <button 
                           onClick={() => copyVerificationLink(cert.certificateId)}
-                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5"
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1.5 min-w-[36px] min-h-[36px] justify-center"
                           title="Copy Verification Link"
+                          aria-label="Copy Verification Link"
                         >
                           <Copy size={18} />
                           <span className="text-xs font-bold hidden sm:inline-block">Link</span>
@@ -825,16 +827,18 @@ export default function ManageCertificates() {
                         {!cert.revoked ? (
                           <button 
                             onClick={() => handleRevoke(cert.id, cert.certificateId)}
-                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                             title="Revoke Certificate (Mark Invalid)"
+                            aria-label="Revoke Certificate"
                           >
                             <Ban size={18} />
                           </button>
                         ) : (
                           <button 
                             onClick={() => handleUnrevoke(cert.id, cert.certificateId)}
-                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1.5"
+                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1.5 min-w-[36px] min-h-[36px] justify-center"
                             title="Restore Certificate (Mark Valid)"
+                            aria-label="Restore Certificate"
                           >
                             <RotateCcw size={18} />
                             <span className="text-xs font-bold hidden sm:inline-block">Restore</span>
@@ -842,8 +846,9 @@ export default function ManageCertificates() {
                         )}
                         <button 
                           onClick={() => handleDeletePermanently(cert.id, cert.certificateId, cert.studentName)}
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
                           title="Delete Permanently"
+                          aria-label="Delete Certificate"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -854,6 +859,126 @@ export default function ManageCertificates() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View (< 640px) */}
+        <div className="block sm:hidden divide-y divide-slate-100">
+          {loading ? (
+            <div className="p-8 text-center text-slate-500 font-medium">Loading certificates...</div>
+          ) : filteredData.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-2">
+                <Award size={24} />
+              </div>
+              <p className="text-slate-900 font-bold text-sm">No Certificates Found</p>
+              <p className="text-slate-500 text-xs">No certificates match your search.</p>
+            </div>
+          ) : (
+            filteredData.map((cert) => (
+              <div key={cert.id} className="p-4 space-y-3 bg-white">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-slate-900 text-sm truncate">{cert.studentName}</h4>
+                    <p className="text-xs font-medium text-slate-600 truncate mt-0.5">{cert.courseName}</p>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-[10px] font-mono bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                        {cert.certificateId}
+                      </span>
+                      {cert.grade && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                          Grade: {cert.grade}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    {cert.revoked ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700">
+                        <X size={12} />
+                        Revoked
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
+                        <CheckCircle2 size={12} />
+                        Valid
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>Issued: {new Date(cert.issueDate).toLocaleDateString()}</span>
+                  {cert.marksPercentage && <span>Marks: {cert.marksPercentage}%</span>}
+                </div>
+
+                {/* Touch targets >= 44px on mobile */}
+                <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                  <button
+                    onClick={() => {
+                      setPreviewCert({
+                        id: cert.id,
+                        certificateId: cert.certificateId,
+                        studentName: cert.studentName,
+                        studentEmail: cert.studentEmail,
+                        gender: cert.gender,
+                        courseName: cert.courseName,
+                        domain: cert.domain,
+                        startDate: cert.startDate,
+                        endDate: cert.endDate,
+                        issueDate: cert.issueDate,
+                        grade: cert.grade,
+                        marksPercentage: cert.marksPercentage,
+                      });
+                      setShowPreview(true);
+                    }}
+                    className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-50 text-indigo-700 rounded-xl hover:bg-indigo-100 transition-colors"
+                    aria-label="Preview Certificate"
+                  >
+                    <Eye size={16} />
+                    <span>Preview</span>
+                  </button>
+
+                  <button
+                    onClick={() => copyVerificationLink(cert.certificateId)}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-indigo-600 bg-slate-50 rounded-xl transition-colors border border-slate-200"
+                    title="Copy Link"
+                    aria-label="Copy Verification Link"
+                  >
+                    <Copy size={16} />
+                  </button>
+
+                  {!cert.revoked ? (
+                    <button
+                      onClick={() => handleRevoke(cert.id, cert.certificateId)}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-amber-600 bg-amber-50 rounded-xl transition-colors border border-amber-200"
+                      title="Revoke"
+                      aria-label="Revoke Certificate"
+                    >
+                      <Ban size={16} />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUnrevoke(cert.id, cert.certificateId)}
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-emerald-600 bg-emerald-50 rounded-xl transition-colors border border-emerald-200"
+                      title="Restore"
+                      aria-label="Restore Certificate"
+                    >
+                      <RotateCcw size={16} />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDeletePermanently(cert.id, cert.certificateId, cert.studentName)}
+                    className="min-w-[44px] min-h-[44px] flex items-center justify-center text-rose-500 bg-rose-50 rounded-xl transition-colors border border-rose-200"
+                    title="Delete"
+                    aria-label="Delete Certificate"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

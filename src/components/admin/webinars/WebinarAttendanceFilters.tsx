@@ -262,7 +262,7 @@ export default function WebinarAttendanceFilters({
               placeholder="Search students by name, email, phone, or college..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-slate-50/50 min-h-[44px]"
             />
             {searchTerm && (
               <button
@@ -276,7 +276,7 @@ export default function WebinarAttendanceFilters({
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* Eligibility Filter */}
-            <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium">
+            <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium min-h-[44px]">
               <SlidersHorizontal size={14} className="text-slate-400 shrink-0" />
               <select
                 value={attendanceEligibilityFilter}
@@ -295,7 +295,7 @@ export default function WebinarAttendanceFilters({
 
             {/* College Filter */}
             {uniqueColleges.length > 0 && (
-              <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium">
+              <div className="flex-1 sm:flex-initial flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium min-h-[44px]">
                 <School size={14} className="text-slate-400 shrink-0" />
                 <select
                   value={selectedCollege}

@@ -122,12 +122,12 @@ export default function ManageInternships() {
               placeholder="Search by title, domain, or skills..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1 min-h-[44px]">
               <span className="text-xs font-bold text-slate-400 pl-1">Domain:</span>
               <select
                 value={selectedDomain}
@@ -158,11 +158,11 @@ export default function ManageInternships() {
             <p className="text-sm text-slate-400 mt-1">Try adjusting your filters or create a new internship track.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 sm:p-6">
             {filteredData.map((internship) => (
               <div 
                 key={internship.id} 
-                className="bg-white rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col p-5"
+                className="bg-white rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col p-4 sm:p-5"
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <span className="rounded-md bg-teal-50 text-teal-700 px-2.5 py-1 text-xs font-bold uppercase tracking-wider">
@@ -173,7 +173,7 @@ export default function ManageInternships() {
                   </span>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900 mb-2 leading-snug line-clamp-2">{internship.title}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 leading-snug line-clamp-2">{internship.title}</h3>
                 <p className="text-xs text-slate-500 leading-relaxed line-clamp-3 mb-4">{internship.description || 'Hands-on practical industry internship track.'}</p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -195,12 +195,13 @@ export default function ManageInternships() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleToggleStatus(internship.id, internship.isActive, internship.title)}
-                      className={`p-2 rounded-xl text-xs font-bold transition-colors ${
+                      className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                         internship.isActive ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                       }`}
                       title={internship.isActive ? 'Deactivate' : 'Publish'}
+                      aria-label="Toggle status"
                     >
-                      {internship.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {internship.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                     
                     <button
@@ -208,18 +209,20 @@ export default function ManageInternships() {
                         setEditingInternship(internship);
                         setIsModalOpen(true);
                       }}
-                      className="p-2 bg-teal-50 text-teal-700 hover:bg-teal-100 rounded-xl text-xs font-bold transition-colors"
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center bg-teal-50 text-teal-700 hover:bg-teal-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                       title="Edit Internship"
+                      aria-label="Edit Internship"
                     >
-                      <Edit2 size={14} />
+                      <Edit2 size={16} />
                     </button>
 
                     <button
                       onClick={() => handleDelete(internship.id, internship.title)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                       title="Delete Internship"
+                      aria-label="Delete Internship"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>

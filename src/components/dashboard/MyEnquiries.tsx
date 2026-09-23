@@ -10,9 +10,10 @@ import { DashboardSkeleton, DashboardError } from '../layout/DashboardState';
 interface Enquiry {
   id: string;
   targetTitle: string;
-  type: 'course' | 'internship';
-  status: 'new' | 'contacted' | 'enrolled' | 'closed';
+  type: string;
+  status: string;
   createdAt: string;
+  rawTimestamp?: number;
 }
 
 export default function MyEnquiries() {
@@ -29,28 +30,40 @@ export default function MyEnquiries() {
     setLoading(true);
 
     const userEmailClean = user.email.toLowerCase().trim();
-    const q = query(collection(db, 'enquiries'), where('email', '==', userEmailClean));
+    let enquiriesList: Enquiry[] = [];
+    let contactList: Enquiry[] = [];
 
-    const unsubscribe = onSnapshot(
-      q,
+    const updateAll = () => {
+      const combined = [...enquiriesList, ...contactList].sort(
+        (a, b) => (b.rawTimestamp || 0) - (a.rawTimestamp || 0)
+      );
+      setEnquiries(combined);
+      setError(null);
+      setLoading(false);
+    };
+
+    const qEnquiries = query(collection(db, 'enquiries'), where('email', '==', userEmailClean));
+    const unsubEnquiries = onSnapshot(
+      qEnquiries,
       (snapshot) => {
-        const data = snapshot.docs.map(doc => {
+        enquiriesList = snapshot.docs.map(doc => {
           const docData = doc.data();
           let createdAtStr = 'Unknown';
+          let rawTimestamp = 0;
           if (docData.createdAt && docData.createdAt.toDate) {
             createdAtStr = docData.createdAt.toDate().toLocaleDateString();
+            rawTimestamp = docData.createdAt.toDate().getTime();
           }
           return {
             id: doc.id,
-            targetTitle: docData.targetTitle,
-            type: docData.type,
-            status: docData.status,
-            createdAt: createdAtStr
+            targetTitle: docData.targetTitle || docData.courseName || 'Course Enquiry',
+            type: docData.type || 'course',
+            status: docData.status || 'new',
+            createdAt: createdAtStr,
+            rawTimestamp,
           };
-        }) as Enquiry[];
-        setEnquiries(data);
-        setError(null);
-        setLoading(false);
+        });
+        updateAll();
       },
       (err) => {
         console.error("Error listening to enquiries:", err);
@@ -59,8 +72,37 @@ export default function MyEnquiries() {
       }
     );
 
+    const qContacts = query(collection(db, 'contactMessages'), where('email', '==', userEmailClean));
+    const unsubContacts = onSnapshot(
+      qContacts,
+      (snapshot) => {
+        contactList = snapshot.docs.map(doc => {
+          const docData = doc.data();
+          let createdAtStr = 'Unknown';
+          let rawTimestamp = 0;
+          if (docData.createdAt && docData.createdAt.toDate) {
+            createdAtStr = docData.createdAt.toDate().toLocaleDateString();
+            rawTimestamp = docData.createdAt.toDate().getTime();
+          }
+          return {
+            id: doc.id,
+            targetTitle: docData.subject || 'General Enquiry',
+            type: 'contact',
+            status: docData.status || 'new',
+            createdAt: createdAtStr,
+            rawTimestamp,
+          };
+        });
+        updateAll();
+      },
+      (err) => {
+        console.warn("Contact messages query ignored or not permitted:", err);
+      }
+    );
+
     return () => {
-      unsubscribe();
+      unsubEnquiries();
+      unsubContacts();
     };
   }, [user]);
 
@@ -108,13 +150,17 @@ export default function MyEnquiries() {
   }
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'new': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">New</span>;
-      case 'contacted': return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Contacted</span>;
-      case 'enrolled': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Enrolled</span>;
-      case 'closed': return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Closed</span>;
-      default: return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">{status}</span>;
+    const s = (status || '').toLowerCase();
+    if (s === 'converted' || s === 'enrolled') {
+      return <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Enrolled</span>;
     }
+    if (s === 'in review' || s === 'contacted') {
+      return <span className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">In Review</span>;
+    }
+    if (s === 'rejected' || s === 'closed') {
+      return <span className="bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">{s === 'rejected' ? 'Rejected' : 'Closed'}</span>;
+    }
+    return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">New</span>;
   };
 
   return (

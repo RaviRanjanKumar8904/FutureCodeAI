@@ -5,6 +5,7 @@ import { X, Search, Download, Eye, CheckCircle2, AlertCircle, Save, FileText, Sh
 import toast from 'react-hot-toast';
 import { exportCSV } from '../../utils/csv';
 import { generateTestResultPDF } from '../../utils/generateTestResultPDF';
+import { sendNotification } from '../../utils/notificationService';
 
 interface TestSubmissionsViewProps {
   isOpen: boolean;
@@ -148,6 +149,16 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
 
       if (!stillPending) {
         toast.success('All questions evaluated! The final result is now visible to the student.');
+        if (selectedAttempt.studentEmail) {
+          await sendNotification({
+            userId: selectedAttempt.studentId || '',
+            userEmail: selectedAttempt.studentEmail,
+            title: 'Test Evaluation Complete',
+            message: `Your test "${test.title}" has been evaluated. Your final score is ${newTotal}/${maxScore} (${newPercentage.toFixed(1)}%).`,
+            type: 'test',
+            link: `/dashboard/student/tests/${test.id}/result/${selectedAttempt.id}`,
+          });
+        }
       } else {
         toast.success('Grades saved. Some questions are still pending review.');
       }
@@ -379,7 +390,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                           <p className="text-[10px] font-bold text-slate-400">Language: {answer.language}</p>
                         )}
                         {/* Manual Grading Input */}
-                        <div className="flex items-center gap-3 bg-amber-50/70 p-3 rounded-xl border border-amber-100">
+                        <div className="flex items-center gap-3 bg-amber-50/70 p-3 rounded-xl border border-amber-100 flex-wrap">
                           <label className="text-xs font-bold text-amber-900 whitespace-nowrap">Award Marks:</label>
                           <input
                             type="number"
@@ -387,7 +398,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                             max={q.marks}
                             value={gradingChanges[q.id] ?? answer.marksAwarded ?? 0}
                             onChange={e => handleGradeChange(q.id, Number(e.target.value))}
-                            className="w-20 bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
+                            className="w-20 bg-white border border-amber-200 rounded-lg px-2 py-1.5 text-base sm:text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500/20"
                           />
                           <span className="text-xs text-amber-700 font-medium">/ {q.marks}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${answer.reviewStatus === 'reviewed' ? 'bg-emerald-100 text-emerald-700' :
@@ -410,7 +421,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                 <button
                   onClick={handleSaveGrades}
                   disabled={savingGrade}
-                  className="bg-amber-500 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-amber-600 transition-all shadow-md shadow-amber-500/20 flex items-center gap-2 disabled:opacity-70 cursor-pointer active:scale-95"
+                  className="bg-amber-500 text-white px-6 min-h-[44px] rounded-xl font-bold hover:bg-amber-600 transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-70 cursor-pointer active:scale-95 text-xs sm:text-sm"
                 >
                   {savingGrade ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -433,21 +444,21 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                   placeholder="Search by name, roll no, branch, email..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={handleExportCSV}
                   disabled={filteredAttempts.length === 0}
-                  className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-3 min-h-[44px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Download size={14} /> Export CSV
                 </button>
                 <button
                   onClick={handleExportPDF}
                   disabled={filteredAttempts.length === 0}
-                  className="px-3 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-3 min-h-[44px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <FileText size={14} /> Export PDFs
                 </button>
@@ -457,7 +468,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
               </div>
             </div>
 
-            {/* Submissions Table */}
+            {/* Submissions Table / Cards */}
             <div className="overflow-y-auto flex-1 scrollbar-none">
               {loading ? (
                 <div className="py-24 flex justify-center">
@@ -474,7 +485,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                   {filteredAttempts.map(attempt => (
                     <div
                       key={attempt.id}
-                      className="p-4 sm:px-6 flex items-center gap-4 hover:bg-slate-50/50 transition-colors cursor-pointer"
+                      className="p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:bg-slate-50/50 transition-colors cursor-pointer"
                       onClick={() => setSelectedAttempt(attempt)}
                     >
                       <div className="flex-1 min-w-0">
@@ -487,7 +498,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium truncate mt-0.5">
-                          <span>{attempt.studentEmail || ''}</span>
+                          <span className="truncate">{attempt.studentEmail || ''}</span>
                           {attempt.branch && (
                             <>
                               <span>•</span>
@@ -496,41 +507,41 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
                           )}
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-extrabold text-slate-900">
-                          {attempt.totalScore ?? 0} / {attempt.maxScore ?? 0}
-                        </p>
-                        <p className="text-[10px] font-bold text-slate-400">
-                          {attempt.percentage?.toFixed(1) ?? 0}%
-                        </p>
-                      </div>
-                      <div className="shrink-0 flex flex-col items-end gap-1">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          attempt.status === 'violation_submitted'
-                            ? 'bg-rose-600 text-white'
-                            : attempt.status === 'completed'
-                              ? attempt.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                              : attempt.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {attempt.status === 'violation_submitted'
-                            ? 'Auto-Submitted (Violations)'
-                            : attempt.status === 'completed'
-                              ? (attempt.passed ? 'Passed' : 'Failed')
-                              : attempt.status === 'in_progress' ? 'In Progress' : attempt.status || 'Unknown'}
-                        </span>
-                        {(attempt.proctorWarnings || 0) > 0 && (
-                          <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
-                            <ShieldAlert size={10} /> {attempt.proctorWarnings}/3 warnings
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <div className="text-left sm:text-right">
+                          <p className="text-sm font-extrabold text-slate-900">
+                            {attempt.totalScore ?? 0} / {attempt.maxScore ?? 0}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400">
+                            {attempt.percentage?.toFixed(1) ?? 0}%
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            attempt.status === 'violation_submitted'
+                              ? 'bg-rose-600 text-white'
+                              : attempt.status === 'completed'
+                                ? attempt.passed ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                : attempt.status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {attempt.status === 'violation_submitted'
+                              ? 'Auto-Submitted'
+                              : attempt.status === 'completed'
+                                ? (attempt.passed ? 'Passed' : 'Failed')
+                                : attempt.status === 'in_progress' ? 'In Progress' : attempt.status || 'Unknown'}
                           </span>
-                        )}
+                          {(attempt.proctorWarnings || 0) > 0 && (
+                            <span className="text-[10px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md flex items-center gap-1">
+                              <ShieldAlert size={10} /> {attempt.proctorWarnings}/3 warnings
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-400 font-medium shrink-0 hidden md:block w-28 text-right">
+                          {formatDate(attempt.submittedAt)}
+                        </div>
+                        <Eye size={18} className="text-slate-400 hover:text-indigo-600 shrink-0" />
                       </div>
-                      <div className="text-xs text-slate-400 font-medium shrink-0 hidden sm:block w-20 text-right">
-                        Attempt #{attempt.attemptNumber || 1}
-                      </div>
-                      <div className="text-xs text-slate-400 font-medium shrink-0 hidden md:block w-28 text-right">
-                        {formatDate(attempt.submittedAt)}
-                      </div>
-                      <Eye size={16} className="text-slate-300 shrink-0" />
                     </div>
                   ))}
                 </div>
@@ -545,7 +556,7 @@ export default function TestSubmissionsView({ isOpen, onClose, test }: TestSubmi
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
+              className="px-4 py-2.5 min-h-[44px] font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer flex items-center justify-center"
             >
               Close
             </button>

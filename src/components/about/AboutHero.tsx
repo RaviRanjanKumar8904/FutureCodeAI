@@ -1,29 +1,22 @@
-import { Canvas } from '@react-three/fiber';
-import { Float, PresentationControls, Icosahedron, Edges } from '@react-three/drei';
+import { Suspense, lazy } from 'react';
 import Reveal from '../Reveal';
+import { Cpu } from 'lucide-react';
 
-function TechCore() {
+const AboutHeroCanvas = lazy(() => import('./AboutHeroCanvas'));
+
+function AboutVisualFallback() {
   return (
-    <Float speed={2.5} rotationIntensity={1.5} floatIntensity={2}>
-      <PresentationControls
-        global={false}
-        cursor={true}
-        snap={true}
-        speed={1.5}
-        zoom={1}
-        polar={[-0.2, 0.2]}
-        azimuth={[-Math.PI / 4, Math.PI / 4]}
-      >
-        <Icosahedron args={[1.5, 0]}>
-          <meshBasicMaterial color="#1E293B" wireframe={true} />
-          <Edges scale={1.1} threshold={15} color="#4F46E5" />
-        </Icosahedron>
-        
-        <Icosahedron args={[1, 1]} rotation={[Math.PI/4, 0, 0]}>
-          <meshBasicMaterial color="#06B6D4" wireframe={true} />
-        </Icosahedron>
-      </PresentationControls>
-    </Float>
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-gradient-to-tr from-indigo-500/20 to-cyan-400/20 blur-2xl animate-pulse" />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="p-6 rounded-3xl bg-white/70 backdrop-blur-md border border-white/60 shadow-xl text-center">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-primary flex items-center justify-center mx-auto mb-2">
+            <Cpu size={24} />
+          </div>
+          <span className="text-xs font-bold text-slate-700">FutureCode Education</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -56,13 +49,16 @@ export default function AboutHero() {
             </Reveal>
           </div>
 
-          <div className="w-full lg:w-1/2 h-[35vh] sm:h-[45vh] lg:h-[60vh] relative">
-            <Reveal direction="left" delay={0.25} className="w-full h-full">
-              <Canvas camera={{ position: [0, 0, 4.5], fov: 45 }} style={{ touchAction: 'pan-y' }}>
-                <ambientLight intensity={1.5} />
-                <directionalLight position={[5, 5, 5]} intensity={2} />
-                <TechCore />
-              </Canvas>
+          <div className="w-full lg:w-1/2 h-[28vh] sm:h-[40vh] lg:h-[60vh] relative">
+            <Reveal direction="left" delay={0.25} className="w-full h-full flex items-center justify-center">
+              <div className="hidden md:block w-full h-full">
+                <Suspense fallback={<AboutVisualFallback />}>
+                  <AboutHeroCanvas />
+                </Suspense>
+              </div>
+              <div className="md:hidden w-full h-full flex items-center justify-center">
+                <AboutVisualFallback />
+              </div>
             </Reveal>
           </div>
 

@@ -142,6 +142,9 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
     setSubmitError('');
     try {
       const payload = {
+        studentId: user?.uid || '',
+        studentEmail: data.email.trim().toLowerCase(),
+        instituteId: target.instituteId || '',
         name: data.name.trim(),
         email: data.email.trim().toLowerCase(),
         phone: data.phone.trim(),
@@ -264,7 +267,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                       <label className="block font-bold text-slate-700 mb-1">Full Name <span className="text-rose-500">*</span></label>
                       <input 
                         {...register("name")}
-                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-medium text-slate-800 ${errors.name ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-medium text-slate-800 ${errors.name ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. Rahul Sharma"
                       />
                       {errors.name && <p className="text-rose-500 text-[11px] mt-0.5">{errors.name.message}</p>}
@@ -274,7 +277,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                       <label className="block font-bold text-slate-700 mb-1">Gender <span className="text-rose-500">*</span></label>
                       <select
                         {...register("gender")}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-sm font-bold text-slate-800 cursor-pointer"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-bold text-slate-800 cursor-pointer"
                       >
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -289,7 +292,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                       <input 
                         {...register("phone")}
                         type="tel"
-                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-medium text-slate-800 ${errors.phone ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-medium text-slate-800 ${errors.phone ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. 9876543210"
                       />
                       {errors.phone && <p className="text-rose-500 text-[11px] mt-0.5">{errors.phone.message}</p>}
@@ -300,7 +303,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                       <input 
                         {...register("email")}
                         type="email"
-                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-medium text-slate-800 ${errors.email ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-medium text-slate-800 ${errors.email ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. rahul@example.com"
                       />
                       {errors.email && <p className="text-rose-500 text-[11px] mt-0.5">{errors.email.message}</p>}
@@ -315,7 +318,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                       </label>
                       <input 
                         {...register("collegeName")}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-sm font-medium text-slate-800"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium text-slate-800"
                         placeholder="e.g. MIT Muzaffarpur / Purnea College"
                       />
                     </div>
@@ -328,7 +331,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                           </label>
                           <input 
                             {...register("degreeBranch")}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-sm font-medium text-slate-800"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium text-slate-800"
                             placeholder="e.g. B.Tech CSE / BCA / MCA"
                           />
                         </>
@@ -339,7 +342,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                           </label>
                           <input 
                             {...register("rollNo")}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-sm font-medium text-slate-800"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium text-slate-800"
                             placeholder="e.g. 21CS045"
                           />
                         </>
@@ -354,7 +357,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                         <label className="block font-bold text-slate-700 mb-1">Graduation Year <span className="text-rose-500">*</span></label>
                         <select 
                           {...register("gradYear")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-bold text-slate-800 cursor-pointer"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-bold text-slate-800 cursor-pointer"
                         >
                           {gradYears.map(yr => (
                             <option key={yr} value={yr}>{yr}</option>
@@ -368,7 +371,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                         </label>
                         <input 
                           {...register("resumeLink")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-sm font-medium text-slate-800"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium text-slate-800"
                           placeholder="e.g. https://drive.google.com/..."
                         />
                       </div>
@@ -382,7 +385,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                         <label className="block font-bold text-slate-700 mb-1">Applying As <span className="text-rose-500">*</span></label>
                         <select 
                           {...register("userType")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-bold text-slate-800 cursor-pointer"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-bold text-slate-800 cursor-pointer"
                         >
                           <option value="Student">Student (Self)</option>
                           <option value="Parent">Parent / Guardian</option>
@@ -395,7 +398,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                         </label>
                         <input 
                           {...register("educationDetails")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-xs sm:text-sm font-medium text-slate-800"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium text-slate-800"
                           placeholder="e.g. B.Tech 3rd Year / BCA / 12th"
                         />
                       </div>
@@ -410,7 +413,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                       </label>
                       <input 
                         {...register("city")}
-                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-medium text-slate-800 ${errors.city ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-medium text-slate-800 ${errors.city ? 'border-rose-500' : 'border-slate-200 focus:border-indigo-500'}`}
                         placeholder="e.g. Purnea / Patna"
                       />
                       {errors.city && <p className="text-rose-500 text-[11px] mt-0.5">{errors.city.message}</p>}
@@ -421,7 +424,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                         <label className="block font-bold text-slate-700 mb-1">Preferred Center / Mode</label>
                         <select 
                           {...register("preferredLocation")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-bold text-slate-800 cursor-pointer"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-bold text-slate-800 cursor-pointer"
                         >
                           <option value="">No Preference / Online</option>
                           {locations.map(loc => (
@@ -436,7 +439,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                         </label>
                         <input 
                           {...register("githubLink")}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-medium text-slate-800"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-medium text-slate-800"
                           placeholder="e.g. https://github.com/username"
                         />
                       </div>
@@ -451,7 +454,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                     <textarea 
                       {...register("message")}
                       rows={2}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-xs sm:text-sm font-medium text-slate-800 resize-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-base sm:text-sm font-medium text-slate-800 resize-none"
                       placeholder={type === 'internship' ? "Tell us about your relevant projects or tech stack interests..." : "e.g. Inquiring about weekend batch timing..."}
                     />
                   </div>
@@ -479,7 +482,7 @@ export default function EnquiryFormModal({ isOpen, onClose, target, type = 'cour
                   <button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-xs sm:text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 mt-1 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer active:scale-95"
+                    className="w-full bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-xs sm:text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 mt-1 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer active:scale-95 min-h-[44px]"
                   >
                     {isSubmitting ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

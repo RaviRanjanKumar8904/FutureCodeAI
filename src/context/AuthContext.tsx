@@ -45,8 +45,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (snapshot.exists()) {
               const userData = snapshot.data() as User;
 
-              // If institute is still pending, don't log them in fully
-              if (userData.role === 'institute' && userData.status === 'pending') {
+              // If institute is not active (pending, rejected, or inactive), don't log them in fully
+              if (userData.role === 'institute' && userData.status !== 'active') {
                 auth.signOut();
                 setUser(null);
               } else {
@@ -88,10 +88,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (userSnap.exists()) {
       const existingData = userSnap.data() as User;
       
-      // Enforce pending verification
-      if (existingData.role === 'institute' && existingData.status === 'pending') {
-        await auth.signOut();
-        throw new Error('pending_verification');
+      // Enforce institute active status verification
+      if (existingData.role === 'institute') {
+        if (existingData.status === 'pending') {
+          await auth.signOut();
+          throw new Error('pending_verification');
+        } else if (existingData.status !== 'active') {
+          await auth.signOut();
+          throw new Error('access_denied');
+        }
       }
 
       // Enforce staff allow-list for existing staff users as well

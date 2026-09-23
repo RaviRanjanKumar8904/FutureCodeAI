@@ -219,7 +219,7 @@ export default function MyInternships() {
 
         <Link
           to="/internships"
-          className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-indigo-700 bg-primary/5 hover:bg-primary/10 px-4 py-2.5 rounded-xl transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-indigo-700 bg-primary/5 hover:bg-primary/10 px-4 py-2.5 min-h-[44px] rounded-xl transition-all self-start sm:self-auto"
         >
           <span>Explore More Openings</span>
           <ArrowRight size={14} />
@@ -248,7 +248,7 @@ export default function MyInternships() {
               </p>
             </div>
             
-            <div className="flex flex-wrap items-center gap-3 self-end md:self-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
                 <Calendar size={14} className="text-slate-400" />
                 <span>Date: {internship.appliedDate}</span>

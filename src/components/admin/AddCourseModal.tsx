@@ -183,7 +183,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                   required
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. Frontend Development"
                 />
               </div>
@@ -194,7 +194,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                 <select 
                   value={formData.category}
                   onChange={e => setFormData({...formData, category: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base bg-white"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm bg-white"
                 >
                   <option value="Programming Languages">Programming Languages</option>
                   <option value="Web Development">Web Development</option>
@@ -215,7 +215,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                   required
                   value={formData.duration}
                   onChange={e => setFormData({...formData, duration: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. 6 Months"
                 />
               </div>
@@ -228,7 +228,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                   required
                   value={formData.level}
                   onChange={e => setFormData({...formData, level: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. Beginner to Advanced"
                 />
               </div>
@@ -242,7 +242,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
               <select 
                 value={formData.centerId}
                 onChange={e => setFormData({...formData, centerId: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base bg-white"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm bg-white"
               >
                 <option value="">Global / Online (FutureCode AI)</option>
                 {centers.map(center => (
@@ -263,7 +263,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                   type="text" 
                   value={formData.timing}
                   onChange={e => setFormData({...formData, timing: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. 6:00 PM - 8:00 PM"
                 />
               </div>
@@ -275,7 +275,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                   type="text" 
                   value={formData.startDate}
                   onChange={e => setFormData({...formData, startDate: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. 1st of Every Month"
                 />
               </div>
@@ -293,7 +293,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                     required
                     value={formData.originalPrice}
                     onChange={e => setFormData({...formData, originalPrice: e.target.value as any})}
-                    className="w-full bg-white border border-purple-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full bg-white border border-purple-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   />
                 </div>
                 <div>
@@ -318,7 +318,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
                 required
                 value={formData.thumbnailUrl}
                 onChange={e => setFormData({...formData, thumbnailUrl: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                 placeholder="https://..."
               />
             </div>
@@ -358,7 +358,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
           <button 
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
+            className="px-4 py-2.5 min-h-[44px] font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer flex items-center justify-center"
           >
             Cancel
           </button>
@@ -366,7 +366,7 @@ export default function AddCourseModal({ isOpen, onClose, onSuccess, initialData
             form="courseForm"
             type="submit"
             disabled={loading}
-            className="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 flex items-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
+            className="bg-purple-600 text-white px-6 py-2.5 min-h-[44px] rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 flex items-center justify-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

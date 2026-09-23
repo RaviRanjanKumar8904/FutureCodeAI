@@ -191,7 +191,7 @@ export default function AddQuestionModal({
                 required min={1}
                 value={marks}
                 onChange={e => setMarks(Number(e.target.value))}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
               />
             </div>
 
@@ -204,7 +204,7 @@ export default function AddQuestionModal({
                     required rows={3}
                     value={questionText}
                     onChange={e => setQuestionText(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium resize-none text-xs sm:text-base"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium resize-none text-base sm:text-sm"
                     placeholder="Enter the question..."
                   />
                 </div>
@@ -218,12 +218,13 @@ export default function AddQuestionModal({
                         <button
                           type="button"
                           onClick={() => toggleCorrect(idx)}
-                          className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all cursor-pointer text-xs font-extrabold ${
+                          className={`w-9 h-9 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all cursor-pointer text-xs font-extrabold ${
                             correctAnswers.includes(idx)
-                              ? 'bg-emerald-500 border-emerald-500 text-white'
+                              ? 'bg-emerald-500 border-emerald-500 text-white shadow-xs'
                               : 'border-slate-300 text-slate-400 hover:border-emerald-400'
                           }`}
                           title={correctAnswers.includes(idx) ? 'Marked as correct' : 'Mark as correct answer'}
+                          aria-label={`Option ${String.fromCharCode(65 + idx)} correct status`}
                         >
                           {String.fromCharCode(65 + idx)}
                         </button>
@@ -235,16 +236,18 @@ export default function AddQuestionModal({
                             newOpts[idx] = e.target.value;
                             setOptions(newOpts);
                           }}
-                          className="flex-1 bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                          className="flex-1 bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                           placeholder={`Option ${String.fromCharCode(65 + idx)}`}
                         />
                         {options.length > 2 && (
                           <button
                             type="button"
                             onClick={() => removeOption(idx)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                            className="min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                            title="Remove Option"
+                            aria-label="Remove Option"
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} />
                           </button>
                         )}
                       </div>
@@ -253,11 +256,11 @@ export default function AddQuestionModal({
                   <button
                     type="button"
                     onClick={addOption}
-                    className="mt-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 cursor-pointer"
+                    className="mt-2 min-h-[44px] text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 cursor-pointer px-2"
                   >
-                    <Plus size={14} /> Add Option
+                    <Plus size={16} /> Add Option
                   </button>
-                  <p className="text-[10px] text-slate-400 mt-1.5 font-medium">
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium">
                     Click the letter button to mark correct answer(s). Green = correct.
                   </p>
                 </div>
@@ -271,7 +274,7 @@ export default function AddQuestionModal({
                     required rows={5}
                     value={problemStatement}
                     onChange={e => setProblemStatement(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium resize-none text-xs sm:text-base"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium resize-none text-base sm:text-sm"
                     placeholder="Describe the programming problem..."
                   />
                 </div>
@@ -282,7 +285,7 @@ export default function AddQuestionModal({
                   <select
                     value={language}
                     onChange={e => setLanguage(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base bg-white"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm bg-white"
                   >
                     <option value="javascript">JavaScript</option>
                     <option value="python">Python</option>
@@ -346,7 +349,7 @@ export default function AddQuestionModal({
           <button 
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
+            className="px-4 py-2.5 min-h-[44px] font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer flex items-center justify-center"
           >
             Cancel
           </button>
@@ -354,7 +357,7 @@ export default function AddQuestionModal({
             form="questionForm"
             type="submit"
             disabled={loading}
-            className={`text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95 ${
+            className={`text-white px-6 py-2.5 min-h-[44px] rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95 ${
               questionType === 'mcq' 
                 ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20' 
                 : 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/20'

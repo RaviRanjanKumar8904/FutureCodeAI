@@ -223,7 +223,7 @@ export default function TestResult() {
             <User size={16} className="text-primary" />
             <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Candidate Information</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
             <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Candidate Name</span>
               <p className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{attempt.studentName || user?.displayName || 'Student'}</p>
@@ -251,7 +251,7 @@ export default function TestResult() {
         <div className="flex justify-center gap-3">
           <button
             onClick={() => navigate('/dashboard/student/tests')}
-            className="bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-600 transition-colors shadow-glow-primary cursor-pointer active:scale-95"
+            className="w-full sm:w-auto bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-600 transition-colors shadow-glow-primary cursor-pointer active:scale-95 min-h-[44px] flex items-center justify-center"
           >
             Back to My Tests
           </button>
@@ -339,7 +339,7 @@ export default function TestResult() {
           <User size={16} className="text-primary" />
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Candidate Information</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Candidate Name</span>
             <p className="text-sm font-extrabold text-slate-900 truncate mt-0.5">{attempt.studentName || 'Student'}</p>
@@ -385,16 +385,16 @@ export default function TestResult() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
         <button
           onClick={handleDownloadPDF}
-          className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-600 transition-colors shadow-glow-primary flex items-center gap-2 cursor-pointer active:scale-95"
+          className="w-full sm:w-auto bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-600 transition-colors shadow-glow-primary flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-h-[44px]"
         >
           <Download size={16} /> Download Result (PDF)
         </button>
         <button
           onClick={() => navigate(`/dashboard/student/tests/${testId}`)}
-          className="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer active:scale-95"
+          className="w-full sm:w-auto bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-h-[44px]"
         >
           <RotateCcw size={16} /> Retake Test
         </button>

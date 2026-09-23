@@ -174,7 +174,7 @@ export default function CourseModal({ course, onClose, onEnquire }: CourseModalP
           <div className="p-3 sm:p-4 bg-slate-50/90 backdrop-blur-md border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
             <button
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
             >
               Close
             </button>
@@ -183,7 +183,7 @@ export default function CourseModal({ course, onClose, onEnquire }: CourseModalP
                 onClose();
                 onEnquire({ id: course.id, title: course.title });
               }}
-              className="flex-1 sm:flex-initial bg-primary hover:bg-indigo-600 text-white px-6 py-2.5 sm:py-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all shadow-glow-primary flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              className="flex-1 sm:flex-initial bg-primary hover:bg-indigo-600 text-white px-6 py-2.5 sm:py-3 rounded-xl font-extrabold text-xs sm:text-sm transition-all shadow-glow-primary flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 min-h-[44px]"
             >
               <span>Enquire for Course</span>
               <ArrowRight size={15} />

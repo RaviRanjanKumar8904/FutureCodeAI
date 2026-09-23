@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { db, storage } from '../../firebase/config';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { Image as ImageIcon, Upload, Trash2, X, Plus } from 'lucide-react';
+import { Image as ImageIcon, Upload, Trash2, X, Plus, Eye, EyeOff } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { useAuth } from '../../hooks/useAuth';
@@ -14,6 +14,7 @@ interface GalleryImage {
   category: string;
   imageUrl: string;
   storagePath: string;
+  isActive?: boolean;
   createdAt: any;
 }
 
@@ -95,6 +96,7 @@ export default function ManageGallery() {
         category: uploadCategory,
         imageUrl: downloadUrl,
         storagePath: storagePath,
+        isActive: true,
         createdAt: serverTimestamp()
       });
 
@@ -219,7 +221,7 @@ export default function ManageGallery() {
                     value={uploadTitle}
                     onChange={(e) => setUploadTitle(e.target.value)}
                     placeholder="E.g. Hackathon Winners 2026"
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                     required
                   />
                 </div>
@@ -229,7 +231,7 @@ export default function ManageGallery() {
                   <select 
                     value={uploadCategory}
                     onChange={(e) => setUploadCategory(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium bg-white text-xs sm:text-base"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium bg-white text-base sm:text-sm"
                   >
                     {categories.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -242,14 +244,14 @@ export default function ManageGallery() {
                 <button 
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+                  className="flex-1 px-4 py-2.5 min-h-[44px] rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer flex items-center justify-center"
                   disabled={isUploading}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95"
+                  className="flex-1 px-4 py-2.5 min-h-[44px] rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95"
                   disabled={isUploading}
                 >
                   {isUploading ? (
@@ -300,12 +302,13 @@ export default function ManageGallery() {
                   loading="lazy"
                 />
                 
-                {/* Delete Button Overlay */}
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Delete Button Overlay: visible on mobile, hover-revealed on desktop */}
+                <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button 
-                    onClick={() => handleDelete(image.id, image.storagePath)}
-                    className="w-10 h-10 rounded-full bg-white/90 backdrop-blur shadow-lg text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all"
+                    onClick={() => handleDelete(image.id, image.storagePath, image.title)}
+                    className="min-w-[44px] min-h-[44px] rounded-full bg-white/95 backdrop-blur shadow-lg text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
                     title="Delete Image"
+                    aria-label="Delete Image"
                   >
                     <Trash2 size={18} />
                   </button>

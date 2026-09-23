@@ -32,6 +32,11 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       document.documentElement.style.removeProperty('overflow');
       document.body.style.removeProperty('overflow');
     } else {
+      // Respect prefers-reduced-motion for accessibility and low-power devices
+      if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+      }
+
       // Public pages: initialize Lenis if not already active
       if (!lenisRef.current) {
         const lenis = new Lenis({

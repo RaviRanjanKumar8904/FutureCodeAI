@@ -2,9 +2,19 @@ import { useAuth } from '../hooks/useAuth';
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { CalendarDays, ClipboardList, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { lazy, Suspense } from 'react';
 import DashboardShell from '../components/layout/DashboardShell';
-import StaffAttendance from '../components/staff/StaffAttendance';
-import StaffSchedule from '../components/staff/StaffSchedule';
+
+const StaffAttendance = lazy(() => import('../components/staff/StaffAttendance'));
+const StaffSchedule = lazy(() => import('../components/staff/StaffSchedule'));
+
+function DashboardTabLoader() {
+  return (
+    <div className="py-20 flex justify-center items-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-3 border-primary border-t-transparent" />
+    </div>
+  );
+}
 
 function StaffProfile() {
   const { user } = useAuth();
@@ -84,11 +94,13 @@ export default function StaffDashboard() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            <Routes>
-              <Route path="/" element={<StaffSchedule />} />
-              <Route path="attendance" element={<StaffAttendance />} />
-              <Route path="settings" element={<StaffProfile />} />
-            </Routes>
+            <Suspense fallback={<DashboardTabLoader />}>
+              <Routes>
+                <Route path="/" element={<StaffSchedule />} />
+                <Route path="attendance" element={<StaffAttendance />} />
+                <Route path="settings" element={<StaffProfile />} />
+              </Routes>
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </div>

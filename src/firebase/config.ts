@@ -14,10 +14,26 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-if (!firebaseConfig.apiKey && import.meta.env.DEV) {
-  console.warn(
-    "[Firebase Config] Missing VITE_FIREBASE_API_KEY in environment variables. Please ensure your .env file contains valid Firebase credentials."
-  );
+const requiredEnvVars = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID'
+] as const;
+
+const missingEnvVars = requiredEnvVars.filter(
+  (key) => !import.meta.env[key] || import.meta.env[key].trim() === ''
+);
+
+if (missingEnvVars.length > 0) {
+  const errorMsg = `[Firebase Configuration] Missing required environment variable(s): ${missingEnvVars.join(', ')}. Please configure them in your environment settings (.env file or hosting provider settings).`;
+  if (import.meta.env.PROD) {
+    throw new Error(errorMsg);
+  } else {
+    console.warn(errorMsg);
+  }
 }
 
 const app = initializeApp(firebaseConfig);

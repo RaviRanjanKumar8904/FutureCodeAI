@@ -289,7 +289,7 @@ export default function MyCourses() {
           </div>
           <Link
             to="/dashboard/student/certificates"
-            className="px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 shrink-0 transition-all active:scale-95 cursor-pointer min-h-[44px]"
           >
             <Award size={16} /> View Certificates
           </Link>
@@ -309,7 +309,7 @@ export default function MyCourses() {
 
           <Link
             to="/programs"
-            className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-indigo-700 bg-primary/5 hover:bg-primary/10 px-4 py-2.5 rounded-xl transition-all self-start sm:self-auto"
+            className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:text-indigo-700 bg-primary/5 hover:bg-primary/10 px-4 py-2.5 rounded-xl transition-all self-start sm:self-auto min-h-[44px]"
           >
             <span>+ Enroll in Another Course</span>
             <ArrowRight size={14} />
@@ -327,7 +327,7 @@ export default function MyCourses() {
             </p>
             <Link 
               to="/programs" 
-              className="bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-glow-primary hover:bg-indigo-600 transition-colors flex items-center gap-2 text-sm"
+              className="bg-primary text-white px-8 py-3.5 rounded-xl font-bold shadow-glow-primary hover:bg-indigo-600 transition-colors flex items-center gap-2 text-sm min-h-[44px]"
             >
               Browse Programs
               <ArrowRight size={18} />
@@ -396,7 +396,7 @@ export default function MyCourses() {
                     {matchedCert ? (
                       <button
                         onClick={() => handleOpenCertificate(matchedCert)}
-                        className="w-full py-2.5 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                        className="w-full py-2.5 rounded-xl font-extrabold text-xs sm:text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-h-[44px]"
                       >
                         <Award size={16} /> View &amp; Download Certificate
                       </button>

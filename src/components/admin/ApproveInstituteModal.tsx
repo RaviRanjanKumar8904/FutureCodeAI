@@ -3,6 +3,8 @@ import { db } from '../../firebase/config';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { X, Building2, UserCheck, Link2, CheckCircle2, UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../hooks/useAuth';
+import { logAdminActivity } from '../../utils/adminLogger';
 
 interface ApproveInstituteModalProps {
   isOpen: boolean;
@@ -19,6 +21,7 @@ export default function ApproveInstituteModal({
   pendingUser,
   collaborators
 }: ApproveInstituteModalProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'create' | 'link'>('create');
   const [selectedCollabId, setSelectedCollabId] = useState('');
@@ -91,6 +94,12 @@ export default function ApproveInstituteModal({
       });
 
       toast.success('Institute account approved and linked successfully!', { id: toastId });
+      await logAdminActivity(
+        user?.email,
+        'APPROVED',
+        `Institute: ${formData.name || pendingUser.displayName || pendingUser.email}`,
+        `Linked UID ${pendingUser.uid} to collaborator listing`
+      );
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -113,6 +122,12 @@ export default function ApproveInstituteModal({
         status: 'rejected'
       });
       toast.success('Account rejected', { id: toastId });
+      await logAdminActivity(
+        user?.email,
+        'STATUS_CHANGE',
+        `Institute Account: ${pendingUser.displayName || pendingUser.email}`,
+        'Rejected institute verification'
+      );
       onSuccess();
       onClose();
     } catch (error: any) {

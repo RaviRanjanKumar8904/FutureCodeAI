@@ -10,7 +10,8 @@ import {
   query, 
   orderBy, 
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  setDoc
 } from 'firebase/firestore';
 import { 
   Video, 
@@ -481,6 +482,21 @@ export default function ManageWebinars() {
 
       setSelectedWebinar(updatedWebinar);
       setWebinars(prev => prev.map(w => w.id === selectedWebinar.id ? updatedWebinar : w));
+
+      // Notify enrolled attendees about the postponed session
+      attendees.forEach(a => {
+        if (a.email) {
+          sendNotification({
+            userId: a.id,
+            userEmail: a.email,
+            title: `Session Postponed: ${selectedWebinar.title} ⏸️`,
+            message: `The session on ${formatDateShort(postponeDateTarget)} has been postponed (${postponeReason}). Schedule extended to ${formatDateFull(endDate)}.`,
+            type: 'webinar',
+            link: '/dashboard/student/webinars',
+          });
+        }
+      });
+
       await logAdminActivity(user?.email, 'UPDATED', `Postponed day ${postponeDateTarget} (${postponeReason}) for ${selectedWebinar.title}`);
       toast.success(`Session on ${formatDateShort(postponeDateTarget)} postponed. Schedule extended to ${formatDateFull(endDate)}!`, { id: toastId });
       setShowPostponeModal(false);
@@ -646,7 +662,7 @@ export default function ManageWebinars() {
       onConfirm: async () => {
         const toastId = toast.loading('Generating certificate...');
         try {
-          await addDoc(collection(db, 'certificates'), {
+          await setDoc(doc(db, 'certificates', certCode), {
             certificateId: certCode,
             studentName: attendee.studentName,
             studentEmail: attendee.email.toLowerCase().trim(),
@@ -674,7 +690,7 @@ export default function ManageWebinars() {
               title: `🎓 Webinar Certificate Issued!`,
               message: `Congratulations! Your certificate for ${webinarTitle} is ready.`,
               type: 'certificate',
-              link: '/dashboard/student?tab=certificates',
+              link: '/dashboard/student/certificates',
             });
           }
 
@@ -716,7 +732,7 @@ export default function ManageWebinars() {
           const batch = writeBatch(db);
           for (const attendee of eligiblePending) {
             const certCode = `FCAI-WEB-${Date.now().toString().slice(-5)}-${Math.floor(1000 + Math.random() * 9000)}`;
-            const certRef = doc(collection(db, 'certificates'));
+            const certRef = doc(db, 'certificates', certCode);
             const { percentage } = computeAttendeeStats(attendee, totalDays);
 
             batch.set(certRef, {
@@ -739,6 +755,17 @@ export default function ManageWebinars() {
               certificateId: certCode,
               certificateIssuedAt: serverTimestamp(),
             });
+
+            if (attendee.email) {
+              sendNotification({
+                userId: attendee.id,
+                userEmail: attendee.email,
+                title: '🎓 Webinar Certificate Issued!',
+                message: `Congratulations! Your certificate for ${selectedWebinar.title} is ready.`,
+                type: 'certificate',
+                link: '/dashboard/student/certificates',
+              });
+            }
           }
 
           await batch.commit();
@@ -1232,7 +1259,7 @@ export default function ManageWebinars() {
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 pt-2 lg:pt-0">
             <button
               onClick={() => setShowFormatGuide(true)}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-xs active:scale-95"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 font-bold text-xs sm:text-sm transition-all cursor-pointer shadow-xs active:scale-95 min-h-[44px]"
               title="View CSV Header Format"
             >
               <HelpCircle size={15} className="text-purple-600 shrink-0" />
@@ -1243,7 +1270,7 @@ export default function ManageWebinars() {
               <>
                 <button
                   onClick={handleBulkIssueEligibleCertificates}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer active:scale-95"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 cursor-pointer active:scale-95 min-h-[44px]"
                   title="Issue Certificates to all students with >= 75% attendance"
                 >
                   <Award size={15} className="shrink-0" />
@@ -1252,7 +1279,7 @@ export default function ManageWebinars() {
 
                 <button
                   onClick={() => triggerCsvUploadForWebinar(selectedWebinar)}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95 min-h-[44px]"
                 >
                   <Upload size={15} className="shrink-0" />
                   <span>Import CSV</span>
@@ -1260,7 +1287,7 @@ export default function ManageWebinars() {
 
                 <button
                   onClick={() => handleOpenAddStudent(selectedWebinar)}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 min-h-[44px]"
                 >
                   <Plus size={15} className="shrink-0" />
                   <span>Add Student</span>
@@ -1268,7 +1295,7 @@ export default function ManageWebinars() {
 
                 <button
                   onClick={exportAttendeesCSV}
-                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 min-h-[44px]"
                   title="Export all multi-day attendance records to CSV"
                 >
                   <Download size={15} className="shrink-0" />
@@ -1279,7 +1306,7 @@ export default function ManageWebinars() {
               <>
                 <button
                   onClick={handleOpenCreateWebinar}
-                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95"
+                  className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs sm:text-sm transition-all shadow-md shadow-purple-600/20 cursor-pointer active:scale-95 min-h-[44px]"
                 >
                   <Plus size={15} className="shrink-0" />
                   <span>Create Webinar</span>
@@ -1287,7 +1314,7 @@ export default function ManageWebinars() {
 
                 <button
                   onClick={() => triggerCsvUploadForWebinar()}
-                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95"
+                  className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs sm:text-sm transition-all cursor-pointer active:scale-95 min-h-[44px]"
                 >
                   <Upload size={15} className="shrink-0" />
                   <span>Import CSV</span>

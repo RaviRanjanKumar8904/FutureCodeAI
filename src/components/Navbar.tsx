@@ -67,7 +67,7 @@ export default function Navbar() {
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-2 group">
             <div className="bg-white p-1.5 rounded-xl shadow-sm border border-gray-100 group-hover:shadow-md transition-all shrink-0">
-              <img src="/logo.jpg" alt="FutureCodeAI Logo" className="h-7 sm:h-9 w-auto mix-blend-multiply" />
+              <img src="/logo.webp" alt="FutureCodeAI Logo" width={36} height={36} className="h-7 sm:h-9 w-auto mix-blend-multiply" />
             </div>
             <span className="font-heading font-extrabold text-lg sm:text-2xl tracking-tight">
               <span className="text-[#152a4f]">FutureCode</span>
@@ -240,19 +240,19 @@ export default function Navbar() {
           <div className="flex md:hidden items-center gap-2">
             <Link 
               to="/verify" 
-              className="px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/20 text-[11px] font-bold flex items-center gap-1 active:scale-95"
+              className="px-3 py-2 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/20 text-xs font-bold flex items-center gap-1 active:scale-95 min-h-[40px]"
             >
-              <ShieldCheck size={13} className="text-amber-600" />
+              <ShieldCheck size={14} className="text-amber-600" />
               Verify
             </Link>
 
             <button 
               type="button"
               aria-label="Toggle Navigation Menu"
-              className="w-10 h-10 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-800 hover:text-primary active:scale-90 transition-all cursor-pointer"
+              className="w-11 h-11 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-800 hover:text-primary active:scale-90 transition-all cursor-pointer shrink-0"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
           </div>
         </div>
@@ -268,7 +268,7 @@ export default function Navbar() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 top-[60px] bg-slate-950/40 backdrop-blur-sm md:hidden z-40"
+              className="fixed inset-0 top-[60px] sm:top-[68px] bg-slate-950/40 backdrop-blur-sm md:hidden z-40"
             />
 
             {/* Menu Panel */}
@@ -277,11 +277,12 @@ export default function Navbar() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 w-full bg-white/95 backdrop-blur-2xl shadow-2xl border-b border-gray-100 p-5 md:hidden flex flex-col gap-3 z-50 rounded-b-3xl max-h-[calc(100vh-70px)] overflow-y-auto"
+              className="absolute top-full left-0 w-full bg-white/95 backdrop-blur-2xl shadow-2xl border-b border-gray-100 p-5 md:hidden flex flex-col gap-3 z-50 rounded-b-3xl max-h-[calc(100vh-70px)] overflow-y-auto overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {/* User Profile Card on Mobile if authenticated */}
               {user && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/80 to-slate-50 border border-indigo-100/80 flex items-center justify-between mb-1">
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/80 to-slate-50 border border-indigo-100/80 flex items-center justify-between mb-1 min-h-[52px]">
                   <div className="flex items-center gap-3 min-w-0">
                     <UserAvatar 
                       photoURL={user.photoURL}
@@ -294,14 +295,14 @@ export default function Navbar() {
                       <p className="text-[11px] text-slate-500 truncate font-medium">{user.email}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200">
+                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
                     {user.role}
                   </span>
                 </div>
               )}
 
               {/* Navigation Links */}
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {navLinks.map((link) => {
                   const isActive = link.path === '/' 
                     ? location.pathname === '/' 
@@ -313,7 +314,7 @@ export default function Navbar() {
                       <Link 
                         key={link.name} 
                         to={link.path}
-                        className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all relative overflow-hidden ${
+                        className={`flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-bold transition-all relative overflow-hidden min-h-[48px] ${
                           isActive 
                             ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30' 
                             : 'bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-pink-50/80 text-indigo-700 border border-indigo-200/80 shadow-[0_0_15px_rgba(99,102,241,0.2)]'
@@ -336,7 +337,7 @@ export default function Navbar() {
                     <Link 
                       key={link.name} 
                       to={link.path}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-colors ${
+                      className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-colors min-h-[48px] ${
                         isActive 
                           ? 'bg-primary text-white shadow-md shadow-primary/20' 
                           : 'text-slate-700 hover:bg-slate-50 active:bg-slate-100'
@@ -355,7 +356,7 @@ export default function Navbar() {
               {/* Verify Certificate Mobile Action */}
               <Link 
                 to="/verify" 
-                className="flex items-center justify-center gap-2 text-sm font-extrabold text-amber-900 bg-amber-500/15 border border-amber-500/30 py-3 rounded-2xl hover:bg-amber-500/20 active:scale-95 transition-all"
+                className="flex items-center justify-center gap-2 text-sm font-extrabold text-amber-900 bg-amber-500/15 border border-amber-500/30 py-3 rounded-2xl hover:bg-amber-500/20 active:scale-95 transition-all min-h-[48px]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <ShieldCheck size={18} className="text-amber-600" />
@@ -367,7 +368,7 @@ export default function Navbar() {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Link 
                     to={getDashboardPath()} 
-                    className={`flex items-center justify-center gap-2 text-xs font-bold py-3 rounded-2xl shadow-sm text-white active:scale-95 ${
+                    className={`flex items-center justify-center gap-2 text-xs sm:text-sm font-bold py-3 rounded-2xl shadow-sm text-white active:scale-95 min-h-[48px] ${
                       user.role === 'admin' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary hover:bg-indigo-600'
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
@@ -381,7 +382,7 @@ export default function Navbar() {
                       logout();
                       setMobileMenuOpen(false);
                     }}
-                    className="bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 px-4 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95 border border-slate-200/60"
+                    className="bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-95 border border-slate-200/60 min-h-[48px]"
                   >
                     <LogOut size={16} />
                     Sign Out
@@ -391,15 +392,15 @@ export default function Navbar() {
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Link 
                     to="/login"
-                    className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 text-center py-3 rounded-2xl transition-colors active:scale-95 flex items-center justify-center gap-1.5"
+                    className="text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 text-center py-3 rounded-2xl transition-colors active:scale-95 flex items-center justify-center gap-1.5 min-h-[48px]"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <UserIcon size={15} />
+                    <UserIcon size={16} />
                     Log in
                   </Link>
                   <Link 
                     to="/login" 
-                    className="bg-primary text-white text-center py-3 rounded-2xl text-xs font-extrabold shadow-glow-primary active:scale-95 transition-all flex items-center justify-center"
+                    className="bg-primary text-white text-center py-3 rounded-2xl text-xs sm:text-sm font-extrabold shadow-glow-primary active:scale-95 transition-all flex items-center justify-center min-h-[48px]"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Get Started

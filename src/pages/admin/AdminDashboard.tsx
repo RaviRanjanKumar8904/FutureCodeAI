@@ -49,6 +49,7 @@ import { logAdminActivity } from '../../utils/adminLogger';
 import { useAuth } from '../../hooks/useAuth';
 import { DashboardError } from '../../components/layout/DashboardState';
 import AdminGlobalSearch from '../../components/admin/AdminGlobalSearch';
+import SectionErrorBoundary from '../../components/common/SectionErrorBoundary';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -391,11 +392,11 @@ export default function AdminDashboard() {
           <p className="text-sm text-slate-500 font-medium mt-1">Real-time performance metrics and cross-functional operations.</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-white border border-slate-200 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw size={16} className={refreshing ? 'animate-spin text-indigo-600' : 'text-slate-500'} />
             <span>Refresh</span>
@@ -403,7 +404,7 @@ export default function AdminDashboard() {
           
           <Link 
             to="/admin/students"
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md shadow-indigo-600/20"
+            className="flex items-center gap-2 px-5 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md shadow-indigo-600/20"
           >
             <Plus size={18} />
             <span>Enroll Student</span>
@@ -457,7 +458,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Row 1: Enrollment Trend & Recent Leads */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+      <SectionErrorBoundary title="Enrollment Trends & Leads">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         {/* 1. Enrollment & Growth Trajectory (Area Chart) */}
         <div className="lg:col-span-2 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
@@ -589,9 +591,11 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+    </SectionErrorBoundary>
 
       {/* Row 2: Attendance Eligibility Distribution & Certificate Issuance Volume */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
+      <SectionErrorBoundary title="Performance & Certification Analytics">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
         {/* 2. Attendance Eligibility Distribution (Pie/Donut Chart) */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -691,6 +695,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+    </SectionErrorBoundary>
 
       {/* Quick Management Hub */}
       <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200/80 shadow-xs">

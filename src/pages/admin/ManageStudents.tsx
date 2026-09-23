@@ -9,6 +9,7 @@ import {
   where,
   writeBatch,
   addDoc,
+  setDoc,
   serverTimestamp,
   orderBy,
   updateDoc
@@ -481,7 +482,8 @@ export default function ManageStudents() {
         createdAt: serverTimestamp(),
       };
 
-      const docRef = await addDoc(collection(db, 'certificates'), certPayload);
+      const certDocRef = doc(db, 'certificates', newCertId);
+      await setDoc(certDocRef, certPayload);
 
       await updateDoc(doc(db, 'users', issueStudent.id), {
         certificateId: newCertId,
@@ -495,7 +497,7 @@ export default function ManageStudents() {
           title: 'Course Certificate Issued! 🎓',
           message: `Congratulations! Your official completion certificate for ${issueForm.courseName} is ready to view & download.`,
           type: 'certificate',
-          link: '/dashboard/student?tab=certificates',
+          link: '/dashboard/student/certificates',
         });
       }
 
@@ -509,7 +511,7 @@ export default function ManageStudents() {
       toast.success(`Official Certificate ${newCertId} Issued!`);
       setIssueModalOpen(false);
 
-      setPreviewCert({ id: docRef.id, ...certPayload } as any);
+      setPreviewCert({ id: newCertId, ...certPayload } as any);
       setShowCertPreview(true);
 
       fetchAll();
@@ -534,7 +536,7 @@ export default function ManageStudents() {
       for (const s of eligible) {
         const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
         const certId = `FCAI-${Date.now().toString().slice(-4)}${randomSuffix}`;
-        const newDocRef = doc(collection(db, 'certificates'));
+        const newDocRef = doc(db, 'certificates', certId);
 
         batch.set(newDocRef, {
           certificateId: certId,
@@ -554,6 +556,17 @@ export default function ManageStudents() {
         });
 
         batch.update(doc(db, 'users', s.id), { certificateId: certId });
+
+        if (s.email) {
+          sendNotification({
+            userId: s.id,
+            userEmail: s.email,
+            title: 'Course Certificate Issued! 🎓',
+            message: `Congratulations! Your official completion certificate for ${s.enrolledCourse || 'your course'} is ready to view & download.`,
+            type: 'certificate',
+            link: '/dashboard/student/certificates',
+          });
+        }
       }
 
       await batch.commit();
@@ -780,16 +793,16 @@ export default function ManageStudents() {
         </div>
 
         {/* Global Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <button
             onClick={() => setIsEnrollOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2 active:scale-95 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95 cursor-pointer min-h-[44px]"
           >
             <Plus size={16} /> Enroll Student
           </button>
           <button
             onClick={() => setShowFormatGuide(true)}
-            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95 cursor-pointer min-h-[44px]"
             title="View Student CSV Format"
           >
             <HelpCircle size={16} className="text-indigo-600" />
@@ -797,13 +810,13 @@ export default function ManageStudents() {
           </button>
           <button
             onClick={() => handleExportCSV(false)}
-            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer min-h-[44px]"
           >
             <Download size={16} /> Export CSV
           </button>
           <button
             onClick={() => csvRef.current?.click()}
-            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-sm active:scale-95 cursor-pointer"
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95 cursor-pointer min-h-[44px]"
             title="Import Students from CSV"
           >
             <Upload size={16} />
@@ -813,64 +826,64 @@ export default function ManageStudents() {
       </div>
 
       {/* KPI Overview Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Students */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">
-            <GraduationCap size={22} />
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-4">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 font-bold">
+            <GraduationCap size={20} />
           </div>
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Students</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-slate-900">{totalCount}</div>
-            <span className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block truncate">Students</span>
+            <div className="text-lg sm:text-2xl font-extrabold text-slate-900">{totalCount}</div>
+            <span className="text-[10px] sm:text-[11px] text-emerald-600 font-semibold flex items-center gap-1 truncate">
               <UserCheck size={11} /> 100% Enrolled
             </span>
           </div>
         </div>
 
         {/* Active Batches */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-bold">
-            <Calendar size={22} />
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-4">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 font-bold">
+            <Calendar size={20} />
           </div>
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active Batches</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-slate-900">{activeBatchesCount}</div>
-            <span className="text-[11px] text-indigo-600 font-semibold truncate block">
-              {uniqueBatches[0] ? `Latest: ${uniqueBatches[0]}` : 'Flexible Cohorts'}
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block truncate">Batches</span>
+            <div className="text-lg sm:text-2xl font-extrabold text-slate-900">{activeBatchesCount}</div>
+            <span className="text-[10px] sm:text-[11px] text-indigo-600 font-semibold truncate block">
+              {uniqueBatches[0] ? `${uniqueBatches[0]}` : 'Flexible'}
             </span>
           </div>
         </div>
 
         {/* Certificates Issued */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 font-bold">
-            <Award size={22} />
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-4">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 font-bold">
+            <Award size={20} />
           </div>
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Certificates</span>
-            <div className="text-xl sm:text-2xl font-extrabold text-slate-900">
-              {certifiedCount} <span className="text-xs font-medium text-slate-400">/ {totalCount}</span>
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block truncate">Certificates</span>
+            <div className="text-lg sm:text-2xl font-extrabold text-slate-900 truncate">
+              {certifiedCount} <span className="text-[10px] sm:text-xs font-medium text-slate-400">/{totalCount}</span>
             </div>
-            <span className="text-[11px] text-amber-700 font-semibold">
+            <span className="text-[10px] sm:text-[11px] text-amber-700 font-semibold truncate block">
               {completedUncertifiedCount > 0
-                ? `${completedUncertifiedCount} ready to issue`
+                ? `${completedUncertifiedCount} ready`
                 : `${Math.round((certifiedCount / (totalCount || 1)) * 100)}% Issued`}
             </span>
           </div>
         </div>
 
         {/* Course Duration Status */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 font-bold">
-            <CheckCircle2 size={22} />
+        <div className="bg-white rounded-2xl p-3 sm:p-5 border border-slate-200/80 shadow-sm flex items-center gap-2.5 sm:gap-4">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 font-bold">
+            <CheckCircle2 size={20} />
           </div>
-          <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Duration Status</span>
-            <div className="text-base sm:text-lg font-extrabold text-slate-900">
-              {certifiedCount + completedUncertifiedCount} Completed
+          <div className="min-w-0">
+            <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block truncate">Completed</span>
+            <div className="text-base sm:text-lg font-extrabold text-slate-900 truncate">
+              {certifiedCount + completedUncertifiedCount}
             </div>
-            <span className="text-[11px] text-slate-500 font-medium">{inProgressCount} in progress</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate block">{inProgressCount} in progress</span>
           </div>
         </div>
       </div>

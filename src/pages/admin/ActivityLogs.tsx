@@ -99,16 +99,16 @@ export default function ActivityLogs() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
-              type="text"
+              type="text" 
               placeholder="Search audit logs by admin, target, or details..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1 min-h-[44px]">
               <span className="text-xs font-bold text-slate-400 pl-1">Action:</span>
               <select
                 value={filterAction}

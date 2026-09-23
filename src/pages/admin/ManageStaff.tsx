@@ -281,143 +281,143 @@ export default function ManageStaff() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8 mb-10">
-        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
+      <div className="grid lg:grid-cols-3 gap-6 sm:gap-8 mb-10">
+        <div className="lg:col-span-1 bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-sm">
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><UserPlus size={18} /> Add Staff</h2>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold mb-1">Email</label>
+              <label className="block text-xs sm:text-sm font-semibold mb-1">Email</label>
               <input
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-base sm:text-sm"
                 placeholder="staff@example.com"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1">Full Name</label>
+              <label className="block text-xs sm:text-sm font-semibold mb-1">Full Name</label>
               <input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                 placeholder="Full name"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1">Phone</label>
+              <label className="block text-xs sm:text-sm font-semibold mb-1">Phone</label>
               <input
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                 placeholder="Mobile number"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1">Address</label>
+              <label className="block text-xs sm:text-sm font-semibold mb-1">Address</label>
               <textarea
                 value={newAddress}
                 onChange={(e) => setNewAddress(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 resize-none"
+                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 resize-none text-base sm:text-sm"
                 placeholder="Residential address"
                 rows={3}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold mb-1">10th Qualification</label>
+                <label className="block text-xs sm:text-sm font-semibold mb-1">10th Qualification</label>
                 <input
                   value={newTenth}
                   onChange={(e) => setNewTenth(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   placeholder="Board / Grade"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1">12th Qualification</label>
+                <label className="block text-xs sm:text-sm font-semibold mb-1">12th Qualification</label>
                 <input
                   value={newTwelfth}
                   onChange={(e) => setNewTwelfth(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   placeholder="Board / Grade"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-1">Degree</label>
+              <label className="block text-xs sm:text-sm font-semibold mb-1">Degree</label>
               <input
                 value={newDegree}
                 onChange={(e) => setNewDegree(e.target.value)}
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                 placeholder="Degree / Course"
               />
             </div>
             <div className="border-t border-slate-200 pt-4">
               <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><Banknote size={16} /> Bank / UPI Info</h3>
-              <div className="grid gap-4">
+              <div className="grid gap-3 sm:gap-4">
                 <input
                   value={newBankName}
                   onChange={(e) => setNewBankName(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   placeholder="Bank name"
                 />
                 <input
                   value={newAccountNumber}
                   onChange={(e) => setNewAccountNumber(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   placeholder="Account number"
                 />
                 <input
                   value={newIfsc}
                   onChange={(e) => setNewIfsc(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   placeholder="IFSC code"
                 />
                 <input
                   value={newUpiId}
                   onChange={(e) => setNewUpiId(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   placeholder="UPI ID"
                 />
               </div>
             </div>
             <div className="border-t border-slate-200 pt-4">
               <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><CalendarDays size={16} /> Employment</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold mb-1">Date of Joining</label>
+                  <label className="block text-xs sm:text-sm font-semibold mb-1">Date of Joining</label>
                   <input
                     value={newDateOfJoining}
                     onChange={(e) => setNewDateOfJoining(e.target.value)}
                     type="date"
-                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1">Salary</label>
+                  <label className="block text-xs sm:text-sm font-semibold mb-1">Salary</label>
                   <input
                     value={newSalary}
                     onChange={(e) => setNewSalary(e.target.value)}
                     type="number"
-                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                     placeholder="Monthly salary"
                   />
                 </div>
               </div>
-              <div className="mt-4">
-                <label className="block text-sm font-semibold mb-1">Salary Due Date</label>
+              <div className="mt-3 sm:mt-4">
+                <label className="block text-xs sm:text-sm font-semibold mb-1">Salary Due Date</label>
                 <input
                   value={newSalaryDueDate}
                   onChange={(e) => setNewSalaryDueDate(e.target.value)}
                   type="date"
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50"
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-slate-50 text-base sm:text-sm"
                 />
               </div>
             </div>
             <button
               type="submit"
               disabled={isAdding}
-              className="w-full rounded-2xl bg-indigo-600 text-white py-3 font-bold hover:bg-indigo-700 transition-colors disabled:opacity-70"
+              className="w-full rounded-2xl bg-indigo-600 text-white min-h-[44px] py-3 font-bold hover:bg-indigo-700 transition-colors disabled:opacity-70 cursor-pointer text-sm"
             >
               {isAdding ? 'Adding...' : 'Add to Allow-list'}
             </button>

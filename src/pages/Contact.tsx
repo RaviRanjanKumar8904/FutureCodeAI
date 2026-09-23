@@ -263,7 +263,7 @@ export default function Contact() {
                     <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
                     <input 
                       {...register("name")}
-                      className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base"
+                      className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-base sm:text-sm"
                       placeholder="John Doe"
                     />
                     {errors.name && <p className="text-red-500 text-[11px] mt-1 font-medium">{errors.name.message}</p>}
@@ -272,7 +272,7 @@ export default function Contact() {
                     <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
                     <input 
                       {...register("phone")}
-                      className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base"
+                      className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-base sm:text-sm"
                       placeholder="+91 9876543210"
                     />
                     {errors.phone && <p className="text-red-500 text-[11px] mt-1 font-medium">{errors.phone.message}</p>}
@@ -283,7 +283,7 @@ export default function Contact() {
                   <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
                   <input 
                     {...register("email")}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-base sm:text-sm"
                     placeholder="john@example.com"
                   />
                   {errors.email && <p className="text-red-500 text-[11px] mt-1 font-medium">{errors.email.message}</p>}
@@ -293,7 +293,7 @@ export default function Contact() {
                   <label className="block text-xs font-bold text-slate-700 mb-1">Subject</label>
                   <input 
                     {...register("subject")}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-base sm:text-sm"
                     placeholder="How can we help?"
                   />
                   {errors.subject && <p className="text-red-500 text-[11px] mt-1 font-medium">{errors.subject.message}</p>}
@@ -304,7 +304,7 @@ export default function Contact() {
                   <textarea 
                     {...register("message")}
                     rows={4}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-xs sm:text-base resize-none"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 font-medium text-base sm:text-sm resize-none"
                     placeholder="Tell us about your inquiry..."
                   />
                   {errors.message && <p className="text-red-500 text-[11px] mt-1 font-medium">{errors.message.message}</p>}

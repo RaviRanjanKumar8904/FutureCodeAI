@@ -212,10 +212,8 @@ service cloud.firestore {
     // CERTIFICATES COLLECTION
     // ----------------------------------------------------------------------
     match /certificates/{certId} {
-      // Anyone can verify individual certificate by ID (direct get)
-      allow get: if true;
-      // Students can list their certificates by UID or authenticated email
-      allow list: if isAdmin() || (isAuthenticated() && (resource.data.studentId == request.auth.uid || resource.data.studentEmail == request.auth.token.email));
+      // Anyone can verify individual certificate by ID (direct get or query)
+      allow get, list: if true;
       // Only admins can issue/modify certificates
       allow write: if isAdmin();
     }

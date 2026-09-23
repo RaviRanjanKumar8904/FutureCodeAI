@@ -1,12 +1,11 @@
-import { Suspense, useRef, Component } from 'react';
+import { Suspense, lazy, Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { PresentationControls, Icosahedron, TorusKnot, Float } from '@react-three/drei';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Code2, Cpu, ShieldCheck } from 'lucide-react';
 import Reveal from '../Reveal';
-import * as THREE from 'three';
+
+const HomeHeroCanvas = lazy(() => import('./HomeHeroCanvas'));
 
 // Local Error Boundary for 3D Canvas
 interface CanvasErrorBoundaryProps {
@@ -35,44 +34,6 @@ class CanvasErrorBoundary extends Component<CanvasErrorBoundaryProps, CanvasErro
     }
     return this.props.children;
   }
-}
-
-// 3D Shapes with pure local lighting (No remote HDR assets needed)
-function AbstractShapes() {
-  const groupRef = useRef<THREE.Group>(null);
-  
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.12;
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      <Float speed={1.8} rotationIntensity={1.2} floatIntensity={1.8}>
-        <Icosahedron args={[1.1, 0]} position={[-1.4, 0.4, 0]}>
-          <meshPhysicalMaterial 
-            color="#4F46E5" 
-            roughness={0.15} 
-            metalness={0.85} 
-            clearcoat={1} 
-            clearcoatRoughness={0.1}
-          />
-        </Icosahedron>
-      </Float>
-      
-      <Float speed={2.2} rotationIntensity={1.4} floatIntensity={1.6}>
-        <TorusKnot args={[0.65, 0.22, 128, 32]} position={[1.4, -0.4, -0.8]}>
-          <meshPhysicalMaterial 
-            color="#06B6D4" 
-            roughness={0.2} 
-            metalness={0.9} 
-            clearcoat={0.8}
-          />
-        </TorusKnot>
-      </Float>
-    </group>
-  );
 }
 
 // High-Performance Glass Morphism CSS Fallback
@@ -162,31 +123,18 @@ export default function HeroSection() {
           </Reveal>
         </motion.div>
 
-        {/* 3D Scene / Visual Container with Error Boundary */}
-        <div className="h-[35vh] sm:h-[45vh] lg:h-[75vh] w-full relative flex items-center justify-center">
-          <CanvasErrorBoundary fallback={<HeroVisualFallback />}>
-            <Canvas 
-              dpr={[1, 1.5]}
-              gl={{ antialias: true, powerPreference: 'high-performance' }}
-              camera={{ position: [0, 0, 5], fov: 45 }} 
-              style={{ touchAction: 'pan-y' }}
-            >
-              <ambientLight intensity={1.5} />
-              <directionalLight position={[10, 10, 5]} intensity={2.5} />
-              <pointLight position={[-10, -10, -5]} intensity={1.5} color="#06B6D4" />
-              <Suspense fallback={null}>
-                <PresentationControls 
-                  global 
-                  snap={true}
-                  rotation={[0, 0, 0]} 
-                  polar={[-Math.PI / 4, Math.PI / 4]} 
-                  azimuth={[-Math.PI / 4, Math.PI / 4]}
-                >
-                  <AbstractShapes />
-                </PresentationControls>
+        {/* 3D Scene on Desktop/Tablet, Lightweight CSS Glassmorphism Fallback on Mobile */}
+        <div className="h-[28vh] sm:h-[40vh] lg:h-[70vh] w-full relative flex items-center justify-center">
+          <div className="hidden md:block w-full h-full">
+            <CanvasErrorBoundary fallback={<HeroVisualFallback />}>
+              <Suspense fallback={<HeroVisualFallback />}>
+                <HomeHeroCanvas />
               </Suspense>
-            </Canvas>
-          </CanvasErrorBoundary>
+            </CanvasErrorBoundary>
+          </div>
+          <div className="md:hidden w-full h-full flex items-center justify-center">
+            <HeroVisualFallback />
+          </div>
         </div>
 
       </div>

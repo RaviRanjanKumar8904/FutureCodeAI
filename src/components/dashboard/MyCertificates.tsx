@@ -180,7 +180,7 @@ export default function MyCertificates() {
         <button
           onClick={handleOpenTranscript}
           disabled={transcriptLoading}
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-[#152a4f] to-[#24a4b5] hover:from-[#1d3a6d] hover:to-[#2bc0d4] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#24a4b5]/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-2xl bg-gradient-to-r from-[#152a4f] to-[#24a4b5] hover:from-[#1d3a6d] hover:to-[#2bc0d4] text-white font-extrabold text-xs sm:text-sm shadow-md shadow-[#24a4b5]/20 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
         >
           <FileText size={16} />
           <span>{transcriptLoading ? 'Compiling Transcript...' : 'Download Official Transcript'}</span>
@@ -256,17 +256,17 @@ export default function MyCertificates() {
                   )}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button 
                     onClick={() => handlePreview(cert)}
-                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white py-2.5 rounded-xl font-bold transition-all shadow-md shadow-amber-500/20 text-xs sm:text-sm active:scale-95 cursor-pointer"
+                    className="flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white min-h-[44px] py-2.5 px-4 rounded-xl font-bold transition-all shadow-md shadow-amber-500/20 text-xs sm:text-sm active:scale-95 cursor-pointer"
                   >
                     <Eye size={15} />
                     <span>View &amp; Download</span>
                   </button>
                   <button 
                     onClick={() => handleLinkedInShare(cert)}
-                    className="flex items-center justify-center gap-2 bg-[#0A66C2] hover:bg-[#004182] text-white py-2.5 rounded-xl font-bold transition-all shadow-sm text-xs sm:text-sm active:scale-95 cursor-pointer"
+                    className="flex items-center justify-center gap-2 bg-[#0A66C2] hover:bg-[#004182] text-white min-h-[44px] py-2.5 px-4 rounded-xl font-bold transition-all shadow-sm text-xs sm:text-sm active:scale-95 cursor-pointer"
                   >
                     <Share2 size={15} />
                     <span>Share on LinkedIn</span>

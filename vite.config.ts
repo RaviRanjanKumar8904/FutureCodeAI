@@ -4,8 +4,12 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/',
   build: {
+    target: 'es2020',
+    sourcemap: false,
     chunkSizeWarningLimit: 1000,
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -14,11 +18,11 @@ export default defineConfig({
             if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('canvg') || id.includes('dompurify')) {
               return 'vendor-pdf';
             }
-            // Three.js 3D graphics
+            // Three.js 3D graphics & ecosystem
             if (id.includes('@react-three')) {
               return 'vendor-react-three';
             }
-            if (id.includes('three')) {
+            if (id.includes('/three/') || id.includes('\\three\\') || id.endsWith('/three') || id.endsWith('\\three')) {
               return 'vendor-three';
             }
             // Firebase sub-modules

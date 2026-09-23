@@ -39,8 +39,8 @@ export default function StudentCsvGuideModal({
             Ensure your CSV file contains the following column headers (case-insensitive):
           </p>
 
-          <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
+          <div className="border border-slate-200 rounded-2xl overflow-x-auto shadow-xs">
+            <table className="w-full min-w-[480px] text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
                   <th className="p-2.5">Column Header</th>
@@ -109,17 +109,17 @@ export default function StudentCsvGuideModal({
           </div>
         </div>
 
-        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+        <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <button
             onClick={onDownloadSample}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs sm:text-sm transition-colors cursor-pointer min-h-[44px]"
           >
             <Download size={15} />
             <span>Download Sample CSV</span>
           </button>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
           >
             Got It
           </button>

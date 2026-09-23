@@ -5,9 +5,10 @@ interface SEOProps {
   description: string;
   keywords?: string;
   author?: string;
+  noIndex?: boolean;
 }
 
-export default function SEO({ title, description, keywords, author = 'FutureCodeAI' }: SEOProps) {
+export default function SEO({ title, description, keywords, author = 'FutureCodeAI', noIndex = false }: SEOProps) {
   const fullTitle = `${title} | FutureCodeAI`;
   
   return (
@@ -16,6 +17,7 @@ export default function SEO({ title, description, keywords, author = 'FutureCode
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
       <meta name="author" content={author} />
+      {noIndex && <meta name="robots" content="noindex, nofollow" />}
       
       {/* Open Graph / Facebook */}
       <meta property="og:type" content="website" />

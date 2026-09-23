@@ -43,22 +43,22 @@ export default function IssueCertificateModal({
   const formDaysRemaining = !isNaN(endMs) && endMs > nowMs ? Math.ceil((endMs - nowMs) / (1000 * 60 * 60 * 24)) : 0;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[92dvh] sm:max-h-[90vh] animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 flex items-center justify-between">
+        <div className="px-5 sm:px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-100 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 flex items-center justify-center font-bold shrink-0">
               <Award size={20} />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-base">Issue Official Certificate</h3>
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">Issue Official Certificate</h3>
               <p className="text-xs text-slate-500 font-medium">For {student.displayName || student.email}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white text-slate-400 hover:text-slate-600 flex items-center justify-center shadow-sm cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white text-slate-400 hover:text-slate-600 flex items-center justify-center shadow-sm cursor-pointer shrink-0"
           >
             <X size={16} />
           </button>
@@ -66,7 +66,7 @@ export default function IssueCertificateModal({
 
         {/* Reactive Course Duration Status Banner */}
         {!isFormCompletionMet ? (
-          <div className="mx-6 mt-4 p-3 rounded-2xl bg-blue-50 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-800 animate-in fade-in duration-150">
+          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 p-3 rounded-2xl bg-blue-50 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-800 animate-in fade-in duration-150 shrink-0">
             <AlertTriangle size={16} className="text-blue-600 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Course Duration In Progress</span>
@@ -76,7 +76,7 @@ export default function IssueCertificateModal({
             </div>
           </div>
         ) : (
-          <div className="mx-6 mt-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800 animate-in fade-in duration-150">
+          <div className="mx-4 sm:mx-6 mt-3 sm:mt-4 p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800 animate-in fade-in duration-150 shrink-0">
             <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block">Course Duration Completed</span>
@@ -88,8 +88,8 @@ export default function IssueCertificateModal({
         )}
 
         {/* Form Body */}
-        <form onSubmit={onSubmit} className="p-6 space-y-4 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={onSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Student Name *</label>
               <input
@@ -97,7 +97,7 @@ export default function IssueCertificateModal({
                 required
                 value={issueForm.studentName}
                 onChange={(e) => setIssueForm({ ...issueForm, studentName: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
               />
             </div>
             <div>
@@ -105,7 +105,7 @@ export default function IssueCertificateModal({
               <select
                 value={issueForm.gender}
                 onChange={(e) => setIssueForm({ ...issueForm, gender: e.target.value as any })}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white"
               >
                 <option value="Male">Male (He / His)</option>
                 <option value="Female">Female (She / Her)</option>
@@ -119,11 +119,11 @@ export default function IssueCertificateModal({
               type="email"
               value={issueForm.studentEmail}
               onChange={(e) => setIssueForm({ ...issueForm, studentEmail: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Program / Course *</label>
               <input
@@ -147,7 +147,7 @@ export default function IssueCertificateModal({
                     issueDate: newEnd,
                   });
                 }}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
               />
             </div>
             <div>
@@ -156,13 +156,13 @@ export default function IssueCertificateModal({
                 type="text"
                 value={issueForm.domain}
                 onChange={(e) => setIssueForm({ ...issueForm, domain: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
               />
             </div>
           </div>
 
           {/* Start Date (Enrollment Date) and Completion/Issue Date */}
-          <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center gap-1">
                 <Calendar size={12} className="text-indigo-600" /> Start Date (Enrollment) *
@@ -181,7 +181,7 @@ export default function IssueCertificateModal({
                     issueDate: newEnd,
                   });
                 }}
-                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-base sm:text-xs font-semibold bg-white min-h-[44px] sm:min-h-0"
               />
               <span className="text-[10px] text-slate-400 mt-0.5 block">Changing auto-updates end date</span>
             </div>
@@ -202,13 +202,13 @@ export default function IssueCertificateModal({
                     issueDate: newEnd,
                   });
                 }}
-                className="w-full px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold bg-white"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-base sm:text-xs font-semibold bg-white min-h-[44px] sm:min-h-0"
               />
               <span className="text-[10px] text-emerald-700 font-medium mt-0.5 block">Identical on certificate</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Grade</label>
               <input
@@ -216,7 +216,7 @@ export default function IssueCertificateModal({
                 value={issueForm.grade}
                 onChange={(e) => setIssueForm({ ...issueForm, grade: e.target.value })}
                 placeholder="E.g. A+"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium"
               />
             </div>
             <div>
@@ -226,7 +226,7 @@ export default function IssueCertificateModal({
                 value={issueForm.marksPercentage}
                 onChange={(e) => setIssueForm({ ...issueForm, marksPercentage: e.target.value })}
                 placeholder="E.g. 94"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium"
               />
             </div>
           </div>
@@ -236,14 +236,14 @@ export default function IssueCertificateModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 text-sm transition-colors cursor-pointer"
+              className="flex-1 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 text-sm transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isIssuing}
-              className="flex-1 py-2.5 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="flex-1 py-3 rounded-xl font-extrabold text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer min-h-[44px]"
             >
               {isIssuing ? (
                 <>

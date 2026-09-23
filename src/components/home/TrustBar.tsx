@@ -14,7 +14,7 @@ export default function TrustBar() {
             {/* Startup Bihar Card */}
             <div className="glass px-6 sm:px-8 py-5 sm:py-6 rounded-2xl flex items-center gap-5 sm:gap-6 group hover:-translate-y-2 transition-transform duration-300 shadow-soft hover:shadow-soft-lg w-full md:w-auto">
               <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-white rounded-xl shadow-sm p-2 shrink-0 border border-gray-50">
-                <img src="/auth-1.png" alt="Startup Bihar" className="max-w-full max-h-full object-contain" />
+                <img src="/auth-1.webp" alt="Startup Bihar" width={80} height={80} className="max-w-full max-h-full object-contain" />
               </div>
               <div className="text-left">
                 <h4 className="font-extrabold text-text-heading text-lg sm:text-xl tracking-tight">Startup Bihar</h4>
@@ -25,7 +25,7 @@ export default function TrustBar() {
             {/* MSME Card */}
             <div className="glass px-6 sm:px-8 py-5 sm:py-6 rounded-2xl flex items-center gap-5 sm:gap-6 group hover:-translate-y-2 transition-transform duration-300 shadow-soft hover:shadow-soft-lg w-full md:w-auto">
               <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-white rounded-xl shadow-sm p-2 shrink-0 border border-gray-50">
-                <img src="/auth-2.png" alt="MSME" className="max-w-full max-h-full object-contain" />
+                <img src="/auth-2.webp" alt="MSME" width={80} height={80} className="max-w-full max-h-full object-contain" />
               </div>
               <div className="text-left">
                 <h4 className="font-extrabold text-text-heading text-lg sm:text-xl tracking-tight">MSME</h4>

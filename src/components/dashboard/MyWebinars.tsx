@@ -378,10 +378,10 @@ export default function MyWebinars() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="relative z-10 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 flex items-center shrink-0 self-start md:self-auto">
+        <div className="relative z-10 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 flex items-center shrink-0 w-full sm:w-auto overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab('enrolled')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            className={`px-4 py-2.5 min-h-[40px] whitespace-nowrap rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex-1 sm:flex-initial ${
               activeTab === 'enrolled'
                 ? 'bg-white text-slate-900 shadow-md font-black'
                 : 'text-white/80 hover:text-white'
@@ -399,7 +399,7 @@ export default function MyWebinars() {
 
           <button
             onClick={() => setActiveTab('all')}
-            className={`px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
+            className={`px-4 py-2.5 min-h-[40px] whitespace-nowrap rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer flex-1 sm:flex-initial ${
               activeTab === 'all'
                 ? 'bg-white text-slate-900 shadow-md font-black'
                 : 'text-white/80 hover:text-white'
@@ -864,7 +864,7 @@ export default function MyWebinars() {
                           <button
                             onClick={() => handleSelfEnroll(webinar)}
                             disabled={enrollingId === webinar.id}
-                            className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
+                            className="flex-1 py-2.5 px-4 min-h-[44px] rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs disabled:opacity-50 cursor-pointer active:scale-95"
                           >
                             {enrollingId === webinar.id ? (
                               <>
@@ -1003,7 +1003,7 @@ export default function MyWebinars() {
             <div className="p-3 sm:p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end shrink-0">
               <button
                 onClick={() => setSelectedWebinarForDetails(null)}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] rounded-xl bg-slate-900 text-white font-bold text-xs sm:text-sm hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Close
               </button>

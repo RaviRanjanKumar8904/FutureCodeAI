@@ -166,7 +166,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                   required
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. JavaScript Fundamentals Quiz"
                 />
               </div>
@@ -177,7 +177,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                 <select 
                   value={formData.type}
                   onChange={e => setFormData({...formData, type: e.target.value as any})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base bg-white"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm bg-white"
                 >
                   <option value="mcq">MCQ Only</option>
                   <option value="coding">Coding Only</option>
@@ -197,7 +197,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                   min={1}
                   value={formData.durationMinutes}
                   onChange={e => setFormData({...formData, durationMinutes: Number(e.target.value)})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. 30"
                 />
               </div>
@@ -210,7 +210,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                   min={0} max={100}
                   value={formData.passPercentage}
                   onChange={e => setFormData({...formData, passPercentage: Number(e.target.value)})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. 40"
                 />
               </div>
@@ -226,7 +226,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                   min={0}
                   value={formData.maxAttempts}
                   onChange={e => setFormData({...formData, maxAttempts: Number(e.target.value)})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="0 = unlimited"
                 />
                 <p className="text-[10px] text-slate-400 mt-1 font-medium">Set 0 for unlimited attempts</p>
@@ -238,7 +238,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                 <select 
                   value={formData.courseId}
                   onChange={e => handleCourseChange(e.target.value)}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base bg-white"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm bg-white"
                 >
                   <option value="">All Courses (Open to all students)</option>
                   {courses.map(course => (
@@ -262,7 +262,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                     type="datetime-local"
                     value={formData.startDate}
                     onChange={e => setFormData({...formData, startDate: e.target.value})}
-                    className="w-full bg-white border border-purple-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full bg-white border border-purple-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   />
                 </div>
                 <div>
@@ -271,7 +271,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                     type="datetime-local"
                     value={formData.endDate}
                     onChange={e => setFormData({...formData, endDate: e.target.value})}
-                    className="w-full bg-white border border-purple-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full bg-white border border-purple-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium text-base sm:text-sm"
                   />
                 </div>
               </div>
@@ -285,7 +285,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
                 rows={3}
                 value={formData.description}
                 onChange={e => setFormData({...formData, description: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium resize-none text-xs sm:text-base"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all font-medium resize-none text-base sm:text-sm"
                 placeholder="Brief description of this test..."
               />
             </div>
@@ -311,7 +311,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
           <button 
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
+            className="px-4 py-2.5 min-h-[44px] font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer flex items-center justify-center"
           >
             Cancel
           </button>
@@ -319,7 +319,7 @@ export default function AddTestModal({ isOpen, onClose, onSuccess, initialData }
             form="testForm"
             type="submit"
             disabled={loading}
-            className="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 flex items-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
+            className="bg-purple-600 text-white px-6 py-2.5 min-h-[44px] rounded-xl font-bold hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 flex items-center justify-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -9,6 +9,8 @@ import {
   Video, 
   ExternalLink,
   Sparkles,
+  BookOpen,
+  ClipboardCheck,
   X
 } from 'lucide-react';
 import { 
@@ -135,6 +137,10 @@ export default function NotificationCenter() {
         return <MessageSquare className="w-5 h-5 text-sky-500" />;
       case 'webinar':
         return <Video className="w-5 h-5 text-indigo-500" />;
+      case 'course':
+        return <BookOpen className="w-5 h-5 text-indigo-600" />;
+      case 'test':
+        return <ClipboardCheck className="w-5 h-5 text-emerald-600" />;
       default:
         return <Sparkles className="w-5 h-5 text-primary" />;
     }

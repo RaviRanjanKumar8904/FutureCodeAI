@@ -112,10 +112,10 @@ export default function Login() {
       >
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white shadow-lg shadow-sky-200/40 mb-6 overflow-hidden">
-            <img src="/logo.jpg" alt="Company logo" className="w-full h-full object-cover" />
+            <img src="/logo.webp" alt="FutureCodeAI Logo" width={48} height={48} className="w-12 h-12 object-contain" />
           </div>
-          <h1 className="text-3xl font-heading font-extrabold text-slate-900 mb-2 tracking-tight">Welcome</h1>
-          <p className="text-slate-600 font-medium">Sign in to access your FutureCodeAI portal</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 mb-2 tracking-tight">Welcome</h1>
+          <p className="text-xs sm:text-base text-slate-600 font-medium">Sign in to access your FutureCodeAI portal</p>
         </div>
 
         {/* Role Tabs */}
@@ -127,11 +127,11 @@ export default function Login() {
               <button
                 key={tab.id}
                 onClick={() => setRole(tab.id as Role)}
-                className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 sm:py-3 px-1 sm:px-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 relative z-10 ${
+                className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 sm:py-3 px-1 sm:px-2 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 relative z-10 min-h-[44px] active:scale-95 cursor-pointer ${
                   isActive ? 'text-slate-900' : 'text-slate-500 hover:text-slate-700 hover:bg-white'
                 }`}
               >
-                <Icon size={16} className="sm:w-4 sm:h-4 w-5 h-5" />
+                <Icon size={16} className="sm:w-4 sm:h-4 w-5 h-5 shrink-0" />
                 <span>{tab.label}</span>
                 {isActive && (
                   <motion.div

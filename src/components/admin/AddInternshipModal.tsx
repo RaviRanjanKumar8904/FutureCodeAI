@@ -130,7 +130,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                   required
                   value={formData.title}
                   onChange={e => setFormData({...formData, title: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. Frontend Developer Intern"
                 />
               </div>
@@ -141,7 +141,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                 <select 
                   value={formData.domain}
                   onChange={e => setFormData({...formData, domain: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base bg-white"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-base sm:text-sm bg-white"
                 >
                   <option value="Software Development">Software Development</option>
                   <option value="Data Science & AI">Data Science & AI</option>
@@ -162,7 +162,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                   required
                   value={formData.duration}
                   onChange={e => setFormData({...formData, duration: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-base sm:text-sm"
                   placeholder="e.g. 3 Months"
                 />
               </div>
@@ -173,7 +173,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                 <select 
                   value={formData.type}
                   onChange={e => setFormData({...formData, type: e.target.value})}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base bg-white"
+                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-base sm:text-sm bg-white"
                 >
                   <option value="Remote">Remote</option>
                   <option value="On-site">On-site</option>
@@ -194,7 +194,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                     required
                     value={formData.originalPrice}
                     onChange={e => setFormData({...formData, originalPrice: e.target.value as any})}
-                    className="w-full bg-white border border-teal-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
+                    className="w-full bg-white border border-teal-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-base sm:text-sm"
                   />
                 </div>
                 <div>
@@ -219,7 +219,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                 required
                 value={formData.thumbnailUrl}
                 onChange={e => setFormData({...formData, thumbnailUrl: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-xs sm:text-base"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium text-base sm:text-sm"
                 placeholder="https://..."
               />
             </div>
@@ -233,7 +233,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
                 rows={3}
                 value={formData.description}
                 onChange={e => setFormData({...formData, description: e.target.value})}
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium resize-none text-xs sm:text-base"
+                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all font-medium resize-none text-base sm:text-sm"
                 placeholder="Brief description of the internship..."
               />
             </div>
@@ -246,7 +246,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
           <button 
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer"
+            className="px-4 py-2.5 min-h-[44px] font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors text-xs sm:text-sm cursor-pointer flex items-center justify-center"
           >
             Cancel
           </button>
@@ -254,7 +254,7 @@ export default function AddInternshipModal({ isOpen, onClose, onSuccess, initial
             form="internshipForm"
             type="submit"
             disabled={loading}
-            className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-teal-700 transition-all shadow-md shadow-teal-600/20 flex items-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
+            className="bg-teal-600 text-white px-6 py-2.5 min-h-[44px] rounded-xl font-bold hover:bg-teal-700 transition-all shadow-md shadow-teal-600/20 flex items-center justify-center gap-2 disabled:opacity-70 text-xs sm:text-sm cursor-pointer active:scale-95"
           >
             {loading ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

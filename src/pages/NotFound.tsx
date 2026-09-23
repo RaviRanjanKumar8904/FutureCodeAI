@@ -1,12 +1,16 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, ArrowLeft } from 'lucide-react';
-import Navbar from '../components/Navbar';
+import SEO from '../components/SEO';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative overflow-hidden">
-      <Navbar />
+    <div className="min-h-[80vh] flex flex-col font-sans relative overflow-hidden">
+      <SEO 
+        title="404 - Page Not Found" 
+        description="The requested page could not be found or has been moved." 
+        noIndex={true} 
+      />
       
       {/* Decorative gradient background elements */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-[100px] -z-10 mix-blend-multiply" />

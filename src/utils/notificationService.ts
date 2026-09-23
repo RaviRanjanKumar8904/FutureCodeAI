@@ -1,7 +1,7 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-export type NotificationType = 'attendance' | 'certificate' | 'enquiry' | 'webinar' | 'system';
+export type NotificationType = 'attendance' | 'certificate' | 'enquiry' | 'webinar' | 'test' | 'course' | 'system';
 
 export interface AppNotification {
   id?: string;

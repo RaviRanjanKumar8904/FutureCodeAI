@@ -30,14 +30,14 @@ const profileSchema = z.object({
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 const AVATAR_OPTIONS = [
-  '/avatars/avatar_laptop_1784367922366.png',
-  '/avatars/avatar_thinking_1784367938707.png',
-  '/avatars/avatar_ai_1784367950934.png',
-  '/avatars/avatar_phone_1784367960795.png',
-  '/avatars/avatar_smart_1784367972037.png',
-  '/avatars/avatar_coding_1784367983250.png',
-  '/avatars/avatar_vr_1784367994169.png',
-  '/avatars/avatar_graduate_1784368005257.png'
+  '/avatars/avatar_laptop_1784367922366.webp',
+  '/avatars/avatar_thinking_1784367938707.webp',
+  '/avatars/avatar_ai_1784367950934.webp',
+  '/avatars/avatar_phone_1784367960795.webp',
+  '/avatars/avatar_smart_1784367972037.webp',
+  '/avatars/avatar_coding_1784367983250.webp',
+  '/avatars/avatar_vr_1784367994169.webp',
+  '/avatars/avatar_graduate_1784368005257.webp'
 ];
 
 export default function ProfileSettings() {

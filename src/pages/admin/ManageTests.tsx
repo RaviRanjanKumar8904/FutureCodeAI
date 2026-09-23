@@ -151,12 +151,12 @@ export default function ManageTests() {
               placeholder="Search by title, course, or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1 min-h-[44px]">
               <span className="text-xs font-bold text-slate-400 pl-1">Type:</span>
               <select
                 value={selectedType}
@@ -187,11 +187,11 @@ export default function ManageTests() {
             <p className="text-sm text-slate-400 mt-1">Try adjusting your filters or create a new test.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4 sm:p-6">
             {filteredData.map((test) => (
               <div 
                 key={test.id} 
-                className="bg-white rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col p-5"
+                className="bg-white rounded-2xl overflow-hidden border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col p-4 sm:p-5"
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <span className={`rounded-md px-2.5 py-1 text-xs font-bold uppercase tracking-wider ${typeColor(test.type)}`}>
@@ -202,7 +202,7 @@ export default function ManageTests() {
                   </span>
                 </div>
 
-                <h3 className="text-lg font-bold text-slate-900 mb-2 leading-snug line-clamp-2">{test.title}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-2 leading-snug line-clamp-2">{test.title}</h3>
                 <p className="text-xs text-slate-500 leading-relaxed line-clamp-2 mb-4">{test.description || 'No description provided.'}</p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-medium text-slate-600 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -245,27 +245,29 @@ export default function ManageTests() {
                 <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <button
                     onClick={() => setSubmissionsTest(test)}
-                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 cursor-pointer"
+                    className="min-h-[40px] text-xs font-bold text-slate-600 hover:text-indigo-600 flex items-center gap-1.5 cursor-pointer px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors"
                   >
-                    <Users size={13} /> Submissions
+                    <Users size={14} /> Submissions
                   </button>
 
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setQuestionsTest(test)}
-                      className="p-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                       title="Manage Questions"
+                      aria-label="Manage Questions"
                     >
-                      <ListChecks size={14} />
+                      <ListChecks size={16} />
                     </button>
                     <button
                       onClick={() => handleToggleStatus(test.id, test.isActive, test.title)}
-                      className={`p-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      className={`min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-xs font-bold transition-colors cursor-pointer ${
                         test.isActive ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                       }`}
                       title={test.isActive ? 'Deactivate' : 'Publish'}
+                      aria-label="Toggle status"
                     >
-                      {test.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {test.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                     
                     <button
@@ -273,18 +275,20 @@ export default function ManageTests() {
                         setEditingTest(test);
                         setIsModalOpen(true);
                       }}
-                      className="p-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                       title="Edit Test"
+                      aria-label="Edit Test"
                     >
-                      <Edit2 size={14} />
+                      <Edit2 size={16} />
                     </button>
 
                     <button
                       onClick={() => handleDelete(test.id, test.title)}
-                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                      className="min-w-[40px] min-h-[40px] flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                       title="Delete Test"
+                      aria-label="Delete Test"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>

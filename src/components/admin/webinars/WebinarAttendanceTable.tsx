@@ -292,7 +292,7 @@ export default function WebinarAttendanceTable({
 
                 <button
                   onClick={() => onDeleteAttendee(attendee)}
-                  className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors shrink-0 cursor-pointer"
+                  className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center text-slate-400 hover:text-rose-600 transition-colors shrink-0 cursor-pointer"
                   title="Delete Student"
                 >
                   <Trash2 size={16} />
@@ -321,7 +321,7 @@ export default function WebinarAttendanceTable({
               <div className="grid grid-cols-2 gap-2 pt-0.5">
                 <button
                   onClick={() => onToggleDailyAttendance(attendee, activeDate)}
-                  className={`flex items-center justify-center gap-1.5 py-2.5 px-2.5 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                  className={`flex items-center justify-center gap-1.5 min-h-[44px] px-2.5 rounded-xl text-xs font-black transition-all active:scale-95 cursor-pointer ${
                     isPresentToday
                       ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
                       : 'bg-slate-100 text-slate-700 border border-slate-200'
@@ -339,7 +339,7 @@ export default function WebinarAttendanceTable({
 
                 <button
                   onClick={() => onOpenDetailStudent(attendee)}
-                  className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors active:scale-95 cursor-pointer"
+                  className="flex items-center justify-center gap-1 min-h-[44px] px-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs transition-colors active:scale-95 cursor-pointer"
                 >
                   <History size={13} className="shrink-0" />
                   <span>{totalDays} Days Grid</span>
@@ -349,7 +349,7 @@ export default function WebinarAttendanceTable({
               {/* Certificate Status / Action on Mobile */}
               <div className="pt-0.5">
                 {attendee.certificateIssued ? (
-                  <div className="w-full py-2 px-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-between text-xs font-bold">
+                  <div className="w-full min-h-[44px] px-3 rounded-xl bg-amber-50 text-amber-900 border border-amber-200 flex items-center justify-between text-xs font-bold">
                     <span className="flex items-center gap-1.5">
                       <Award size={14} className="text-amber-600" />
                       <span>Certificate Issued</span>
@@ -359,13 +359,13 @@ export default function WebinarAttendanceTable({
                 ) : isEligible ? (
                   <button
                     onClick={() => onIssueCertificate(attendee)}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+                    className="w-full min-h-[44px] px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
                   >
                     <Sparkles size={14} />
                     <span>Issue Certificate (Eligible &ge; 75%)</span>
                   </button>
                 ) : (
-                  <div className="w-full py-2 px-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-between text-xs font-bold">
+                  <div className="w-full min-h-[44px] px-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-between text-xs font-bold">
                     <span className="flex items-center gap-1">
                       <AlertCircle size={13} />
                       <span>Ineligible (&lt;75%)</span>

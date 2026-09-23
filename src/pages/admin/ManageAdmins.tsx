@@ -186,22 +186,22 @@ export default function ManageAdmins() {
               </h3>
               <form onSubmit={handleAddAdmin} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">User Email</label>
+                  <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">User Email</label>
                   <input 
                     type="email" 
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium"
                     placeholder="admin@futurecode.com"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Firebase UID</label>
+                  <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Firebase UID</label>
                   <input 
                     type="text" 
                     value={newUid}
                     onChange={(e) => setNewUid(e.target.value)}
-                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-base sm:text-sm font-medium"
                     placeholder="Paste exact UID here"
                   />
                   <p className="text-xs text-slate-500 mt-1">UID must match their authenticated Firebase account exactly.</p>
@@ -209,7 +209,7 @@ export default function ManageAdmins() {
                 <button 
                   type="submit"
                   disabled={isAdding}
-                  className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors disabled:opacity-70 mt-2"
+                  className="w-full bg-indigo-600 text-white min-h-[44px] py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors disabled:opacity-70 mt-2 cursor-pointer text-sm"
                 >
                   {isAdding ? "Adding..." : "Add to Allow-list"}
                   {!isAdding && <Plus size={18} />}
@@ -221,7 +221,7 @@ export default function ManageAdmins() {
           {/* Admin List */}
           <div className="md:col-span-2">
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                 <h3 className="font-bold text-slate-800">Current Admins</h3>
                 <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-1 rounded-full">
                   {admins.length} Total
@@ -229,30 +229,31 @@ export default function ManageAdmins() {
               </div>
               <ul className="divide-y divide-slate-100">
                 {admins.map((admin) => (
-                  <li key={admin.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
+                  <li key={admin.id} className="p-4 sm:p-6 flex items-center justify-between hover:bg-slate-50 transition-colors gap-2">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                         admin.role === 'super_admin' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'
                       }`}>
                         <Shield size={20} />
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-900">{admin.email}</p>
-                        <div className="flex items-center gap-2 text-xs font-medium mt-1">
-                          <span className={`px-2 py-0.5 rounded-md ${
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-900 text-sm sm:text-base truncate">{admin.email}</p>
+                        <div className="flex items-center gap-2 text-xs font-medium mt-0.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                             admin.role === 'super_admin' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'
                           }`}>
                             {admin.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                           </span>
-                          <span className="text-slate-400 font-mono">UID: {admin.id.substring(0,8)}...</span>
+                          <span className="text-slate-400 font-mono text-[11px] truncate">UID: {admin.id.substring(0,8)}...</span>
                         </div>
                       </div>
                     </div>
                     {admin.role !== 'super_admin' && (
                       <button 
                         onClick={() => handleRemoveAdmin(admin.id, admin.email)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer shrink-0"
                         title="Remove Admin"
+                        aria-label="Remove Admin"
                       >
                         <Trash2 size={18} />
                       </button>

@@ -8,12 +8,22 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { lazy, Suspense } from 'react';
 import DashboardShell from '../components/layout/DashboardShell';
 import InstituteHeader from '../components/institute/InstituteHeader';
-import InstituteStudents from '../components/institute/InstituteStudents';
-import InstituteCourses from '../components/institute/InstituteCourses';
-import InstituteEnquiries from '../components/institute/InstituteEnquiries';
-import InstituteProfile from '../components/institute/InstituteProfile';
+
+const InstituteStudents = lazy(() => import('../components/institute/InstituteStudents'));
+const InstituteCourses = lazy(() => import('../components/institute/InstituteCourses'));
+const InstituteEnquiries = lazy(() => import('../components/institute/InstituteEnquiries'));
+const InstituteProfile = lazy(() => import('../components/institute/InstituteProfile'));
+
+function DashboardTabLoader() {
+  return (
+    <div className="py-20 flex justify-center items-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-3 border-primary border-t-transparent" />
+    </div>
+  );
+}
 
 export default function InstituteDashboard() {
   const { user } = useAuth();
@@ -42,12 +52,14 @@ export default function InstituteDashboard() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
           >
-            <Routes>
-              <Route path="/" element={<InstituteStudents />} />
-              <Route path="/courses" element={<InstituteCourses />} />
-              <Route path="/enquiries" element={<InstituteEnquiries />} />
-              <Route path="/settings" element={<InstituteProfile />} />
-            </Routes>
+            <Suspense fallback={<DashboardTabLoader />}>
+              <Routes>
+                <Route path="/" element={<InstituteStudents />} />
+                <Route path="/courses" element={<InstituteCourses />} />
+                <Route path="/enquiries" element={<InstituteEnquiries />} />
+                <Route path="/settings" element={<InstituteProfile />} />
+              </Routes>
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </div>

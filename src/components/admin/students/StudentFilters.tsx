@@ -64,17 +64,17 @@ export default function StudentFilters({
             placeholder="Search name, email, roll, cert ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+            className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
           />
         </div>
 
         {/* Quick Filter Toggles */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {/* Certificate & Completion Filter Quick Pills */}
-          <div className="inline-flex rounded-xl border border-slate-200 p-0.5 bg-white text-xs font-bold shadow-sm">
+          <div className="flex overflow-x-auto max-w-full rounded-xl border border-slate-200 p-0.5 bg-white text-xs font-bold shadow-sm no-scrollbar">
             <button
               onClick={() => setFilterCertStatus('all')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer shrink-0 min-h-[34px] flex items-center ${
                 filterCertStatus === 'all' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -82,7 +82,7 @@ export default function StudentFilters({
             </button>
             <button
               onClick={() => setFilterCertStatus('issued')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 min-h-[34px] ${
                 filterCertStatus === 'issued' ? 'bg-emerald-600 text-white' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -90,7 +90,7 @@ export default function StudentFilters({
             </button>
             <button
               onClick={() => setFilterCertStatus('completed')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 min-h-[34px] ${
                 filterCertStatus === 'completed' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:text-slate-900'
               }`}
               title="Course Duration Completed - Ready for Certificate"
@@ -99,7 +99,7 @@ export default function StudentFilters({
             </button>
             <button
               onClick={() => setFilterCertStatus('in_progress')}
-              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0 min-h-[34px] ${
                 filterCertStatus === 'in_progress' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-900'
               }`}
               title="Course still in progress"
@@ -111,7 +111,7 @@ export default function StudentFilters({
           {/* Advanced Filter Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[34px] shrink-0 ${
               showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
@@ -126,7 +126,7 @@ export default function StudentFilters({
           <select
             value={filterBatch}
             onChange={(e) => setFilterBatch(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            className="px-3 py-2 sm:py-1.5 border border-slate-200 rounded-xl text-sm sm:text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer min-h-[40px] sm:min-h-0"
           >
             <option value="">All Batches</option>
             {batchOptions.map((b) => (
@@ -139,7 +139,7 @@ export default function StudentFilters({
           <select
             value={filterCourse}
             onChange={(e) => setFilterCourse(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            className="px-3 py-2 sm:py-1.5 border border-slate-200 rounded-xl text-sm sm:text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer min-h-[40px] sm:min-h-0"
           >
             <option value="">All Courses</option>
             {courseOptions.map((c) => (
@@ -152,7 +152,7 @@ export default function StudentFilters({
           <select
             value={filterCenter}
             onChange={(e) => setFilterCenter(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            className="px-3 py-2 sm:py-1.5 border border-slate-200 rounded-xl text-sm sm:text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer min-h-[40px] sm:min-h-0"
           >
             <option value="">All Centers</option>
             {centerOptions.map((c) => (
@@ -165,7 +165,7 @@ export default function StudentFilters({
           <select
             value={filterGender}
             onChange={(e) => setFilterGender(e.target.value)}
-            className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            className="px-3 py-2 sm:py-1.5 border border-slate-200 rounded-xl text-sm sm:text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer min-h-[40px] sm:min-h-0"
           >
             <option value="all">All Genders</option>
             <option value="Male">Male only</option>
@@ -175,7 +175,7 @@ export default function StudentFilters({
           {hasActiveFilters && (
             <button
               onClick={onClearFilters}
-              className="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              className="px-3 py-2 sm:py-1.5 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer min-h-[40px] sm:min-h-0"
             >
               <X size={13} /> Reset Filters
             </button>

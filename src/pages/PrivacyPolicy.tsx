@@ -4,30 +4,30 @@ import { Shield, Lock, Eye, FileText, CheckCircle2 } from 'lucide-react';
 
 export default function PrivacyPolicy() {
   return (
-    <div className="w-full relative bg-background min-h-screen pt-32 pb-24 font-body">
+    <div className="w-full relative bg-background min-h-screen pt-24 sm:pt-32 pb-16 sm:pb-24 font-body">
       <SEO 
         title="Privacy Policy" 
         description="Learn how FutureCodeAI protects and manages your personal data, course information, and privacy rights."
       />
       <BackgroundBlobs />
 
-      <div className="container mx-auto px-6 max-w-4xl relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 max-w-4xl relative z-10">
         
         {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider mb-4">
-            <Shield size={14} /> Trust & Transparency
+        <div className="text-center mb-10 sm:mb-16">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 text-primary font-bold text-xs uppercase tracking-wider mb-3">
+            <Shield size={14} /> Trust &amp; Transparency
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-3">
             Privacy Policy
           </h1>
-          <p className="text-slate-500 text-sm font-medium">
+          <p className="text-slate-500 text-xs sm:text-sm font-medium">
             Last Updated: August 2026 • FutureCodeAI Education Platform
           </p>
         </div>
 
         {/* Content Card */}
-        <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-sm space-y-10 text-slate-700 leading-relaxed">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 md:p-12 border border-slate-200/80 shadow-sm space-y-8 sm:space-y-10 text-slate-700 leading-relaxed">
           
           <section className="space-y-4">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">

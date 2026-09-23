@@ -3,6 +3,7 @@ import { db } from '../../firebase/config';
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { X, UserPlus, Mail, Phone, BookOpen, Building2, User, Hash, School } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { sendNotification } from '../../utils/notificationService';
 
 interface EnrollStudentModalProps {
   isOpen: boolean;
@@ -262,6 +263,15 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
         });
       }
 
+      await sendNotification({
+        userId: studentUid || '',
+        userEmail: emailLower,
+        title: 'Course Enrollment Confirmed',
+        message: `You have been enrolled in ${finalCourseName} (${formData.batch}). Check your courses to get started.`,
+        type: 'course',
+        link: '/dashboard/student',
+      });
+
       toast.success(`Enrolled in ${finalCourseName} successfully!`, { id: toastId });
       onSuccess();
       onClose();
@@ -317,7 +327,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                   value={formData.studentName}
                   onChange={e => setFormData(prev => ({ ...prev, studentName: e.target.value }))}
                   placeholder="e.g. Rahul Kumar"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
               <div>
@@ -331,7 +341,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                   value={formData.email}
                   onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="e.g. rahul@example.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -348,7 +358,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                   value={formData.phone}
                   onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="e.g. +91 9876543210"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
               <div>
@@ -358,7 +368,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                 <select
                   value={formData.gender}
                   onChange={e => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 >
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -379,7 +389,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                   value={formData.collegeName}
                   onChange={e => setFormData(prev => ({ ...prev, collegeName: e.target.value }))}
                   placeholder="e.g. MIT Muzaffarpur"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
               <div>
@@ -392,7 +402,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                   value={formData.rollNo}
                   onChange={e => setFormData(prev => ({ ...prev, rollNo: e.target.value }))}
                   placeholder="e.g. 21CS045"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -407,7 +417,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                 required
                 value={formData.courseId}
                 onChange={e => handleCourseChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
               >
                 <option value="">Select a course...</option>
                 {courses.map(course => (
@@ -428,7 +438,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                 <select
                   value={formData.centerId}
                   onChange={e => handleCenterChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 >
                   <option value="">FutureCode AI (Online)</option>
                   {centers.map(center => (
@@ -445,7 +455,7 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
                 <select
                   value={formData.batch}
                   onChange={e => setFormData(prev => ({ ...prev, batch: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
                 >
                   {batchOptions.map(b => (
                     <option key={b} value={b}>{b}</option>
@@ -460,14 +470,14 @@ export default function EnrollStudentModal({ isOpen, onClose, onSuccess, initial
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-100 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors cursor-pointer min-h-[44px] flex items-center justify-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs sm:text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95"
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center gap-2 cursor-pointer active:scale-95 min-h-[44px]"
             >
               {loading ? (
                 <>

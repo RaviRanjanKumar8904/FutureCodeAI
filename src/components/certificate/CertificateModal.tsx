@@ -162,17 +162,18 @@ export default function CertificateModal({ isOpen, onClose, certificate }: Certi
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-amber-200/90 text-xs font-bold transition-all border border-amber-500/20 hover:border-amber-500/40 shadow-sm"
+                className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-amber-200/90 text-xs font-bold transition-all border border-amber-500/20 hover:border-amber-500/40 shadow-sm cursor-pointer"
+                aria-label="Copy verification link"
               >
-                {copied ? <CheckCircle2 size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                {copied ? <CheckCircle2 size={15} className="text-emerald-400" /> : <Copy size={15} />}
                 <span className="hidden sm:inline">{copied ? 'Link Copied' : 'Copy Link'}</span>
               </button>
               <button
                 onClick={onClose}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors border border-slate-700/60"
+                className="min-w-[44px] min-h-[44px] rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors border border-slate-700/60 cursor-pointer"
                 aria-label="Close modal"
               >
-                <X size={17} />
+                <X size={18} />
               </button>
             </div>
           </div>
@@ -183,17 +184,17 @@ export default function CertificateModal({ isOpen, onClose, certificate }: Certi
               <button
                 onClick={handleDownloadPDF}
                 disabled={Boolean(downloading)}
-                className="flex-1 xs:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-60 cursor-pointer"
+                className="flex-1 xs:flex-initial inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-60 cursor-pointer"
               >
-                <FileText size={15} />
+                <FileText size={16} />
                 <span>{downloading === 'pdf' ? 'Generating PDF…' : 'Download PDF'}</span>
               </button>
               <button
                 onClick={handleDownloadPNG}
                 disabled={Boolean(downloading)}
-                className="flex-1 xs:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 font-bold text-xs sm:text-sm transition-all border border-amber-500/25 active:scale-95 disabled:opacity-60 cursor-pointer"
+                className="flex-1 xs:flex-initial inline-flex items-center justify-center gap-2 px-4 min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 font-bold text-xs sm:text-sm transition-all border border-amber-500/25 active:scale-95 disabled:opacity-60 cursor-pointer"
               >
-                <ImageIcon size={15} />
+                <ImageIcon size={16} />
                 <span>{downloading === 'png' ? 'Saving Image…' : 'Download PNG'}</span>
               </button>
             </div>
@@ -207,7 +208,7 @@ export default function CertificateModal({ isOpen, onClose, certificate }: Certi
           {/* Certificate Dynamic Preview Area - Auto-scaled to never crop on any screen */}
           <div
             ref={previewContainerRef}
-            className="flex-1 overflow-hidden p-2 sm:p-4 bg-gradient-to-b from-[#070a10] via-[#0a0f18] to-[#070a10] flex items-center justify-center relative"
+            className="flex-1 overflow-auto p-2 sm:p-4 bg-gradient-to-b from-[#070a10] via-[#0a0f18] to-[#070a10] flex items-center justify-center relative overscroll-contain"
           >
             {/* Ambient gold glow */}
             <div

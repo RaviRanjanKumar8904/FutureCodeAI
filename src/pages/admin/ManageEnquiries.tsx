@@ -299,13 +299,13 @@ export default function ManageEnquiries() {
               placeholder="Search by name, email, college, roll no, city..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-base sm:text-sm font-medium w-full focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
             />
           </div>
 
           {/* Type and Status Filters */}
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1 min-h-[44px]">
               <span className="text-xs font-bold text-slate-400 pl-1">Type:</span>
               <select
                 value={filterType}
@@ -320,7 +320,7 @@ export default function ManageEnquiries() {
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1">
+            <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2 py-1 min-h-[44px]">
               <span className="text-xs font-bold text-slate-400 pl-1">Status:</span>
               <select
                 value={filterStatus}
@@ -356,13 +356,13 @@ export default function ManageEnquiries() {
         ) : (
           <div className="divide-y divide-slate-100">
             {filteredData.map((item) => (
-              <div key={`${item.collection}-${item.id}`} className="p-5 hover:bg-slate-50/60 transition-colors flex flex-col lg:flex-row gap-4 justify-between items-start">
+              <div key={`${item.collection}-${item.id}`} className="p-4 sm:p-5 hover:bg-slate-50/60 transition-colors flex flex-col lg:flex-row gap-4 justify-between items-start">
                 
                 {/* Main Lead Info */}
                 <div className="flex-1 min-w-0 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     {getTypeBadge(item.type)}
-                    <h3 className="text-base font-extrabold text-slate-900">{item.name}</h3>
+                    <h3 className="text-sm sm:text-base font-extrabold text-slate-900">{item.name}</h3>
                     {item.gender && (
                       <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
                         {item.gender}
@@ -377,15 +377,15 @@ export default function ManageEnquiries() {
                   </div>
 
                   {/* Target, College, Roll No and Education */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600 font-medium">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-medium">
                     {(item.targetTitle || item.instituteName || item.subject) && (
-                      <span className="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md">
+                      <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md truncate max-w-[280px]">
                         {item.targetTitle || item.instituteName || item.subject}
                       </span>
                     )}
                     {item.collegeName && (
-                      <span className="flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md">
-                        <Building2 size={12} className="text-teal-600" /> {item.collegeName}
+                      <span className="flex items-center gap-1 font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md truncate max-w-[240px]">
+                        <Building2 size={12} className="text-teal-600 shrink-0" /> {item.collegeName}
                       </span>
                     )}
                     {item.rollNo && (
@@ -395,58 +395,58 @@ export default function ManageEnquiries() {
                     )}
                     {item.city && (
                       <span className="flex items-center gap-1 text-slate-500">
-                        <MapPin size={13} className="text-slate-400" /> {item.city} {item.preferredLocation ? `(${item.preferredLocation})` : ''}
+                        <MapPin size={13} className="text-slate-400 shrink-0" /> {item.city} {item.preferredLocation ? `(${item.preferredLocation})` : ''}
                       </span>
                     )}
                     {item.educationDetails && (
                       <span className="flex items-center gap-1 text-slate-500">
-                        <GraduationCap size={13} className="text-slate-400" /> {item.educationDetails}
+                        <GraduationCap size={13} className="text-slate-400 shrink-0" /> {item.educationDetails}
                       </span>
                     )}
                     <span className="flex items-center gap-1 text-slate-400">
-                      <Clock size={13} /> {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleString() : 'Recent'}
+                      <Clock size={13} /> {item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'Recent'}
                     </span>
                   </div>
 
                   {/* Message / Details */}
                   {item.message && (
-                    <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 font-normal leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-600 bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-100 font-normal leading-relaxed">
                       "{item.message}"
                     </p>
                   )}
                 </div>
 
                 {/* Actions Panel */}
-                <div className="flex flex-wrap lg:flex-col items-end gap-2 shrink-0 self-stretch lg:self-auto justify-between lg:justify-start pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 w-full lg:w-auto">
+                <div className="flex flex-col sm:flex-row lg:flex-col items-stretch sm:items-center lg:items-end gap-2 shrink-0 w-full lg:w-auto pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
                   
                   {/* Direct Contact Links */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {item.phone && (
                       <a
                         href={`tel:${item.phone}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold text-xs transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold text-xs transition-colors"
                         title="Call Applicant"
                       >
-                        <Phone size={13} /> {item.phone}
+                        <Phone size={14} /> {item.phone}
                       </a>
                     )}
                     {item.email && (
                       <a
                         href={`mailto:${item.email}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-xs transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 min-h-[44px] rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-bold text-xs transition-colors truncate max-w-[220px]"
                         title="Email Applicant"
                       >
-                        <Mail size={13} /> {item.email}
+                        <Mail size={14} className="shrink-0" /> <span className="truncate">{item.email}</span>
                       </a>
                     )}
                   </div>
 
                   {/* Status Changers & Cross-Functional Conversion */}
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <select
                       value={item.status}
                       onChange={(e) => handleUpdateStatus(item, e.target.value)}
-                      className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
+                      className="px-2.5 min-h-[44px] bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none cursor-pointer hover:border-slate-300"
                     >
                       <option value="New">New</option>
                       <option value="In Review">In Review</option>
@@ -457,17 +457,18 @@ export default function ManageEnquiries() {
                     {/* Cross-functional shortcut to enroll student */}
                     <Link
                       to={`/admin/students?enrollName=${encodeURIComponent(item.name)}&enrollEmail=${encodeURIComponent(item.email)}&enrollPhone=${encodeURIComponent(item.phone || '')}&enrollGender=${encodeURIComponent(item.gender || '')}&enrollCollege=${encodeURIComponent(item.collegeName || '')}&enrollRollNo=${encodeURIComponent(item.rollNo || '')}&enrollCourse=${encodeURIComponent(item.targetTitle || '')}&enrollCenter=${encodeURIComponent(item.city || '')}`}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors shadow-sm"
+                      className="inline-flex items-center gap-1 px-3 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors shadow-sm cursor-pointer"
                       title="Convert Lead to Student Enrollment"
                     >
-                      <UserCheck size={13} />
-                      <span>Convert to Student</span>
+                      <UserCheck size={14} />
+                      <span>Convert</span>
                     </Link>
 
                     <button
                       onClick={() => handleDelete(item)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer border border-slate-200 sm:border-transparent"
                       title="Delete Enquiry"
+                      aria-label="Delete Enquiry"
                     >
                       <Trash2 size={16} />
                     </button>

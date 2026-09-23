@@ -776,7 +776,7 @@ export default function TakeTest() {
                       if (detailsErrors.name) setDetailsErrors(p => ({ ...p, name: undefined }));
                     }}
                     placeholder="e.g. Alex Johnson"
-                    className={`w-full pl-8 pr-3 py-2 bg-white border rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.name ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                    className={`w-full pl-8 pr-3 py-2.5 sm:py-2 bg-white border rounded-xl text-base sm:text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.name ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                       }`}
                   />
                 </div>
@@ -799,7 +799,7 @@ export default function TakeTest() {
                       if (detailsErrors.branch) setDetailsErrors(p => ({ ...p, branch: undefined }));
                     }}
                     placeholder="e.g. CSE / IT / BCA"
-                    className={`w-full pl-8 pr-3 py-2 bg-white border rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.branch ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                    className={`w-full pl-8 pr-3 py-2.5 sm:py-2 bg-white border rounded-xl text-base sm:text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.branch ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                       }`}
                   />
                 </div>
@@ -822,7 +822,7 @@ export default function TakeTest() {
                       if (detailsErrors.rollNo) setDetailsErrors(p => ({ ...p, rollNo: undefined }));
                     }}
                     placeholder="e.g. 21BCSE104"
-                    className={`w-full pl-8 pr-3 py-2 bg-white border rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.rollNo ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
+                    className={`w-full pl-8 pr-3 py-2.5 sm:py-2 bg-white border rounded-xl text-base sm:text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${detailsErrors.rollNo ? 'border-rose-400 focus:ring-rose-500/20' : 'border-slate-200 focus:ring-primary/20 focus:border-primary'
                       }`}
                   />
                 </div>
@@ -1008,50 +1008,73 @@ export default function TakeTest() {
       {/* -------------------------------------------------------------------- */}
       {/* Sticky Header: Timer, AutoProctor HUD, Candidate details & Submit    */}
       {/* -------------------------------------------------------------------- */}
-      <div className={`sticky top-0 z-20 bg-white/95 backdrop-blur-md rounded-2xl border shadow-sm p-3 flex items-center justify-between gap-3 ${
+      <div className={`sticky top-0 z-20 bg-white/95 backdrop-blur-md rounded-2xl border shadow-sm p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 ${
         isTimeLow ? 'border-rose-200 bg-rose-50/95' : 'border-slate-200'
       }`}>
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <span className="text-xs font-bold text-slate-500 shrink-0">
-            Q {currentQ + 1} / {questions.length}
-          </span>
-          <div className="w-16 sm:w-28 h-1.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
-            <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
-            />
+        {/* Tier 1 on mobile: Question Progress + Clock + Submit */}
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span className="text-xs font-bold text-slate-500 shrink-0">
+              Q {currentQ + 1}/{questions.length}
+            </span>
+            <div className="w-16 sm:w-28 h-1.5 bg-slate-200 rounded-full overflow-hidden shrink-0">
+              <div
+                className="h-full bg-primary rounded-full transition-all"
+                style={{ width: `${((currentQ + 1) / questions.length) * 100}%` }}
+              />
+            </div>
           </div>
 
-          {/* AutoProctor HUD Badge */}
-          <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold shadow-2xs shrink-0">
-            <Shield size={13} className="text-emerald-600 animate-pulse" />
-            <span className="hidden sm:inline">AutoProctor</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-mono font-extrabold text-xs sm:text-sm min-h-[36px] ${
+              isTimeLow ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-700'
+            }`}>
+              <Clock size={14} />
+              {formatTime(timeLeft)}
+            </div>
+            <button
+              onClick={() => handleSubmit(false)}
+              disabled={submitting}
+              className="px-3 sm:px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50 min-h-[36px] active:scale-95"
+            >
+              <Send size={13} />
+              <span>{submitting ? '...' : 'Submit'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tier 2 on mobile: Badges & Full Screen Toggle */}
+        <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 pt-1 sm:pt-0 border-t border-slate-100 sm:border-0">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* AutoProctor HUD Badge */}
+            <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold shadow-2xs shrink-0">
+              <Shield size={13} className="text-emerald-600 animate-pulse" />
+              <span>AutoProctor</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            </div>
+
+            {/* Warnings Counter Badge */}
+            <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border text-[11px] font-extrabold shrink-0 ${
+              proctorWarnings === 0
+                ? 'bg-slate-50 border-slate-200 text-slate-600'
+                : proctorWarnings === 1
+                  ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse'
+                  : 'bg-rose-50 border-rose-300 text-rose-700 animate-bounce'
+            }`}>
+              <ShieldAlert size={12} className={proctorWarnings > 0 ? 'text-rose-600' : 'text-slate-400'} />
+              <span><span className="hidden sm:inline">Warnings: </span><span className="font-mono">{proctorWarnings}/3</span></span>
+            </div>
           </div>
 
-          {/* Warnings Counter Badge */}
-          <div className={`flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border text-[11px] font-extrabold shrink-0 ${
-            proctorWarnings === 0
-              ? 'bg-slate-50 border-slate-200 text-slate-600'
-              : proctorWarnings === 1
-                ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse'
-                : 'bg-rose-50 border-rose-300 text-rose-700 animate-bounce'
-          }`}>
-            <ShieldAlert size={12} className={proctorWarnings > 0 ? 'text-rose-600' : 'text-slate-400'} />
-            <span><span className="hidden sm:inline">Warnings: </span><span className="font-mono">{proctorWarnings}/3</span></span>
-          </div>
-
-          {/* Candidate badge */}
+          {/* Candidate badge (desktop only) */}
           {(candidateName || candidateRollNo) && (
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-[11px] font-semibold text-indigo-700 truncate max-w-[200px]">
+            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100 text-[11px] font-semibold text-indigo-700 truncate max-w-[180px]">
               <User size={12} className="shrink-0 text-indigo-500" />
               <span className="truncate">{candidateName}</span>
               {candidateRollNo && <span className="text-indigo-400 font-mono text-[10px]">({candidateRollNo})</span>}
             </div>
           )}
-        </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Fullscreen recovery button if accidentally lost */}
           {!isFullscreen && (
             <button
@@ -1059,27 +1082,12 @@ export default function TakeTest() {
                 await requestFullscreen();
                 setIsFullscreen(isFullscreenActive());
               }}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-extrabold shadow-sm animate-pulse cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-extrabold shadow-sm animate-pulse cursor-pointer shrink-0"
               title="Click to enter Full Screen mode"
             >
               <Maximize2 size={12} /> Full Screen
             </button>
           )}
-
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-extrabold text-xs sm:text-sm ${
-            isTimeLow ? 'bg-rose-100 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-700'
-          }`}>
-            <Clock size={14} />
-            {formatTime(timeLeft)}
-          </div>
-          <button
-            onClick={() => handleSubmit(false)}
-            disabled={submitting}
-            className="px-3 sm:px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-          >
-            <Send size={13} />
-            {submitting ? 'Submitting...' : 'Submit'}
-          </button>
         </div>
       </div>
 
@@ -1237,25 +1245,25 @@ export default function TakeTest() {
           </div>
 
           {/* Navigation */}
-          <div className="px-5 sm:px-6 pb-5 sm:pb-6 flex items-center justify-between gap-3">
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 flex items-center justify-between gap-2.5">
             <button
               onClick={() => setCurrentQ(prev => Math.max(0, prev - 1))}
               disabled={currentQ === 0}
-              className="flex items-center gap-1 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors disabled:opacity-40 cursor-pointer"
+              className="flex items-center justify-center gap-1 px-3.5 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors disabled:opacity-40 cursor-pointer min-h-[44px]"
             >
-              <ChevronLeft size={14} /> Previous
+              <ChevronLeft size={15} /> <span>Previous</span>
             </button>
 
             {/* Mobile question pills */}
-            <div className="flex md:hidden gap-1 overflow-x-auto scrollbar-none">
+            <div className="flex md:hidden gap-1.5 overflow-x-auto scrollbar-none py-1">
               {questions.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentQ(idx)}
-                  className={`w-7 h-7 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${
-                    idx === currentQ ? 'bg-primary text-white' :
-                      answers[questions[idx].id] ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-slate-100 text-slate-500'
+                  className={`w-9 h-9 rounded-xl text-xs font-bold shrink-0 flex items-center justify-center cursor-pointer transition-all ${
+                    idx === currentQ ? 'bg-primary text-white shadow-sm ring-2 ring-primary/30' :
+                      answers[questions[idx].id] ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                        'bg-slate-100 text-slate-600 border border-slate-200'
                   }`}
                 >
                   {idx + 1}
@@ -1266,20 +1274,20 @@ export default function TakeTest() {
             {currentQ < questions.length - 1 ? (
               <button
                 onClick={() => setCurrentQ(prev => Math.min(questions.length - 1, prev + 1))}
-                className="flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-colors cursor-pointer"
+                className="flex items-center justify-center gap-1 px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-indigo-600 transition-colors cursor-pointer min-h-[44px] active:scale-95"
               >
-                Next <ChevronRight size={14} />
+                <span>Next</span> <ChevronRight size={15} />
               </button>
             ) : (
               <button
                 onClick={() => handleSubmit(false)}
                 disabled={submitting}
-                className="flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20 cursor-pointer active:scale-95 disabled:opacity-70"
+                className="flex items-center justify-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-600/20 cursor-pointer active:scale-95 disabled:opacity-70 min-h-[44px]"
               >
                 {submitting ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <><Send size={14} /> Submit Test</>
+                  <><Send size={14} /> <span>Submit</span></>
                 )}
               </button>
             )}

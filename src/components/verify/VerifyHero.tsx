@@ -1,29 +1,16 @@
-import { Canvas } from '@react-three/fiber';
-import { Float, PresentationControls, Octahedron, Edges } from '@react-three/drei';
+import { Suspense, lazy } from 'react';
 import { Search, ShieldCheck } from 'lucide-react';
 import Reveal from '../Reveal';
 
-function TrustShield() {
+const VerifyHeroCanvas = lazy(() => import('./VerifyHeroCanvas'));
+
+function VerifyVisualFallback() {
   return (
-    <Float speed={2.5} rotationIntensity={0.5} floatIntensity={1}>
-      <PresentationControls
-        global={false}
-        cursor={true}
-        snap={true}
-        speed={1.5}
-        zoom={1}
-        polar={[-0.1, 0.1]}
-        azimuth={[-Math.PI / 8, Math.PI / 8]}
-      >
-        <Octahedron args={[1.7, 0]} rotation={[0, 0, 0]}>
-          <meshStandardMaterial color="#d97706" metalness={0.8} roughness={0.2} wireframe={true} />
-          <Edges scale={1.05} threshold={15} color="#fbbf24" />
-        </Octahedron>
-        <Octahedron args={[1.1, 0]}>
-          <meshStandardMaterial color="#0f172a" metalness={0.9} roughness={0.1} />
-        </Octahedron>
-      </PresentationControls>
-    </Float>
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-300 flex items-center justify-center text-amber-600 shadow-md animate-pulse">
+        <ShieldCheck size={36} />
+      </div>
+    </div>
   );
 }
 
@@ -50,12 +37,15 @@ export default function VerifyHero({ certificateId, setCertificateId, onVerify, 
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 md:p-12 shadow-2xl border border-slate-200/80 relative overflow-hidden text-center">
             
             {/* 3D Shield Badge - Responsively sized */}
-            <div className="h-32 sm:h-44 md:h-52 w-full relative -mt-2 mb-4">
-              <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-                <ambientLight intensity={1.8} />
-                <directionalLight position={[10, 10, 5]} intensity={2.5} />
-                <TrustShield />
-              </Canvas>
+            <div className="h-24 sm:h-44 md:h-52 w-full relative -mt-2 mb-4 flex items-center justify-center">
+              <div className="hidden md:block w-full h-full">
+                <Suspense fallback={<VerifyVisualFallback />}>
+                  <VerifyHeroCanvas />
+                </Suspense>
+              </div>
+              <div className="md:hidden w-full h-full flex items-center justify-center">
+                <VerifyVisualFallback />
+              </div>
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-extrabold border border-amber-200/80 mb-3">

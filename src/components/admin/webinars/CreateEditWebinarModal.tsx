@@ -71,7 +71,7 @@ export default function CreateEditWebinarModal({
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="e.g. 15-Day Masterclass on AI & Full-Stack Roadmap"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold text-slate-900"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-bold text-slate-900"
               />
             </div>
 
@@ -85,7 +85,7 @@ export default function CreateEditWebinarModal({
                   required
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
               <div>
@@ -95,7 +95,7 @@ export default function CreateEditWebinarModal({
                 <select
                   value={formData.totalDays}
                   onChange={(e) => setFormData({ ...formData, totalDays: Number(e.target.value) })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-bold bg-white cursor-pointer"
                 >
                   <option value="1">1 Day (Single Session)</option>
                   <option value="3">3 Days (Weekend Bootcamp)</option>
@@ -118,7 +118,7 @@ export default function CreateEditWebinarModal({
                   value={formData.maxSeats}
                   onChange={(e) => setFormData({ ...formData, maxSeats: Number(e.target.value) || 100 })}
                   placeholder="e.g. 100"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
             </div>
@@ -130,7 +130,7 @@ export default function CreateEditWebinarModal({
                 value={formData.topic}
                 onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
                 placeholder="e.g. Daily hands-on coding, System Design, & Capstone projects"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
               />
             </div>
 
@@ -142,7 +142,7 @@ export default function CreateEditWebinarModal({
                   value={formData.speaker}
                   onChange={(e) => setFormData({ ...formData, speaker: e.target.value })}
                   placeholder="e.g. Er. Rahul & Technical Team"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
               <div>
@@ -150,7 +150,7 @@ export default function CreateEditWebinarModal({
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-bold bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-bold bg-white cursor-pointer"
                 >
                   <option value="Upcoming">Upcoming</option>
                   <option value="Live">Live Now</option>
@@ -167,7 +167,7 @@ export default function CreateEditWebinarModal({
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                   placeholder="e.g. 05:00 PM - 06:30 PM"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
               <div>
@@ -177,7 +177,7 @@ export default function CreateEditWebinarModal({
                   value={formData.meetingLink}
                   onChange={(e) => setFormData({ ...formData, meetingLink: e.target.value })}
                   placeholder="https://meet.google.com/xyz-abcd-efg"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function CreateEditWebinarModal({
                   value={formData.assignedStaff || ''}
                   onChange={(e) => setFormData({ ...formData, assignedStaff: e.target.value })}
                   placeholder="e.g. instructor@futurecode.ai"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
               <div>
@@ -200,7 +200,7 @@ export default function CreateEditWebinarModal({
                   value={formData.location || ''}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="e.g. AI Lab Room 204 or Online"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-xs sm:text-base font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-base sm:text-sm font-medium"
                 />
               </div>
             </div>
@@ -210,14 +210,14 @@ export default function CreateEditWebinarModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-gray-200 hover:bg-slate-100 transition-colors text-xs sm:text-sm cursor-pointer min-h-[44px] flex items-center justify-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-purple-600 text-white font-bold text-xs sm:text-sm hover:bg-purple-700 transition-all shadow-md shadow-purple-600/20 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95 min-h-[44px]"
             >
               {isSaving ? (
                 <>
